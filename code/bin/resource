@@ -1,0 +1,151 @@
+#!/bin/bash
+################################################################################
+# resource - starts up a Granules resource instance
+################################################################################
+
+print_usage() {
+cat <<- EOM
+
+Usage: $(basename ${0}) [options]
+
+Options:
+    -c <file>      : Resource config file location.  Default is
+                     \${GRANULES_HOME}/config/resourceConfig.txt
+    -d <debug>      : Remote debugging port
+    -f <Funnel Bootstraps>  : Funnel Bootstrap Server address
+    -n <threads>   : Number of threads this resource should use
+    -o <java opts> : Options for the Java VM.  The default is -Xmx1024m.
+                     Alternatively, provide options in the GRANULES_JAVA_OPTS
+                     environment variable.  Remember to quote these options, eg:
+                     -o '-Xmx4000m -Xms260m -Xmn32m -XX:SurvivorRatio=10'
+    -r             : Restart the resource (kills existing instances before
+                     starting a new one)
+    -k             : Kill any active resources on this machine
+    -h             : Display this usage information
+
+Options passed to this script will override those in the config file,
+if it is present.
+
+EOM
+}
+
+resource_pkg="ds.granules.scheduler.Resource"
+config_file=${GRANULES_HOME}/config/resourceConfig.txt
+
+if [[ -n ${GRANULES_JVM_OPTS} ]]; then
+    java_opts=${GRANULES_JVM_OPTS}
+else
+    java_opts="-Xmx1024m"
+fi
+
+while getopts "c:d:f:n:o:rkh" flag; do
+    case ${flag} in
+        c) config_file=${OPTARG} ;;
+        d) debug="-agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=${OPTARG}" ;;
+        f) funnel_bootstrap=${OPTARG} ;;
+        n) num_threads="-Dnumber-of-threads=${OPTARG}" ;;
+        o) java_opts=${OPTARG} ;;
+        r) restart_res=1 ;;
+        k) restart_res=1; kill_only=1 ;;
+        h) print_usage; exit 0 ;;
+        ?) print_usage; exit 1 ;;
+    esac
+done
+
+granules_jar="lib/Granules.jar"
+
+if [[ -n ${GRANULES_HOME} && ! -e "${GRANULES_HOME}/${granules_jar}" ]]; then
+    unset GRANULES_HOME
+fi
+
+if [[ -z ${GRANULES_HOME} ]]; then
+    if [[ -e "../lib/" ]]; then
+        PRG="$0"
+        PRGDIR=`dirname "$PRG"`
+        export GRANULES_HOME=`cd "$PRGDIR/.." ; pwd`
+    else
+        echo "Could not locate Granules!  Please configure the GRANULES_HOME"
+        echo "environment variable and ensure Granules.jar exists."
+        exit 1
+    fi
+fi
+
+if [[ ! -e "${config_file}" ]]; then
+    config_file=""
+fi
+
+if [[ ${restart_res} -eq 1 ]]; then
+    pid=$(pgrep -U $(whoami) -f ${resource_pkg})
+    if [[ ${?} -ne 0 ]]; then
+        echo "No resource instances found on this host."
+    else
+        echo "Killing resource: ${pid}"
+        pkill -U $(whoami) -f ${resource_pkg} &> /dev/null
+    fi
+
+    if [[ ${kill_only} -eq 1 ]]; then
+        exit 0
+    fi
+fi
+
+#if [[ -z ${funnel_bootstrap} ]]; then
+  # if the Funnel bootstrap URL is not passed as an argument, see if
+  # the FUNNEL_BOOTSTRAP env. variable is set. If not, exit.
+#  if [[ -z ${FUNNEL_BOOTSTRAP} ]]; then
+#    echo 'FUNNEL_BOOTSTRAP Environment Variable is not set. Exit.'
+#    exit 1
+#  fi
+#else
+#  # set the FUNNEL_BOOTSTRAP env. variable.
+#  export FUNNEL_BOOTSTRAP=${funnel_bootstrap}
+#fi
+
+# If the number of threads wasn't specified, auto-detect the number of cores
+if [[ -z ${num_threads} ]]; then
+    archi=`uname`
+    # if the OS is Mac,
+    if [[ "$archi" == "Darwin" ]]; then
+      processors=`sysctl -n hw.ncpu`
+    else # if the OS is any generic Unix/Linux distribution
+      processors=$(cat /proc/cpuinfo | grep '^processor' | wc -l)
+    fi
+    num_threads="-Dnumber-of-threads=${processors}"
+fi
+
+# initialize the classpath
+GRANULES_CLASSPATH=""
+for f in "$GRANULES_HOME"/lib/*
+do
+  if [ "$GRANULES_CLASSPATH" == "" ]
+    then
+    GRANULES_CLASSPATH=$f
+  else
+    GRANULES_CLASSPATH="$GRANULES_CLASSPATH":$f
+  fi
+done
+
+# if running on remote debug mode.
+if [[ -n ${debug} ]];then
+  echo "Please start the remote debugging client to continue..."
+fi
+
+# print the configuration values being used.
+echo 'Using GRANULES_HOME: '${GRANULES_HOME}
+echo 'Using Funnel Bootstrap URL: '${FUNNEL_BOOTSTRAP}
+
+# location of the log4j properties file
+log4j_conf_file='file:'${GRANULES_HOME}'/lib/log4j.properties'
+# append it to java opts
+java_opts=${java_opts}' -Dlog4j.configuration='${log4j_conf_file}'
+-Dcom.sun.management.jmxremote.authenticate=false -Dcom.sun.management.jmxremote.ssl=false
+-Dcom.sun.management.jmxremote.port=10020'
+
+echo ${java_opts}
+
+java \
+    ${java_opts} \
+    -cp ${GRANULES_CLASSPATH} \
+    ${num_threads} \
+    ${debug} \
+${resource_pkg} ${config_file}
+

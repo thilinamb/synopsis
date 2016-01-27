@@ -1,0 +1,106 @@
+#!/bin/bash
+################################################################################
+# granules-start - starts up Granules components with proper JVM arguments and
+#                  CLASSPATH
+################################################################################
+
+print_usage() {
+cat <<- EOM
+
+Usage: $(basename ${0}) [options]
+
+Options:
+    -c <file>      : Resource config file location.  Default is
+                     \${GRANULES_HOME}/config/resourceConfig.txt
+    -d <debug>      : Remote debugging port
+    -f <Funnel Bootstraps>  : Funnel Bootstrap Server address
+    -h             : Display this usage information
+    -t <target>    : Target class name.
+
+Options passed to this script will override those in the config file,
+if it is present.
+
+EOM
+}
+
+
+if [[ -n ${GRANULES_JAVA_OPTS} ]]; then
+    java_opts=${GRANULES_JAVA_OPTS}
+else
+    java_opts="-Xmx1024m"
+fi
+
+while getopts "c:d:f:t:h" flag; do
+    case ${flag} in
+        c) config_file=${OPTARG} ;;
+        d) debug="-agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=${OPTARG}" ;;
+        f) funnel_bootstrap=${OPTARG} ;;
+        t) target_class=${OPTARG} ;;
+        h) print_usage; exit 0 ;;
+        ?) print_usage; exit 1 ;;
+    esac
+done
+
+
+granules_jar="lib/Granules.jar"
+
+if [[ -n ${GRANULES_HOME} && ! -e "${GRANULES_HOME}/${granules_jar}" ]]; then
+    unset GRANULES_HOME
+fi
+
+if [[ -z ${GRANULES_HOME} ]]; then
+    if [[ -e "../lib/" ]]; then
+        PRG="$0"
+        PRGDIR=`dirname "$PRG"`
+        export GRANULES_HOME=`cd "$PRGDIR/.." ; pwd`
+    else
+        echo "Could not locate Granules!  Please configure the GRANULES_HOME"
+        echo "environment variable and ensure Granules.jar exists."
+        exit 1
+    fi
+fi
+
+#if [[ -z ${funnel_bootstrap} ]]; then
+  # if the Funnel bootstrap URL is not passed as an argument, see if
+  # the FUNNEL_BOOTSTRAP env. variable is set. If not, exit.
+#  if [[ -z ${FUNNEL_BOOTSTRAP} ]]; then
+#    echo 'FUNNEL_BOOTSTRAP Environment Variable is not set. Exit.'
+#    exit 1
+#  fi
+#else
+  # set the FUNNEL_BOOTSTRAP env. variable.
+#  export FUNNEL_BOOTSTRAP=${funnel_bootstrap}
+#fi
+
+# initialize the classpath
+GRANULES_CLASSPATH=""
+for f in "$GRANULES_HOME"/lib/*
+do
+  if [ "$GRANULES_CLASSPATH" == "" ]
+    then
+    GRANULES_CLASSPATH=$f
+  else
+    GRANULES_CLASSPATH="$GRANULES_CLASSPATH":$f
+  fi
+done
+
+# location of the log4j properties file
+log4j_conf_file='file:'${GRANULES_HOME}'/lib/log4j.properties'
+# append it to java opts
+java_opts=${java_opts}' -Dlog4j.configuration='${log4j_conf_file}
+
+# get the classname
+run=${target_class}
+shift
+
+if [[ -z ${run} ]]; then
+    echo "No class specified to run!"
+    echo "Usage: $(basename ${0}) class [ arguments ... ]"
+    exit 1
+fi
+
+java \
+    ${java_opts} \
+    -cp ${GRANULES_CLASSPATH} \
+    ${debug} \
+    ${run} ${config_file} "${@}"

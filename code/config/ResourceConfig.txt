@@ -1,0 +1,45 @@
+FUNNEL_BOOTSTRAP=127.0.0.1:7077
+# Specifies the total number of the threads that will be used. This should be set to
+# be approximately the number of execution pipelines on the machine. If a machine 
+# has 2 cores with 2 execution pipelines on each core, this would be set to 4 or 5
+number-of-threads=4
+
+# the communication mode to use
+communication-mode=direct
+
+# the StreamDataset implementation to use. The class name should be used here.
+# Using the class name will allow to plug in any third party implementation without
+# changing the Granules code.
+#stream-dataset-implementation=ds.granules.communication.funnel.FunnelStreamDatasetImpl
+stream-dataset-implementation=ds.granules.communication.direct.DirectCommStreamDatasetImpl
+
+# communication layer framework launcher that needs to be invoked at the beginning
+#comm-layer-launcher=ds.granules.communication.funnel.FunnelLauncher
+#comm-layer-launcher=ds.granules.communication.direct.nio.server.NIOServerLauncher
+comm-layer-launcher=ds.granules.communication.direct.netty.server.NettyServerLauncher
+
+direct-comm-impl=netty
+#direct-comm-impl=nio
+
+# job deployer
+job-deployer=ds.granules.communication.direct.JobDeployer
+
+# listener port (only when a direct communication mode is used.)
+listener-port=7077
+control-plane-port=9099
+
+# reactor thread count (only when a direct communication mode is used.)
+io-reactor-thread-count=4
+
+# ZooKeeper hosts. A string containing a comma separated list of host:port pairs, each corresponding to a ZooKeeper server.
+#(Only when a direct communication mode is used.)
+zookeeper-hosts=localhost:2181
+
+# enable application level buffering (only when a direct communication mode is used.)
+enable-app-level-buffering=true
+
+# Neptune endpoint deployer
+deployer-endpoint=localhost:8088
+
+# Scheduler : used only with NIJobDeployer
+scheduler=ds.granules.neptune.interfere.core.schedule.NIRoundRobinScheduler

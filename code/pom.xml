@@ -7,19 +7,30 @@
     <groupId>edu.colostate.cs.dsg</groupId>
     <artifactId>neptune-geospatial</artifactId>
     <version>1.0-SNAPSHOT</version>
+    <packaging>pom</packaging>
+    <name>Neptune:Geospatial - Parent</name>
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <repository.path>${basedir}/repository</repository.path>
+        <maven.build.timestamp.format>yyyy-MMM-dd</maven.build.timestamp.format>
     </properties>
 
-    <dependencies>
-        <dependency>
-            <groupId>junit</groupId>
-            <artifactId>junit</artifactId>
-            <version>3.8.1</version>
-            <scope>test</scope>
-        </dependency>
-    </dependencies>
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>junit</groupId>
+                <artifactId>junit</artifactId>
+                <version>3.8.1</version>
+                <scope>test</scope>
+            </dependency>
+            <dependency>
+                <groupId>edu.colostate.cs.dsg</groupId>
+                <artifactId>granules-all</artifactId>
+                <version>3.0.0-SNAPSHOT</version>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
 
     <build>
         <sourceDirectory>src/main/java</sourceDirectory>
@@ -41,4 +52,17 @@
             </plugin>
         </plugins>
     </build>
+
+    <repositories>
+        <repository>
+            <id>local-maven-repo</id>
+            <url>file://${repository.path}</url>
+        </repository>
+    </repositories>
+
+    <modules>
+        <module>modules/impl</module>
+        <module>modules/distribution</module>
+    </modules>
+
 </project>
