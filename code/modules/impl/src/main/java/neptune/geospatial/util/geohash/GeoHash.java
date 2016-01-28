@@ -103,7 +103,8 @@ public class GeoHash {
                       precision);
     }
 
-    /**
+    /**moratuwa
+     *
      * Encode latitude and longitude into a GeoHash string.
      *
      * @param latitude
@@ -254,7 +255,7 @@ public class GeoHash {
      *
      * @return The GeoHash in binary form, as an ArrayList of Booleans.
      */
-    private static ArrayList<Boolean> getBits(String hash) {
+    public static ArrayList<Boolean> getBits(String hash) {
         hash = hash.toLowerCase();
 
         /* Create an array of bits, 5 bits per character: */

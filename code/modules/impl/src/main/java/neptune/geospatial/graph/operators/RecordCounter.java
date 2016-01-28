@@ -22,8 +22,8 @@ public class RecordCounter extends StreamProcessor {
     @Override
     public void onEvent(StreamEvent streamEvent) throws StreamingDatasetException {
         GeoHashIndexedRecord record = (GeoHashIndexedRecord)streamEvent;
-        if(++counter % 100000 == 0){
-            logger.info(String.format("Record received. Counter: %d Hash: %s Timestamp: %d", counter,
+        if(++counter % 100 == 0){
+            logger.info(String.format("[" + getInstanceIdentifier()  + "] Record received. Counter: %d Hash: %s Timestamp: %d", counter,
                     record.getGeoHash(), record.getTsIngested()));
         }
     }

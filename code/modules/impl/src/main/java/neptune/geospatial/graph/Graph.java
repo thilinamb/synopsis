@@ -6,6 +6,7 @@ import ds.granules.util.NeptuneRuntime;
 import ds.granules.util.ParamsReader;
 import neptune.geospatial.graph.operators.RecordCounter;
 import neptune.geospatial.graph.operators.StreamIngester;
+import neptune.geospatial.partitioner.GeoHashPartitioner;
 import org.apache.log4j.Logger;
 
 import java.io.File;
@@ -45,11 +46,11 @@ public class Graph {
             Properties senderProps = new Properties();
             senderProps.put(ds.granules.util.Constants.StreamBaseProperties.BUFFER_SIZE, Integer.toString(1800));
             job.addStreamSource("ingester", StreamIngester.class, 1, senderProps);
-            job.addStreamProcessor("record-counter", RecordCounter.class, 1);
+            job.addStreamProcessor("record-counter", RecordCounter.class, 4);
 
             // edges
             job.addLink("ingester", "record-counter", Constants.Streams.GEO_HASH_INDEXED_RECORDS,
-                    ds.granules.util.Constants.PartitionSchemes.SEND_TO_ONE);
+                    GeoHashPartitioner.class.getName());
             job.deploy();
 
         } catch (Exception e) {

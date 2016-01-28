@@ -12,7 +12,7 @@
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <repository.path>${basedir}/repository</repository.path>
+        <repository.path>${basedir}/../../repository</repository.path>
         <maven.build.timestamp.format>yyyy-MMM-dd</maven.build.timestamp.format>
     </properties>
 
