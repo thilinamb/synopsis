@@ -3,7 +3,7 @@ package neptune.geospatial.core;
 import ds.funnel.topic.TopicDataEvent;
 import ds.granules.communication.direct.ChannelReaderCallback;
 import ds.granules.communication.direct.control.ControlMessage;
-import neptune.geospatial.core.resource.ProtocolFactory;
+import org.apache.log4j.Logger;
 
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedDeque;
@@ -20,6 +20,7 @@ public abstract class AbstractProtocolHandler implements ChannelReaderCallback, 
     private final Queue<TopicDataEvent> controlMessageQueue = new ConcurrentLinkedDeque<>();
     private ProtocolFactory protocolFactory = ProtocolFactory.getInstance();
     private boolean firstIteration = false;
+    private Logger logger = Logger.getLogger(AbstractProtocolHandler.class);
 
     @Override
     public void onEvent(TopicDataEvent topicDataEvent) {
@@ -37,21 +38,25 @@ public abstract class AbstractProtocolHandler implements ChannelReaderCallback, 
             notifyStartup();
             firstIteration = false;
         }
-        // start listening to the control messages.
-        while (!Thread.interrupted()) {
-            synchronized (controlMessageQueue) {
-                if (controlMessageQueue.size() == 0) {
-                    try {
-                        System.out.println("Waiting for a control message!");
-                        controlMessageQueue.wait();
-                    } catch (InterruptedException e) {
-                        e.printStackTrace();
+        try {
+            // start listening to the control messages.
+            while (!Thread.interrupted()) {
+                synchronized (controlMessageQueue) {
+                    if (controlMessageQueue.size() == 0) {
+                        try {
+                            System.out.println("Waiting for a control message!");
+                            controlMessageQueue.wait();
+                        } catch (InterruptedException e) {
+                            e.printStackTrace();
+                        }
                     }
                 }
+                TopicDataEvent topicDataEvent = controlMessageQueue.remove();
+                ControlMessage ctrlMsg = protocolFactory.parse(topicDataEvent);
+                handle(ctrlMsg);
             }
-            TopicDataEvent topicDataEvent = controlMessageQueue.remove();
-            ControlMessage ctrlMsg = protocolFactory.parse(topicDataEvent);
-            handle(ctrlMsg);
+        } catch (Throwable e) {
+            logger.error(e.getMessage(), e);    // log and continue
         }
     }
 
