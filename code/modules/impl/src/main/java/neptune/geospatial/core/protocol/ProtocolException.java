@@ -1,4 +1,4 @@
-package neptune.geospatial.core;
+package neptune.geospatial.core.protocol;
 
 /**
  * Exception related to protocol handling.

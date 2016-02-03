@@ -1,4 +1,4 @@
-package neptune.geospatial.core;
+package neptune.geospatial.core.protocol;
 
 import ds.funnel.topic.TopicDataEvent;
 import ds.granules.communication.direct.ChannelReaderCallback;

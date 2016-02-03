@@ -1,4 +1,4 @@
-package neptune.geospatial.core;
+package neptune.geospatial.core.protocol;
 
 import ds.funnel.topic.TopicDataEvent;
 import ds.granules.communication.direct.control.ControlMessage;
@@ -31,7 +31,7 @@ public class ProtocolFactory {
         try {
             ControlMessage message = null;
             switch (messageType) {
-                case 1:
+                case Protocol:
                     break;
                 default:
                     String errorMsg = "Unsupported message type: " + messageType;
