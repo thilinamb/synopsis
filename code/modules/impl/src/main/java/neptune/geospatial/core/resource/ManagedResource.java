@@ -1,6 +1,8 @@
 package neptune.geospatial.core.resource;
 
 import ds.granules.Granules;
+import ds.granules.communication.direct.control.ControlMessage;
+import ds.granules.communication.direct.control.SendUtility;
 import ds.granules.communication.direct.dispatch.ControlMessageDispatcher;
 import ds.granules.exception.CommunicationsException;
 import ds.granules.exception.GranulesConfigurationException;
@@ -11,10 +13,11 @@ import ds.granules.scheduler.Resource;
 import ds.granules.util.Constants;
 import ds.granules.util.NeptuneRuntime;
 import ds.granules.util.ParamsReader;
-import neptune.geospatial.core.AbstractProtocolHandler;
+import neptune.geospatial.core.protocol.AbstractProtocolHandler;
 import org.apache.log4j.Logger;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.Properties;
 import java.util.concurrent.CountDownLatch;
 
@@ -40,7 +43,7 @@ public class ManagedResource {
     public ManagedResource(Properties inProps, int numOfThreads) throws CommunicationsException {
         Resource resource = new Resource(inProps, numOfThreads);
         resource.init();
-        logger.info("Successfully Started NIResource..");
+        logger.info("Successfully Started ManagedResource.");
     }
 
     private void init() {
@@ -65,7 +68,7 @@ public class ManagedResource {
 
     public static ManagedResource getInstance() throws NIException {
         if (instance == null) {
-            throw new NIException("NIResource is not initialized.");
+            throw new NIException("ManagedResource is not initialized.");
         }
         return instance;
     }
@@ -119,5 +122,13 @@ public class ManagedResource {
 
     protected void acknowledgeCtrlMsgListenerStartup(){
         countDownLatch.countDown();
+    }
+
+    public void sendToDeployer(ControlMessage controlMessage) {
+        try {
+            SendUtility.sendControlMessage(deployerEndpoint, controlMessage);
+        } catch (CommunicationsException | IOException e) {
+            logger.error("Error sending control message to the deployer.", e);
+        }
     }
 }

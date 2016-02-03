@@ -71,7 +71,7 @@ public class StreamIngester extends StreamSource {
         if(locSegments.length == 2){
             String geoHash = GeoHash.encode(Float.parseFloat(locSegments[0]), Float.parseFloat(locSegments[1]),
                     PRECISION);
-            record = new GeoHashIndexedRecord(geoHash, System.currentTimeMillis());
+            record = new GeoHashIndexedRecord(geoHash, 2, System.currentTimeMillis());
         }
         return record;
     }

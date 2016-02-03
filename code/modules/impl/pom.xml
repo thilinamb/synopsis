@@ -20,6 +20,28 @@
         <dependency>
             <groupId>edu.colostate.cs.dsg</groupId>
             <artifactId>granules-all</artifactId>
+            <exclusions>
+                <exclusion>
+                    <groupId>edu.colostate.cs.dsg</groupId>
+                    <artifactId>granules-core</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>edu.colostate.cs.dsg</groupId>
+                    <artifactId>granules-bridge</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>edu.colostate.cs.dsg</groupId>
+                    <artifactId>granules-interfere</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>edu.colostate.cs.dsg</groupId>
+                    <artifactId>granules-stream-processing</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>edu.colostate.cs.dsg</groupId>
+                    <artifactId>granules-samples</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
     </dependencies>
 

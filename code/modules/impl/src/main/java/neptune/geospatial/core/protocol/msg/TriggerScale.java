@@ -16,33 +16,25 @@ import java.io.IOException;
  */
 public class TriggerScale extends ControlMessage {
 
-    private String sourceIdentifier;
     private String currentComputation;
 
     public TriggerScale() {
         super(ProtocolTypes.TRIGGER_SCALING);
     }
 
-    public TriggerScale(String sourceIdentifier, String currentComputation) {
+    public TriggerScale(String currentComputation) {
         super(ProtocolTypes.TRIGGER_SCALING);
-        this.sourceIdentifier = sourceIdentifier;
         this.currentComputation = currentComputation;
     }
 
     @Override
     public void readValues(DataInputStream dataInputStream) throws IOException {
-        this.sourceIdentifier = dataInputStream.readUTF();
         this.currentComputation = dataInputStream.readUTF();
     }
 
     @Override
     public void writeValues(DataOutputStream dataOutputStream) throws IOException {
-        dataOutputStream.writeUTF(this.sourceIdentifier);
         dataOutputStream.writeUTF(this.currentComputation);
-    }
-
-    public String getSourceIdentifier() {
-        return sourceIdentifier;
     }
 
     public String getCurrentComputation() {

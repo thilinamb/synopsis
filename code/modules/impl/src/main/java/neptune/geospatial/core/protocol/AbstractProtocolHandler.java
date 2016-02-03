@@ -19,7 +19,7 @@ public abstract class AbstractProtocolHandler implements ChannelReaderCallback, 
 
     private final Queue<TopicDataEvent> controlMessageQueue = new ConcurrentLinkedDeque<>();
     private ProtocolFactory protocolFactory = ProtocolFactory.getInstance();
-    private boolean firstIteration = false;
+    private boolean firstIteration = true;
     private Logger logger = Logger.getLogger(AbstractProtocolHandler.class);
 
     @Override

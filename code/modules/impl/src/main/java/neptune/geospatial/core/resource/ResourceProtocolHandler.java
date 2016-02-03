@@ -1,7 +1,7 @@
 package neptune.geospatial.core.resource;
 
 import ds.granules.communication.direct.control.ControlMessage;
-import neptune.geospatial.core.AbstractProtocolHandler;
+import neptune.geospatial.core.protocol.AbstractProtocolHandler;
 
 /**
  * Implements the control message handling at the Resource's

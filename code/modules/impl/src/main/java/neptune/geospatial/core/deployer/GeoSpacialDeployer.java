@@ -168,6 +168,7 @@ public class GeoSpacialDeployer extends JobDeployer {
     private void initializationCompleted() {
         try {
             initializationLatch.await();
+            logger.info("Deployer Initialization is complete. Ready to launch jobs.");
         } catch (InterruptedException ignore) {
 
         }

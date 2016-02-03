@@ -29,7 +29,7 @@ if it is present.
 EOM
 }
 
-resource_pkg="ds.granules.scheduler.Resource"
+resource_pkg="neptune.geospatial.core.resource.ManagedResource"
 config_file=${GRANULES_HOME}/config/resourceConfig.txt
 
 if [[ -n ${GRANULES_JVM_OPTS} ]]; then
