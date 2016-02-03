@@ -4,7 +4,7 @@ import ds.granules.Granules;
 import ds.granules.streaming.core.Job;
 import ds.granules.util.NeptuneRuntime;
 import ds.granules.util.ParamsReader;
-import neptune.geospatial.core.deployer.GeoSpacialDeployer;
+import neptune.geospatial.core.deployer.GeoSpatialDeployer;
 import neptune.geospatial.graph.operators.RecordCounter;
 import neptune.geospatial.graph.operators.StreamIngester;
 import neptune.geospatial.partitioner.GeoHashPartitioner;
@@ -41,7 +41,7 @@ public class Graph {
             }
 
             NeptuneRuntime.initialize(resourceProps);
-            Job job = new Job("GeoSpatial-Data-Processing-Graph", GeoSpacialDeployer.getDeployer());
+            Job job = new Job("GeoSpatial-Data-Processing-Graph", GeoSpatialDeployer.getDeployer());
 
             // vertices
             Properties senderProps = new Properties();

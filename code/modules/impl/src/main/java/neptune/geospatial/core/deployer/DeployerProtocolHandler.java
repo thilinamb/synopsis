@@ -13,27 +13,33 @@ import org.apache.log4j.Logger;
  */
 public class DeployerProtocolHandler extends AbstractProtocolHandler {
 
-    private final GeoSpacialDeployer geoSpacialDeployer;
+    private final GeoSpatialDeployer geoSpatialDeployer;
     private Logger logger = Logger.getLogger(DeployerProtocolHandler.class);
 
-    public DeployerProtocolHandler(GeoSpacialDeployer geoSpacialDeployer) {
-        this.geoSpacialDeployer = geoSpacialDeployer;
+    public DeployerProtocolHandler(GeoSpatialDeployer geoSpatialDeployer) {
+        this.geoSpatialDeployer = geoSpatialDeployer;
     }
 
     @Override
     public void handle(ControlMessage ctrlMsg) {
         int type = ctrlMsg.getMessageType();
-        switch (type) {
-            case ProtocolTypes.TRIGGER_SCALING:
-                TriggerScale triggerScale = (TriggerScale) ctrlMsg;
-                if(logger.isDebugEnabled()){
-                    logger.debug("Received a trigger scale message from " + triggerScale.getCurrentComputation());
-                }
+        try {
+
+            switch (type) {
+                case ProtocolTypes.TRIGGER_SCALING:
+                    TriggerScale triggerScale = (TriggerScale) ctrlMsg;
+                    if (logger.isDebugEnabled()) {
+                        logger.debug("Received a trigger scale message from " + triggerScale.getCurrentComputation());
+                    }
+                    geoSpatialDeployer.handleScaleUpRequest(triggerScale);
+            }
+        } catch (GeoSpatialDeployerException e) {
+            logger.error("Error handling message " + type + ". Error: " + e.getMessage(), e);
         }
     }
 
     @Override
     public void notifyStartup() {
-        geoSpacialDeployer.ackCtrlMsgHandlerStarted();
+        geoSpatialDeployer.ackCtrlMsgHandlerStarted();
     }
 }

@@ -9,12 +9,13 @@ import ds.granules.exception.DeploymentException;
 import ds.granules.exception.GranulesConfigurationException;
 import ds.granules.exception.MarshallingException;
 import ds.granules.neptune.interfere.core.NIException;
-import ds.granules.neptune.interfere.core.NIStreamProcessor;
-import ds.granules.neptune.interfere.core.NIStreamSource;
 import ds.granules.neptune.interfere.core.schedule.NIRoundRobinScheduler;
 import ds.granules.neptune.interfere.core.schedule.NIScheduler;
 import ds.granules.operation.Operation;
+import ds.granules.operation.ProcessingException;
 import ds.granules.operation.ProgressTracker;
+import ds.granules.streaming.core.StreamProcessor;
+import ds.granules.streaming.core.exception.StreamingGraphConfigurationException;
 import ds.granules.util.Constants;
 import ds.granules.util.NeptuneRuntime;
 import ds.granules.util.ZooKeeperUtils;
@@ -26,15 +27,13 @@ import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
+import neptune.geospatial.core.protocol.msg.TriggerScale;
 import org.apache.log4j.Logger;
 import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.KeeperException;
 
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Properties;
+import java.util.*;
 import java.util.concurrent.CountDownLatch;
 
 /**
@@ -83,22 +82,52 @@ public class GeoSpatialDeployer extends JobDeployer {
         }
     }
 
-    private static final Logger logger = Logger.getLogger(JobDeployer.class);
+    private static final Logger logger = Logger.getLogger(GeoSpatialDeployer.class);
     private CountDownLatch initializationLatch = new CountDownLatch(2);
     private NIScheduler scheduler = new NIRoundRobinScheduler();
     private static GeoSpatialDeployer instance;
     private Map<String, String> niOpAssignments = new HashMap<>();
-    private Map<String, Operation> niOperationsMap = new HashMap<>();
-    private Map<String, String> niOperationToJobId = new HashMap<>();
+    private Map<String, Operation> computationIdToObjectMap = new HashMap<>();
     private Map<String, String> niControlToDataEndPoints = new HashMap<>();
-    //  destination -> source
-    private Map<String, String> niSourceDestinationMap = new HashMap<>();
 
+    @Override
+    public ProgressTracker deployOperations(Operation[] operations) throws
+            CommunicationsException, DeploymentException, MarshallingException {
+        // shuffle operations
+        List<Operation> opList = Arrays.asList(operations);
+        //Collections.shuffle(opList);
+        opList.toArray(operations);
+
+        String jobId = uuidRetriever.getRandomBasedUUIDAsString();
+        try {
+            Map<Operation, String> assignments = new HashMap<>(operations.length);
+            // create the deployment plan
+            for (Operation op : operations) {
+                ResourceEndpoint resourceEndpoint = resourceEndpoints.get(lastAssigned);
+                lastAssigned = (lastAssigned + 1) % resourceEndpoints.size();
+                assignments.put(op, resourceEndpoint.getDataEndpoint());
+                String operatorId = op.getInstanceIdentifier();
+                niOpAssignments.put(operatorId, resourceEndpoint.getControlEndpoint());
+                computationIdToObjectMap.put(operatorId, op);
+                niControlToDataEndPoints.put(resourceEndpoint.getControlEndpoint(), resourceEndpoint.getDataEndpoint());
+                // write the assignments to ZooKeeper
+                ZooKeeperUtils.createDirectory(zk, Constants.ZK_ZNODE_OP_ASSIGNMENTS + "/" + operatorId,
+                        resourceEndpoint.getDataEndpoint().getBytes(), CreateMode.PERSISTENT);
+            }
+            // send the deployment messages
+            for (Map.Entry<Operation, String> entry : assignments.entrySet()) {
+                deployOperation(jobId, entry.getValue(), entry.getKey());
+            }
+
+        } catch (KeeperException | InterruptedException e) {
+            logger.error(e.getMessage(), e);
+            throw new DeploymentException(e.getMessage(), e);
+        }
+        return null;
+    }
 
     @Override
     public ProgressTracker deployOperations(List<Operation[]> ops) throws CommunicationsException, DeploymentException, MarshallingException {
-        String source = null;
-        String destination = null;
         String jobId = uuidRetriever.getRandomBasedUUIDAsString();
         Map<Operation, String> assignments = new HashMap<>();
         Map<Operation, ResourceEndpoint> deploymentPlan = scheduler.schedule(ops, resourceEndpoints);
@@ -109,18 +138,12 @@ public class GeoSpatialDeployer extends JobDeployer {
             // store them for migration by the NIResource deployer
             String operatorId = op.getInstanceIdentifier();
             niOpAssignments.put(operatorId, resourceEndpoint.getControlEndpoint());
-            niOperationsMap.put(operatorId, op);
-            niOperationToJobId.put(operatorId, jobId);
+            computationIdToObjectMap.put(operatorId, op);
             niControlToDataEndPoints.put(resourceEndpoint.getControlEndpoint(), resourceEndpoint.getDataEndpoint());
             try {
                 // write the assignments to ZooKeeper
                 ZooKeeperUtils.createDirectory(zk, Constants.ZK_ZNODE_OP_ASSIGNMENTS + "/" + operatorId,
                         resourceEndpoint.getDataEndpoint().getBytes(), CreateMode.PERSISTENT);
-                if (op instanceof NIStreamSource) {
-                    source = operatorId;
-                } else if (op instanceof NIStreamProcessor) {
-                    destination = operatorId;
-                }
             } catch (KeeperException | InterruptedException e) {
                 logger.error(e.getMessage(), e);
                 throw new DeploymentException(e.getMessage(), e);
@@ -132,7 +155,6 @@ public class GeoSpatialDeployer extends JobDeployer {
             deployOperation(jobId, entry.getValue(), entry.getKey());
         }
 
-        niSourceDestinationMap.put(destination, source);
         return null;
     }
 
@@ -161,7 +183,7 @@ public class GeoSpatialDeployer extends JobDeployer {
         return instance;
     }
 
-    protected void ackCtrlMsgHandlerStarted(){
+    protected void ackCtrlMsgHandlerStarted() {
         initializationLatch.countDown();
     }
 
@@ -171,6 +193,27 @@ public class GeoSpatialDeployer extends JobDeployer {
             logger.info("Deployer Initialization is complete. Ready to launch jobs.");
         } catch (InterruptedException ignore) {
 
+        }
+    }
+
+    public void handleScaleUpRequest(TriggerScale scaleOutReq) throws GeoSpatialDeployerException {
+        String computationId = scaleOutReq.getCurrentComputation();
+        if (!computationIdToObjectMap.containsKey(computationId)) {
+            throw new GeoSpatialDeployerException("Invalid computation: " + computationId);
+        }
+        StreamProcessor currentComp = (StreamProcessor) computationIdToObjectMap.get(computationId);
+        try {
+            StreamProcessor clone = currentComp.getClass().newInstance();
+            // copy the minimal state
+            currentComp.createMinimalClone(clone);
+            if (logger.isDebugEnabled()) {
+                logger.debug(String.format("Successfully created a minimal clone. Current Computation: %s, " +
+                        "New Computation: %s", computationId, clone.getInstanceIdentifier()));
+            }
+        } catch (InstantiationException | IllegalAccessException e) {
+            throw new GeoSpatialDeployerException("Error instantiating the new copy of the computation.", e);
+        } catch (ProcessingException | StreamingGraphConfigurationException e) {
+            throw new GeoSpatialDeployerException("Error copying minimal state from the current computation.", e);
         }
     }
 }
