@@ -42,7 +42,7 @@ import java.util.concurrent.CountDownLatch;
  *
  * @author Thilina Buddhika
  */
-public class GeoSpacialDeployer extends JobDeployer {
+public class GeoSpatialDeployer extends JobDeployer {
 
     private class CtrlMessageEndpoint implements Runnable {
 
@@ -86,7 +86,7 @@ public class GeoSpacialDeployer extends JobDeployer {
     private static final Logger logger = Logger.getLogger(JobDeployer.class);
     private CountDownLatch initializationLatch = new CountDownLatch(2);
     private NIScheduler scheduler = new NIRoundRobinScheduler();
-    private static GeoSpacialDeployer instance;
+    private static GeoSpatialDeployer instance;
     private Map<String, String> niOpAssignments = new HashMap<>();
     private Map<String, Operation> niOperationsMap = new HashMap<>();
     private Map<String, String> niOperationToJobId = new HashMap<>();
@@ -148,9 +148,9 @@ public class GeoSpacialDeployer extends JobDeployer {
         initializationCompleted();
     }
 
-    public synchronized static GeoSpacialDeployer getDeployer() throws NIException {
+    public synchronized static GeoSpatialDeployer getDeployer() throws NIException {
         if (instance == null) {
-            instance = new GeoSpacialDeployer();
+            instance = new GeoSpatialDeployer();
             try {
                 instance.initialize(NeptuneRuntime.getInstance().getProperties());
             } catch (CommunicationsException | IOException | DeploymentException | MarshallingException | GranulesConfigurationException e) {
