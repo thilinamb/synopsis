@@ -89,6 +89,7 @@ public class GeoSpatialDeployer extends JobDeployer {
     private Map<String, String> niOpAssignments = new HashMap<>();
     private Map<String, Operation> computationIdToObjectMap = new HashMap<>();
     private Map<String, String> niControlToDataEndPoints = new HashMap<>();
+    private String jobId;
 
     @Override
     public ProgressTracker deployOperations(Operation[] operations) throws
@@ -98,13 +99,12 @@ public class GeoSpatialDeployer extends JobDeployer {
         //Collections.shuffle(opList);
         opList.toArray(operations);
 
-        String jobId = uuidRetriever.getRandomBasedUUIDAsString();
+        this.jobId = uuidRetriever.getRandomBasedUUIDAsString();
         try {
             Map<Operation, String> assignments = new HashMap<>(operations.length);
             // create the deployment plan
             for (Operation op : operations) {
-                ResourceEndpoint resourceEndpoint = resourceEndpoints.get(lastAssigned);
-                lastAssigned = (lastAssigned + 1) % resourceEndpoints.size();
+                ResourceEndpoint resourceEndpoint = nextResource();
                 assignments.put(op, resourceEndpoint.getDataEndpoint());
                 String operatorId = op.getInstanceIdentifier();
                 niOpAssignments.put(operatorId, resourceEndpoint.getControlEndpoint());
@@ -124,6 +124,12 @@ public class GeoSpatialDeployer extends JobDeployer {
             throw new DeploymentException(e.getMessage(), e);
         }
         return null;
+    }
+
+    private ResourceEndpoint nextResource() {
+        ResourceEndpoint resourceEndpoint = resourceEndpoints.get(lastAssigned);
+        lastAssigned = (lastAssigned + 1) % resourceEndpoints.size();
+        return resourceEndpoint;
     }
 
     @Override
@@ -209,6 +215,20 @@ public class GeoSpatialDeployer extends JobDeployer {
             if (logger.isDebugEnabled()) {
                 logger.debug(String.format("Successfully created a minimal clone. Current Computation: %s, " +
                         "New Computation: %s", computationId, clone.getInstanceIdentifier()));
+            }
+            // deploy
+            ResourceEndpoint resourceEndpoint = nextResource();
+            try {
+                // write the assignments to ZooKeeper
+                ZooKeeperUtils.createDirectory(zk, Constants.ZK_ZNODE_OP_ASSIGNMENTS + "/" + clone.getInstanceIdentifier(),
+                        resourceEndpoint.getDataEndpoint().getBytes(), CreateMode.PERSISTENT);
+            } catch (KeeperException | InterruptedException e) {
+                throw new GeoSpatialDeployerException("Error writing the deployment data to ZK.", e);
+            }
+            deployOperation(this.jobId, resourceEndpoint.getDataEndpoint(), clone);
+            if (logger.isDebugEnabled()) {
+                logger.debug(String.format("Successfully deployed the new instance. Instance Id: %s, Location: %s",
+                        clone.getInstanceIdentifier(), resourceEndpoint.getDataEndpoint()));
             }
         } catch (InstantiationException | IllegalAccessException e) {
             throw new GeoSpatialDeployerException("Error instantiating the new copy of the computation.", e);
