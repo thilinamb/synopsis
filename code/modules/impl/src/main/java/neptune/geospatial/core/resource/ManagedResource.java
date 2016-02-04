@@ -7,17 +7,20 @@ import ds.granules.communication.direct.dispatch.ControlMessageDispatcher;
 import ds.granules.exception.CommunicationsException;
 import ds.granules.exception.GranulesConfigurationException;
 import ds.granules.neptune.interfere.core.NIException;
-import ds.granules.neptune.interfere.core.NIUtil;
-import ds.granules.scheduler.ExchangeProcessor;
 import ds.granules.scheduler.Resource;
 import ds.granules.util.Constants;
 import ds.granules.util.NeptuneRuntime;
 import ds.granules.util.ParamsReader;
+import neptune.geospatial.core.computations.GeoSpatialStreamProcessor;
 import neptune.geospatial.core.protocol.AbstractProtocolHandler;
+import neptune.geospatial.core.protocol.msg.TriggerScaleAck;
 import org.apache.log4j.Logger;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.CountDownLatch;
 
@@ -34,11 +37,10 @@ public class ManagedResource {
     private static Logger logger = Logger.getLogger(ManagedResource.class.getName());
 
     private static ManagedResource instance;
-    private String controlEndpoint = null;
-    private String dataEndpoint = null;
     private String deployerEndpoint = null;
-    private ExchangeProcessor exchangeProcessor;
     private CountDownLatch countDownLatch = new CountDownLatch(1);
+    private Map<String, GeoSpatialStreamProcessor> streamProcessors = Collections.synchronizedMap(
+            new HashMap<String, GeoSpatialStreamProcessor>());
 
     public ManagedResource(Properties inProps, int numOfThreads) throws CommunicationsException {
         Resource resource = new Resource(inProps, numOfThreads);
@@ -53,13 +55,8 @@ public class ManagedResource {
         ControlMessageDispatcher.getInstance().registerCallback(Constants.WILD_CARD_CALLBACK, protoHandler);
         new Thread(protoHandler).start();
         try {
-            dataEndpoint = NIUtil.getHostInetAddress().getHostName() + ":" +
-                    NeptuneRuntime.getInstance().getProperties().getProperty(Constants.DIRECT_COMM_LISTENER_PORT);
-            controlEndpoint = NIUtil.getHostInetAddress().getHostName() + ":" +
-                    NeptuneRuntime.getInstance().getProperties().getProperty(Constants.DIRECT_COMM_CONTROL_PLANE_SERVER_PORT);
             deployerEndpoint = NeptuneRuntime.getInstance().getProperties().getProperty(
                     Constants.DEPLOYER_ENDPOINT);
-            exchangeProcessor = Resource.getInstance().getExchangeProcessor();
             countDownLatch.await();
         } catch (GranulesConfigurationException | InterruptedException e) {
             logger.error(e.getMessage(), e);
@@ -129,6 +126,19 @@ public class ManagedResource {
             SendUtility.sendControlMessage(deployerEndpoint, controlMessage);
         } catch (CommunicationsException | IOException e) {
             logger.error("Error sending control message to the deployer.", e);
+        }
+    }
+
+    public void registerStreamProcessor(GeoSpatialStreamProcessor processor){
+        streamProcessors.put(processor.getInstanceIdentifier(), processor);
+    }
+
+    public void handleTriggerScaleAck(TriggerScaleAck ack){
+        String processorId = ack.getTargetComputation();
+        if(streamProcessors.containsKey(processorId)){
+            streamProcessors.get(processorId).handleTriggerScaleAck(ack);
+        } else {
+            logger.warn("ScaleTriggerAck for an invalid computation: " + processorId);
         }
     }
 }

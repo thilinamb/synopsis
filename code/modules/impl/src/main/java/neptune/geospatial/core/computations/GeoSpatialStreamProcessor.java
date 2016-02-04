@@ -8,6 +8,7 @@ import ds.granules.streaming.core.StreamProcessor;
 import ds.granules.streaming.core.exception.StreamingDatasetException;
 import ds.granules.streaming.core.exception.StreamingGraphConfigurationException;
 import neptune.geospatial.core.protocol.msg.TriggerScale;
+import neptune.geospatial.core.protocol.msg.TriggerScaleAck;
 import neptune.geospatial.core.resource.ManagedResource;
 import neptune.geospatial.graph.messages.GeoHashIndexedRecord;
 import neptune.geospatial.partitioner.GeoHashPartitioner;
@@ -15,6 +16,7 @@ import org.apache.log4j.Logger;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Stream processor specialized for geo-spatial data processing.
@@ -37,6 +39,7 @@ public abstract class GeoSpatialStreamProcessor extends StreamProcessor {
 
     private Logger logger = Logger.getLogger(GeoSpatialStreamProcessor.class.getName());
     public static final String OUTGOING_STREAM = "out-going";
+    private AtomicBoolean initialized = new AtomicBoolean(false);
 
     private int counter = 0;
 
@@ -47,10 +50,19 @@ public abstract class GeoSpatialStreamProcessor extends StreamProcessor {
 
     @Override
     public final void onEvent(StreamEvent streamEvent) throws StreamingDatasetException {
+        if(!initialized.get()){
+            try {
+                ManagedResource.getInstance().registerStreamProcessor(this);
+                initialized.set(true);
+            } catch (NIException e) {
+                logger.error("Error retrieving the resource instance.", e);
+            }
+        }
+
         GeoHashIndexedRecord geoHashIndexedRecord = (GeoHashIndexedRecord) streamEvent;
         // preprocess each message
         preprocess(geoHashIndexedRecord);
-        // perform the business logic
+        // perform the business logic: do this selectively. Send through the traffic we don't process.
         onEvent(geoHashIndexedRecord);
     }
 
@@ -105,6 +117,10 @@ public abstract class GeoSpatialStreamProcessor extends StreamProcessor {
     @Override
     protected void declareOutputStreams() throws StreamingGraphConfigurationException {
         // leaf node of the graph. no outgoing edges.
+    }
+
+    public void handleTriggerScaleAck(TriggerScaleAck ack){
+
     }
 
 }

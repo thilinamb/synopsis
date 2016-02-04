@@ -24,7 +24,6 @@ public class DeployerProtocolHandler extends AbstractProtocolHandler {
     public void handle(ControlMessage ctrlMsg) {
         int type = ctrlMsg.getMessageType();
         try {
-
             switch (type) {
                 case ProtocolTypes.TRIGGER_SCALING:
                     TriggerScale triggerScale = (TriggerScale) ctrlMsg;

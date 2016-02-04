@@ -243,7 +243,7 @@ public class GeoSpatialDeployer extends JobDeployer {
         } catch (KeeperException | InterruptedException e) {
             throw new GeoSpatialDeployerException("Error writing the deployment data to ZK.", e);
         } finally {
-            TriggerScaleAck ack = new TriggerScaleAck(scaleOutReq.getMessageId(), success);
+            TriggerScaleAck ack = new TriggerScaleAck(scaleOutReq.getMessageId(), computationId, success);
             try {
                 SendUtility.sendControlMessage(scaleOutReq.getOriginEndpoint(), ack);
             } catch (CommunicationsException | IOException e) {
