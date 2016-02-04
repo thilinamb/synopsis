@@ -1,11 +1,15 @@
 package neptune.geospatial.graph.operators;
 
+import ds.funnel.topic.Topic;
+import ds.granules.Granules;
 import ds.granules.neptune.interfere.core.NIException;
+import ds.granules.streaming.core.exception.StreamingDatasetException;
 import ds.granules.streaming.core.exception.StreamingGraphConfigurationException;
 import neptune.geospatial.core.computations.GeoSpatialStreamProcessor;
 import neptune.geospatial.core.protocol.msg.TriggerScale;
 import neptune.geospatial.core.resource.ManagedResource;
 import neptune.geospatial.graph.messages.GeoHashIndexedRecord;
+import neptune.geospatial.partitioner.GeoHashPartitioner;
 import org.apache.log4j.Logger;
 
 /**
@@ -33,19 +37,31 @@ public class RecordCounter extends GeoSpatialStreamProcessor {
     protected void preprocess(GeoHashIndexedRecord record) {
         // this is a temporary trigger to test the scaling out.
         if (!scaledOut & counter >= 1000000) {
-            TriggerScale triggerMessage = new TriggerScale(getInstanceIdentifier());
             try {
+                // initialize the meta-data
+                String streamId = Granules.getUUIDRetriever().getRandomBasedUUIDAsString();
+                String streamType =  record.getClass().getName();
+                declareStream(streamId, streamType);
+                Topic[] topics = deployStream(streamId, 1, GeoHashPartitioner.class.getName());
+
+                TriggerScale triggerMessage = new TriggerScale(getInstanceIdentifier(), streamId, topics[0].toString(),
+                        streamType);
                 ManagedResource.getInstance().sendToDeployer(triggerMessage);
-                // this is just to control the scaling to one instance for testing.
-                scaledOut = true;
+
                 if (logger.isDebugEnabled()) {
                     logger.debug(String.format("[%s] Sent a trigger scale message to deployer.",
                             getInstanceIdentifier()));
                 }
+
+                // this is just to control the scaling to one instance for testing.
+                scaledOut = true;
+            } catch (StreamingDatasetException | StreamingGraphConfigurationException e) {
+                logger.error("Error creating new stream from the current computation.", e);
             } catch (NIException e) {
                 logger.error("Error sending a trigger scale message to the deployer. ", e);
             }
         }
+
     }
 
     @Override
