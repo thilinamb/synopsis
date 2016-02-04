@@ -2,6 +2,7 @@ package neptune.geospatial.core.deployer;
 
 import ds.funnel.topic.StringTopic;
 import ds.granules.communication.direct.JobDeployer;
+import ds.granules.communication.direct.control.SendUtility;
 import ds.granules.communication.direct.dispatch.ControlMessageDispatcher;
 import ds.granules.communication.direct.netty.server.MessageReceiver;
 import ds.granules.communication.direct.netty.server.ServerHandler;
@@ -30,6 +31,7 @@ import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import neptune.geospatial.core.protocol.msg.TriggerScale;
+import neptune.geospatial.core.protocol.msg.TriggerScaleAck;
 import org.apache.log4j.Logger;
 import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.KeeperException;
@@ -210,6 +212,7 @@ public class GeoSpatialDeployer extends JobDeployer {
             throw new GeoSpatialDeployerException("Invalid computation: " + computationId);
         }
         StreamProcessor currentComp = (StreamProcessor) computationIdToObjectMap.get(computationId);
+        boolean success = false;
         try {
             StreamProcessor clone = currentComp.getClass().newInstance();
             // copy the minimal state
@@ -222,15 +225,13 @@ public class GeoSpatialDeployer extends JobDeployer {
                     scaleOutReq.getStreamType());
             // deploy
             ResourceEndpoint resourceEndpoint = nextResource();
-            try {
-                // write the assignments to ZooKeeper
-                ZooKeeperUtils.createDirectory(zk, Constants.ZK_ZNODE_OP_ASSIGNMENTS + "/" +
-                                clone.getInstanceIdentifier(),
-                        resourceEndpoint.getDataEndpoint().getBytes(), CreateMode.PERSISTENT);
-            } catch (KeeperException | InterruptedException e) {
-                throw new GeoSpatialDeployerException("Error writing the deployment data to ZK.", e);
-            }
+            // write the assignments to ZooKeeper
+            ZooKeeperUtils.createDirectory(zk, Constants.ZK_ZNODE_OP_ASSIGNMENTS + "/" +
+                            clone.getInstanceIdentifier(),
+                    resourceEndpoint.getDataEndpoint().getBytes(), CreateMode.PERSISTENT);
+            // deploy the operation in the chosen Granules resource
             deployOperation(this.jobId, resourceEndpoint.getDataEndpoint(), clone);
+            success = true;
             if (logger.isDebugEnabled()) {
                 logger.debug(String.format("Successfully deployed the new instance. Instance Id: %s, Location: %s",
                         clone.getInstanceIdentifier(), resourceEndpoint.getDataEndpoint()));
@@ -239,6 +240,15 @@ public class GeoSpatialDeployer extends JobDeployer {
             throw new GeoSpatialDeployerException("Error instantiating the new copy of the computation.", e);
         } catch (ProcessingException | StreamingGraphConfigurationException | StreamingDatasetException e) {
             throw new GeoSpatialDeployerException("Error copying minimal state from the current computation.", e);
+        } catch (KeeperException | InterruptedException e) {
+            throw new GeoSpatialDeployerException("Error writing the deployment data to ZK.", e);
+        } finally {
+            TriggerScaleAck ack = new TriggerScaleAck(scaleOutReq.getMessageId(), success);
+            try {
+                SendUtility.sendControlMessage(scaleOutReq.getOriginEndpoint(), ack);
+            } catch (CommunicationsException | IOException e) {
+                logger.error("Error sending out the TriggerScaleAck to " + scaleOutReq.getOriginEndpoint());
+            }
         }
     }
 }
