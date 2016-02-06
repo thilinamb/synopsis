@@ -47,7 +47,7 @@ public class Graph {
             Properties senderProps = new Properties();
             senderProps.put(ds.granules.util.Constants.StreamBaseProperties.BUFFER_SIZE, Integer.toString(1800));
             job.addStreamSource("ingester", StreamIngester.class, 1, senderProps);
-            job.addStreamProcessor("record-counter", RecordCounter.class, 4);
+            job.addStreamProcessor("record-counter", RecordCounter.class, 1);
 
             // edges
             job.addLink("ingester", "record-counter", Constants.Streams.GEO_HASH_INDEXED_RECORDS,

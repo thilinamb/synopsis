@@ -41,16 +41,17 @@ public abstract class GeoSpatialStreamProcessor extends StreamProcessor {
     public static final String OUTGOING_STREAM = "out-going";
     private AtomicBoolean initialized = new AtomicBoolean(false);
 
-    private int counter = 0;
+    private volatile int counter = 0;
 
-    private boolean scaledOut = false;
+    private AtomicBoolean scaleOutComplete = new AtomicBoolean(false);
+    private AtomicBoolean scaledOut = new AtomicBoolean(false);
     private String outGoingStream;
     private GeoHashPartitioner partitioner;
     private Map<String, PendingScaleOutRequests> pendingScaleOutRequestsMap = new HashMap<>();
 
     @Override
     public final void onEvent(StreamEvent streamEvent) throws StreamingDatasetException {
-        if(!initialized.get()){
+        if (!initialized.get()) {
             try {
                 ManagedResource.getInstance().registerStreamProcessor(this);
                 initialized.set(true);
@@ -58,12 +59,13 @@ public abstract class GeoSpatialStreamProcessor extends StreamProcessor {
                 logger.error("Error retrieving the resource instance.", e);
             }
         }
-
+        counter++;
         GeoHashIndexedRecord geoHashIndexedRecord = (GeoHashIndexedRecord) streamEvent;
         // preprocess each message
-        preprocess(geoHashIndexedRecord);
-        // perform the business logic: do this selectively. Send through the traffic we don't process.
-        onEvent(geoHashIndexedRecord);
+        if (preprocess(geoHashIndexedRecord)) {
+            // perform the business logic: do this selectively. Send through the traffic we don't process.
+            onEvent(geoHashIndexedRecord);
+        }
     }
 
     /**
@@ -81,9 +83,11 @@ public abstract class GeoSpatialStreamProcessor extends StreamProcessor {
      *
      * @param record <code>GeoHashIndexedRecord</code> element
      */
-    protected void preprocess(GeoHashIndexedRecord record) {
+    protected boolean preprocess(GeoHashIndexedRecord record) {
+        boolean processLocally = true;
+        // Scale out logic
         // this is a temporary trigger to test the scaling out.
-        if (!scaledOut & counter >= 1000000) {
+        if (!scaledOut.get() && counter >= 1000000) {
             try {
                 // FIXME: BEGIN - Need to do it only once
                 this.outGoingStream = getStreamIdentifier(OUTGOING_STREAM);
@@ -103,15 +107,23 @@ public abstract class GeoSpatialStreamProcessor extends StreamProcessor {
                             getInstanceIdentifier()));
                 }
                 // this is just to control the scaling to one instance for testing.
-                scaledOut = true;
+                scaledOut.set(true);
                 // FIXME: Increase the prefix length of the record if needed. May be inside the onEvent method.
             } catch (StreamingDatasetException | StreamingGraphConfigurationException e) {
                 logger.error("Error creating new stream from the current computation.", e);
             } catch (NIException e) {
                 logger.error("Error sending a trigger scale message to the deployer. ", e);
             }
+        } else if (scaleOutComplete.get()) {
+            try {
+                writeToStream(outGoingStream, record);
+                processLocally = false;
+                //System.out.println("forwarding to the next child element.");
+            } catch (StreamingDatasetException e) {
+                e.printStackTrace();
+            }
         }
-
+        return processLocally;
     }
 
     @Override
@@ -119,8 +131,8 @@ public abstract class GeoSpatialStreamProcessor extends StreamProcessor {
         // leaf node of the graph. no outgoing edges.
     }
 
-    public void handleTriggerScaleAck(TriggerScaleAck ack){
-
+    public void handleTriggerScaleAck(TriggerScaleAck ack) {
+        scaleOutComplete.set(true);
     }
 
 }

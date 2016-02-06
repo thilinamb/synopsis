@@ -15,11 +15,10 @@ import java.util.ArrayList;
  */
 public class GeoHashPartitioner implements Partitioner {
 
-    private int prefix = 10;
-
     @Override
     public Topic[] partition(StreamEvent streamEvent, Topic[] topics) {
         GeoHashIndexedRecord ghIndexedRec = (GeoHashIndexedRecord) streamEvent;
+        int prefix = ghIndexedRec.getPrefixLength();
         // convert the geohash string into the corresponding bit string
         ArrayList<Boolean> hashInBits = GeoHash.getBits(ghIndexedRec.getGeoHash());
         int sum = 0;

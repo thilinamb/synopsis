@@ -231,6 +231,8 @@ public class GeoSpatialDeployer extends JobDeployer {
                     resourceEndpoint.getDataEndpoint().getBytes(), CreateMode.PERSISTENT);
             // deploy the operation in the chosen Granules resource
             deployOperation(this.jobId, resourceEndpoint.getDataEndpoint(), clone);
+            computationIdToObjectMap.put(clone.getInstanceIdentifier(), clone);
+            niOpAssignments.put(clone.getInstanceIdentifier(), resourceEndpoint.getControlEndpoint());
             success = true;
             if (logger.isDebugEnabled()) {
                 logger.debug(String.format("Successfully deployed the new instance. Instance Id: %s, Location: %s",
