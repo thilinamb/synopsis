@@ -14,6 +14,7 @@ import neptune.geospatial.graph.messages.GeoHashIndexedRecord;
 import neptune.geospatial.partitioner.GeoHashPartitioner;
 import org.apache.log4j.Logger;
 
+import java.text.DecimalFormat;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -39,15 +40,20 @@ public abstract class GeoSpatialStreamProcessor extends StreamProcessor {
 
     private Logger logger = Logger.getLogger(GeoSpatialStreamProcessor.class.getName());
     public static final String OUTGOING_STREAM = "out-going";
+    private static final String GEO_HASH_CHAR_SET = "0123456789bcdefghjkmnpqrstuvwxyz";
+    public static final int GEO_HASH_LEN_IN_CHARS = 32;
+    private static final int INPUT_RATE_UPDATE_INTERVAL = 10 * 1000;
+
     private AtomicBoolean initialized = new AtomicBoolean(false);
 
     private volatile int counter = 0;
-
     private AtomicBoolean scaleOutComplete = new AtomicBoolean(false);
     private AtomicBoolean scaledOut = new AtomicBoolean(false);
     private String outGoingStream;
-    private GeoHashPartitioner partitioner;
     private Map<String, PendingScaleOutRequests> pendingScaleOutRequestsMap = new HashMap<>();
+    private Map<String, long[]> messageCountsForSubPrefixesMap = new HashMap<>();
+    private Map<String, double[]> messageRatesForSubPrefixesMap = new HashMap<>();
+    private long lastUpdatedTime;
 
     @Override
     public final void onEvent(StreamEvent streamEvent) throws StreamingDatasetException {
@@ -84,6 +90,7 @@ public abstract class GeoSpatialStreamProcessor extends StreamProcessor {
      * @param record <code>GeoHashIndexedRecord</code> element
      */
     protected boolean preprocess(GeoHashIndexedRecord record) {
+        updateIncomingRatesForSubPrefixes(record);
         boolean processLocally = true;
         // Scale out logic
         // this is a temporary trigger to test the scaling out.
@@ -91,12 +98,12 @@ public abstract class GeoSpatialStreamProcessor extends StreamProcessor {
             try {
                 // FIXME: BEGIN - Need to do it only once
                 this.outGoingStream = getStreamIdentifier(OUTGOING_STREAM);
-                this.partitioner = new GeoHashPartitioner();
+                GeoHashPartitioner partitioner = new GeoHashPartitioner();
                 String streamType = record.getClass().getName();
                 declareStream(this.outGoingStream, streamType);
                 // FIXME: END
                 // initialize the meta-data
-                Topic[] topics = deployStream(this.outGoingStream, 1, this.partitioner);
+                Topic[] topics = deployStream(this.outGoingStream, 1, partitioner);
 
                 TriggerScale triggerMessage = new TriggerScale(getInstanceIdentifier(), this.outGoingStream,
                         topics[0].toString(), streamType);
@@ -135,6 +142,45 @@ public abstract class GeoSpatialStreamProcessor extends StreamProcessor {
         scaleOutComplete.set(true);
     }
 
+    private synchronized void updateIncomingRatesForSubPrefixes(GeoHashIndexedRecord record) {
+        String prefix = record.getGeoHash().substring(0, record.getPrefixLength());
+        long[] messageCountsForSubPrefixes;
+        double[] messageRatesForSubPrefixes;
+        if (messageCountsForSubPrefixesMap.containsKey(prefix)) {
+            messageCountsForSubPrefixes = messageCountsForSubPrefixesMap.get(prefix);
+            messageRatesForSubPrefixes = messageRatesForSubPrefixesMap.get(prefix);
+        } else {
+            messageCountsForSubPrefixes = new long[GEO_HASH_LEN_IN_CHARS];
+            messageRatesForSubPrefixes = new double[GEO_HASH_LEN_IN_CHARS];
+            messageCountsForSubPrefixesMap.put(prefix, messageCountsForSubPrefixes);
+            messageRatesForSubPrefixesMap.put(prefix, messageRatesForSubPrefixes);
+        }
+
+        int index = getIndexForSubPrefix(record.getGeoHash(), record.getPrefixLength());
+        messageCountsForSubPrefixes[index]++;
+
+        long timeNow = System.currentTimeMillis();
+        if (lastUpdatedTime == 0) {
+            lastUpdatedTime = timeNow;
+        } else if ((timeNow - lastUpdatedTime) > INPUT_RATE_UPDATE_INTERVAL) {
+            double timeElapsed = (timeNow - lastUpdatedTime) * 1.0;
+            StringBuilder sBuilder = new StringBuilder();
+            DecimalFormat dFormat = new DecimalFormat();
+            for (int i = 0; i < GEO_HASH_LEN_IN_CHARS; i++) {
+                messageRatesForSubPrefixes[i] = messageCountsForSubPrefixes[i] / timeElapsed;
+                messageCountsForSubPrefixes[i] = 0;
+                sBuilder.append(GEO_HASH_CHAR_SET.charAt(i)).append(" - ").append(
+                        dFormat.format(messageRatesForSubPrefixes[i])).append(", ");
+            }
+            System.out.println(sBuilder);
+            lastUpdatedTime = timeNow;
+        }
+    }
+
+    private int getIndexForSubPrefix(String geohash, int prefixLength) {
+        return GEO_HASH_CHAR_SET.indexOf(geohash.charAt(prefixLength));
+    }
+    
 }
 
 
