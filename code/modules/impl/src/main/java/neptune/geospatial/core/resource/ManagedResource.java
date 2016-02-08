@@ -18,7 +18,6 @@ import org.apache.log4j.Logger;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
@@ -34,13 +33,32 @@ import java.util.concurrent.CountDownLatch;
  */
 public class ManagedResource {
 
+    /**
+     * Monitors the computations to detect the stragglers.
+     */
+    class ComputationMonitor implements Runnable {
+        @Override
+        public void run() {
+            try {
+                synchronized (ManagedResource.this){
+                    if(streamProcessors.isEmpty()){
+                        streamProcessors.wait();
+                    }
+                    
+                }
+            } catch (Throwable e) {
+
+            }
+        }
+    }
+
+
     private static Logger logger = Logger.getLogger(ManagedResource.class.getName());
 
     private static ManagedResource instance;
     private String deployerEndpoint = null;
     private CountDownLatch countDownLatch = new CountDownLatch(1);
-    private Map<String, GeoSpatialStreamProcessor> streamProcessors = Collections.synchronizedMap(
-            new HashMap<String, GeoSpatialStreamProcessor>());
+    private Map<String, GeoSpatialStreamProcessor> streamProcessors = new HashMap<>();
 
     public ManagedResource(Properties inProps, int numOfThreads) throws CommunicationsException {
         Resource resource = new Resource(inProps, numOfThreads);
@@ -117,7 +135,7 @@ public class ManagedResource {
         }
     }
 
-    protected void acknowledgeCtrlMsgListenerStartup(){
+    protected void acknowledgeCtrlMsgListenerStartup() {
         countDownLatch.countDown();
     }
 
@@ -129,13 +147,15 @@ public class ManagedResource {
         }
     }
 
-    public void registerStreamProcessor(GeoSpatialStreamProcessor processor){
+    public synchronized void registerStreamProcessor(GeoSpatialStreamProcessor processor) {
         streamProcessors.put(processor.getInstanceIdentifier(), processor);
+        streamProcessors.notifyAll();
     }
 
-    public void handleTriggerScaleAck(TriggerScaleAck ack){
+
+    public void handleTriggerScaleAck(TriggerScaleAck ack) {
         String processorId = ack.getTargetComputation();
-        if(streamProcessors.containsKey(processorId)){
+        if (streamProcessors.containsKey(processorId)) {
             streamProcessors.get(processorId).handleTriggerScaleAck(ack);
         } else {
             logger.warn("ScaleTriggerAck for an invalid computation: " + processorId);

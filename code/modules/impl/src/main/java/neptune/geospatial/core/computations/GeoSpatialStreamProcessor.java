@@ -180,7 +180,7 @@ public abstract class GeoSpatialStreamProcessor extends StreamProcessor {
     private int getIndexForSubPrefix(String geohash, int prefixLength) {
         return GEO_HASH_CHAR_SET.indexOf(geohash.charAt(prefixLength));
     }
-    
+
 }
 
 
