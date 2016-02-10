@@ -4,9 +4,6 @@ import neptune.geospatial.core.computations.GeoSpatialStreamProcessor;
 import neptune.geospatial.graph.messages.GeoHashIndexedRecord;
 import org.apache.log4j.Logger;
 
-import java.util.HashMap;
-import java.util.Map;
-
 /**
  * This is a temporary operator used to count
  * the number of records in order to make sure
@@ -20,7 +17,7 @@ public class RecordCounter extends GeoSpatialStreamProcessor {
     private int counter = 0;
 
     @Override
-    protected void onEvent(GeoHashIndexedRecord record) {
+    protected void process(GeoHashIndexedRecord record) {
         if (++counter % 100000 == 0) {
             logger.info(String.format("[" + getInstanceIdentifier() + "] Record received. Counter: %d Hash: %s " +
                     "Timestamp: %d", counter, record.getGeoHash(), record.getTsIngested()));
