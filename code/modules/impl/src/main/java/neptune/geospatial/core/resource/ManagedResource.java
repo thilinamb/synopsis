@@ -18,10 +18,12 @@ import org.apache.log4j.Logger;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Properties;
+import java.util.*;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Improves the behavior of <code>Resource</code> by
@@ -33,6 +35,40 @@ import java.util.concurrent.CountDownLatch;
  */
 public class ManagedResource {
 
+    class MonitoredComputationState {
+        private GeoSpatialStreamProcessor computation;
+        private List<Long> backLogHistory = new ArrayList<>(MONITORED_BACKLOG_HISTORY_LENGTH);
+        private AtomicBoolean eligibleForScaleOut = new AtomicBoolean(true);
+
+        private MonitoredComputationState(GeoSpatialStreamProcessor computation) {
+            this.computation = computation;
+        }
+
+        private boolean monitor() {
+            long currentBacklog = computation.getBacklogLength();
+            backLogHistory.add(currentBacklog);
+            while (backLogHistory.size() > MONITORED_BACKLOG_HISTORY_LENGTH) {
+                backLogHistory.remove(0);
+            }
+            return isBacklogDeveloping();
+        }
+
+        private boolean isBacklogDeveloping() {
+            if (backLogHistory.size() >= MONITORED_BACKLOG_HISTORY_LENGTH) {
+                boolean isDeveloping = true;
+                for (int i = 0; i < backLogHistory.size(); i++) {
+                    if (backLogHistory.get(i) < THRESHOLD) {
+                        isDeveloping = false;
+                        break;
+                    }
+                }
+                return isDeveloping;
+            } else {
+                return false;
+            }
+        }
+    }
+
     /**
      * Monitors the computations to detect the stragglers.
      */
@@ -40,25 +76,36 @@ public class ManagedResource {
         @Override
         public void run() {
             try {
-                synchronized (ManagedResource.this){
-                    if(streamProcessors.isEmpty()){
-                        streamProcessors.wait();
+                synchronized (ManagedResource.this) {
+                    // wait till computations are registered. avoid busy waiting at the beginning.
+                    if (monitoredProcessors.isEmpty()) {
+                        monitoredProcessors.wait();
                     }
-                    
+                    for (String identifier : monitoredProcessors.keySet()) {
+                        MonitoredComputationState monitoredComputationState = monitoredProcessors.get(identifier);
+                        if (monitoredComputationState.eligibleForScaleOut.get() && monitoredComputationState.monitor()) {
+                            // trigger scale up
+                            monitoredComputationState.eligibleForScaleOut.set(true);
+                        }
+                    }
                 }
             } catch (Throwable e) {
-
+                logger.error("Error in running computation monitor task.", e);
             }
         }
     }
 
 
     private static Logger logger = Logger.getLogger(ManagedResource.class.getName());
+    public static final int MONITORED_BACKLOG_HISTORY_LENGTH = 5;
+    public static final long THRESHOLD = 5 * 1024;
+    public static final int MONITORING_PERIOD = 10 * 1000;
 
     private static ManagedResource instance;
     private String deployerEndpoint = null;
     private CountDownLatch countDownLatch = new CountDownLatch(1);
-    private Map<String, GeoSpatialStreamProcessor> streamProcessors = new HashMap<>();
+    private Map<String, MonitoredComputationState> monitoredProcessors = new HashMap<>();
+    private ScheduledExecutorService monitoringService = Executors.newSingleThreadScheduledExecutor();
 
     public ManagedResource(Properties inProps, int numOfThreads) throws CommunicationsException {
         Resource resource = new Resource(inProps, numOfThreads);
@@ -72,6 +119,8 @@ public class ManagedResource {
         AbstractProtocolHandler protoHandler = new ResourceProtocolHandler(this);
         ControlMessageDispatcher.getInstance().registerCallback(Constants.WILD_CARD_CALLBACK, protoHandler);
         new Thread(protoHandler).start();
+        // start the computation monitor thread
+        monitoringService.scheduleWithFixedDelay(new ComputationMonitor(), 0, MONITORING_PERIOD, TimeUnit.MILLISECONDS);
         try {
             deployerEndpoint = NeptuneRuntime.getInstance().getProperties().getProperty(
                     Constants.DEPLOYER_ENDPOINT);
@@ -148,15 +197,19 @@ public class ManagedResource {
     }
 
     public synchronized void registerStreamProcessor(GeoSpatialStreamProcessor processor) {
-        streamProcessors.put(processor.getInstanceIdentifier(), processor);
-        streamProcessors.notifyAll();
+        monitoredProcessors.put(processor.getInstanceIdentifier(), new MonitoredComputationState(processor));
+        monitoredProcessors.notifyAll();
     }
 
+    public void scaleOutComplete(String computationIdentifier) {
+        MonitoredComputationState monitoredComputationState = monitoredProcessors.get(computationIdentifier);
+        monitoredComputationState.eligibleForScaleOut.set(true);
+    }
 
     public void handleTriggerScaleAck(TriggerScaleAck ack) {
         String processorId = ack.getTargetComputation();
-        if (streamProcessors.containsKey(processorId)) {
-            streamProcessors.get(processorId).handleTriggerScaleAck(ack);
+        if (monitoredProcessors.containsKey(processorId)) {
+            monitoredProcessors.get(processorId).computation.handleTriggerScaleAck(ack);
         } else {
             logger.warn("ScaleTriggerAck for an invalid computation: " + processorId);
         }
