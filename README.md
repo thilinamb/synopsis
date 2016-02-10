@@ -8,22 +8,19 @@ Prequisites: Maven 3, JDK 1.7 or higher
 
 # How to run
 Prerequisites: Apache ZooKeeper  
+
 1. After compiling the source, unzip the generated distribution. It should be inside `code/modules/distribution/target`.  
 `> cd code/modules/distribution/target`  
 `> unzip unzip neptune-geospatial-distribution-1.0-SNAPSHOT-bin.zip`  
-
 2. Start Zookeeper and update the ZooKeeper URL property (`"zookeeper-hosts"`) in the Granules configuration file (`neptune-geospatial-distribution-1.0-SNAPSHOT/config/config/ResourceConfig.txt`).  
 For instance, if ZooKeeper is running on localhost, port 9191, it should be set as;  
 `zookeeper-hosts=localhost:9191`  
 If you run a cluster of ZooKeeper servers, then specify the set of URLs separated by commas.  
 [If you run everything locally, it is not required to change any other configurations.]  
-
 3. Change the deployer URL and port in the Granules configuration (`"deployer-endpoint"`).  
-
 4. Start the Granules resource.  
 `> cd neptune-geospatial-distribution-1.0-SNAPSHOT/bin`  
 `> sh resource -c ../config/ResourceConfig.txt`  
-
 5. To launch a job,  
 `> cd neptune-geospatial-distribution-1.0-SNAPSHOT/bin`  
 `> sh granules-start -c ../config/DeployerConfig.txt -t <class_name_of_the_job>`
