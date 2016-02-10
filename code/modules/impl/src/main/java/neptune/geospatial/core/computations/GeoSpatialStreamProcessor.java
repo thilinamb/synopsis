@@ -202,11 +202,11 @@ public abstract class GeoSpatialStreamProcessor extends StreamProcessor {
         monitoredPrefix.messageCount++;
 
         long timeNow = System.currentTimeMillis();
-        for (String monitoredPrefStr : monitoredPrefixMap.keySet()) {
-            monitoredPrefix = monitoredPrefixMap.get(monitoredPrefStr);
-            if (tsLastUpdated.get() == 0) {
-                tsLastUpdated.set(timeNow);
-            } else if ((timeNow - tsLastUpdated.get()) > INPUT_RATE_UPDATE_INTERVAL) {
+        if (tsLastUpdated.get() == 0) {
+            tsLastUpdated.set(timeNow);
+        } else if ((timeNow - tsLastUpdated.get()) > INPUT_RATE_UPDATE_INTERVAL) {
+            for (String monitoredPrefStr : monitoredPrefixMap.keySet()) {
+                monitoredPrefix = monitoredPrefixMap.get(monitoredPrefStr);
                 double timeElapsed = (timeNow - tsLastUpdated.get()) * 1.0;
                 DecimalFormat dFormat = new DecimalFormat();
                 monitoredPrefix.messageRate = monitoredPrefix.messageCount * 1000.0 / timeElapsed;
@@ -215,8 +215,8 @@ public abstract class GeoSpatialStreamProcessor extends StreamProcessor {
                     logger.trace(String.format("[%s] Prefix: %s, Message Rate: %.3f", getInstanceIdentifier(),
                             prefix, monitoredPrefix.messageRate));
                 }
-                tsLastUpdated.set(timeNow);
             }
+            tsLastUpdated.set(timeNow);
         }
     }
 
