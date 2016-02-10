@@ -22,6 +22,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * Stream processor specialized for geo-spatial data processing.
  * Specific computations may be implement by extending this
  * abstract class.
+ * Part of scaling in/out is implemented in this class.
  *
  * @author Thilina Buddhika
  */
@@ -72,6 +73,7 @@ public abstract class GeoSpatialStreamProcessor extends StreamProcessor {
     public final void onEvent(StreamEvent streamEvent) throws StreamingDatasetException {
         if (!initialized.get()) {
             try {
+                // register with the resource to enable monitoring
                 ManagedResource.getInstance().registerStreamProcessor(this);
                 initialized.set(true);
             } catch (NIException e) {
@@ -104,10 +106,14 @@ public abstract class GeoSpatialStreamProcessor extends StreamProcessor {
     protected boolean preprocess(GeoHashIndexedRecord record) throws StreamingDatasetException {
         updateIncomingRatesForSubPrefixes(record);
         String prefix = getPrefix(record);
-        boolean processLocally = true;
-        if (outGoingStreams.containsKey(prefix)) {
+        boolean processLocally;
+        // if there is an outgoing stream, then this should be sent to a child node.
+        synchronized (this) {
+            processLocally = !outGoingStreams.containsKey(prefix);
+        }
+        if (!processLocally) {
+            // send to the child node
             writeToStream(outGoingStreams.get(prefix), record);
-            processLocally = false;
         }
         return processLocally;
     }
@@ -117,10 +123,19 @@ public abstract class GeoSpatialStreamProcessor extends StreamProcessor {
         // leaf node of the graph. no outgoing edges.
     }
 
-    public void handleTriggerScaleAck(TriggerScaleAck ack) {
+    public synchronized void handleTriggerScaleAck(TriggerScaleAck ack) {
         if (pendingScaleOutRequests.containsKey(ack.getInResponseTo())) {
             PendingScaleOutRequests pendingReq = pendingScaleOutRequests.remove(ack.getInResponseTo());
             outGoingStreams.put(pendingReq.prefix, pendingReq.streamId);
+            if(pendingScaleOutRequests.isEmpty()){
+                try {
+                    ManagedResource.getInstance().scaleOutComplete(this.identifier);
+                } catch (NIException ignore) {
+
+                }
+            }
+        } else {
+            logger.warn("Invalid trigger ack for the prefix. Request Id: " + ack.getInResponseTo());
         }
     }
 
@@ -167,16 +182,22 @@ public abstract class GeoSpatialStreamProcessor extends StreamProcessor {
     /**
      * Resource recommends scaling out for one or more prefixes.
      */
-    public void recommendScaleOut(double excess) {
+    public synchronized void recommendScaleOut(double excess) {
         List<String> prefixesForScalingOut = new ArrayList<>();
         double cumulSumOfPrefixes = 0;
-        synchronized (this) {
-            Iterator<MonitoredPrefix> itr = monitoredPrefixes.iterator();
-            while (itr.hasNext() && cumulSumOfPrefixes < excess) {
-                MonitoredPrefix monitoredPrefix = itr.next();
-                prefixesForScalingOut.add(monitoredPrefix.prefix);
-                cumulSumOfPrefixes += monitoredPrefix.messageRate;
+        Iterator<MonitoredPrefix> itr = monitoredPrefixes.iterator();
+        while (itr.hasNext() && cumulSumOfPrefixes < excess) {
+            MonitoredPrefix monitoredPrefix = itr.next();
+            prefixesForScalingOut.add(monitoredPrefix.prefix);
+            cumulSumOfPrefixes += monitoredPrefix.messageRate;
+        }
+        if(logger.isDebugEnabled()){
+            StringBuilder stringBuilder = new StringBuilder();
+            for(String prefix : prefixesForScalingOut){
+                stringBuilder.append(prefix).append("(").append(monitoredPrefixMap.get(prefix).messageRate).append("), ");
             }
+            logger.debug(String.format("[%s] Scale Out recommendation. Excess: %.3f, Chosen Prefixes: %s",
+                    getInstanceIdentifier(), excess, stringBuilder.toString()));
         }
         for (String prefix : prefixesForScalingOut) {
             String streamType = monitoredPrefixMap.get(prefix).streamType;
@@ -197,8 +218,8 @@ public abstract class GeoSpatialStreamProcessor extends StreamProcessor {
             pendingScaleOutRequests.put(triggerMessage.getMessageId(), new PendingScaleOutRequests(prefix, outGoingStreamId));
             ManagedResource.getInstance().sendToDeployer(triggerMessage);
             if (logger.isDebugEnabled()) {
-                logger.debug(String.format("[%s] Sent a trigger scale message to deployer.",
-                        getInstanceIdentifier()));
+                logger.debug(String.format("[%s] Sent a trigger scale message to deployer for the prefix: %s.",
+                        getInstanceIdentifier(), prefix));
             }
         } catch (StreamingDatasetException | StreamingGraphConfigurationException e) {
             logger.error("Error creating new stream from the current computation.", e);

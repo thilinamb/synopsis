@@ -24,6 +24,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * Improves the behavior of <code>Resource</code> by
@@ -37,34 +38,33 @@ public class ManagedResource {
 
     class MonitoredComputationState {
         private GeoSpatialStreamProcessor computation;
-        private List<Long> backLogHistory = new ArrayList<>(MONITORED_BACKLOG_HISTORY_LENGTH);
+        private AtomicReference<ArrayList<Long>> backLogHistory = new AtomicReference<>(
+                new ArrayList<Long>(MONITORED_BACKLOG_HISTORY_LENGTH));
         private AtomicBoolean eligibleForScaleOut = new AtomicBoolean(true);
 
         private MonitoredComputationState(GeoSpatialStreamProcessor computation) {
             this.computation = computation;
         }
 
-        private boolean monitor() {
+        private double monitor() {
             long currentBacklog = computation.getBacklogLength();
-            backLogHistory.add(currentBacklog);
-            while (backLogHistory.size() > MONITORED_BACKLOG_HISTORY_LENGTH) {
-                backLogHistory.remove(0);
+            backLogHistory.get().add(currentBacklog);
+            while (backLogHistory.get().size() > MONITORED_BACKLOG_HISTORY_LENGTH) {
+                backLogHistory.get().remove(0);
             }
             return isBacklogDeveloping();
         }
 
-        private boolean isBacklogDeveloping() {
-            if (backLogHistory.size() >= MONITORED_BACKLOG_HISTORY_LENGTH) {
-                boolean isDeveloping = true;
-                for (int i = 0; i < backLogHistory.size(); i++) {
-                    if (backLogHistory.get(i) < THRESHOLD) {
-                        isDeveloping = false;
+        private double isBacklogDeveloping() {
+            if (backLogHistory.get().size() >= MONITORED_BACKLOG_HISTORY_LENGTH) {
+                for (int i = 0; i < backLogHistory.get().size(); i++) {
+                    if (backLogHistory.get().get(i) < THRESHOLD) {
                         break;
                     }
                 }
-                return isDeveloping;
+                return backLogHistory.get().get(backLogHistory.get().size() - 1);
             } else {
-                return false;
+                return 0;
             }
         }
     }
@@ -83,9 +83,13 @@ public class ManagedResource {
                     }
                     for (String identifier : monitoredProcessors.keySet()) {
                         MonitoredComputationState monitoredComputationState = monitoredProcessors.get(identifier);
-                        if (monitoredComputationState.eligibleForScaleOut.get() && monitoredComputationState.monitor()) {
-                            // trigger scale up
-                            monitoredComputationState.eligibleForScaleOut.set(true);
+                        if (monitoredComputationState.eligibleForScaleOut.get()) {
+                            double excess = monitoredComputationState.monitor();
+                            if (excess > 0) {
+                                // trigger scale up
+                                monitoredComputationState.computation.recommendScaleOut(excess);
+                                monitoredComputationState.eligibleForScaleOut.set(false);
+                            }
                         }
                     }
                 }
@@ -203,6 +207,7 @@ public class ManagedResource {
 
     public void scaleOutComplete(String computationIdentifier) {
         MonitoredComputationState monitoredComputationState = monitoredProcessors.get(computationIdentifier);
+        monitoredComputationState.backLogHistory.get().clear();
         monitoredComputationState.eligibleForScaleOut.set(true);
     }
 
