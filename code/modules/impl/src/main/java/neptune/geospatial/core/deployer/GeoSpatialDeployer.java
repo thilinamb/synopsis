@@ -104,28 +104,33 @@ public class GeoSpatialDeployer extends JobDeployer {
         opList.toArray(operations);
 
         this.jobId = uuidRetriever.getRandomBasedUUIDAsString();
-        try {
-            Map<Operation, String> assignments = new HashMap<>(operations.length);
-            // create the deployment plan
-            for (Operation op : operations) {
-                ResourceEndpoint resourceEndpoint = nextResource();
-                assignments.put(op, resourceEndpoint.getDataEndpoint());
-                String operatorId = op.getInstanceIdentifier();
-                niOpAssignments.put(operatorId, resourceEndpoint.getControlEndpoint());
-                computationIdToObjectMap.put(operatorId, op);
-                niControlToDataEndPoints.put(resourceEndpoint.getControlEndpoint(), resourceEndpoint.getDataEndpoint());
-                // write the assignments to ZooKeeper
-                ZooKeeperUtils.createDirectory(zk, Constants.ZK_ZNODE_OP_ASSIGNMENTS + "/" + operatorId,
-                        resourceEndpoint.getDataEndpoint().getBytes(), CreateMode.PERSISTENT);
-            }
-            // send the deployment messages
-            for (Map.Entry<Operation, String> entry : assignments.entrySet()) {
-                deployOperation(jobId, entry.getValue(), entry.getKey());
-            }
+        if (!resourceEndpoints.isEmpty()) {
+            try {
+                Map<Operation, String> assignments = new HashMap<>(operations.length);
+                // create the deployment plan
+                for (Operation op : operations) {
+                    ResourceEndpoint resourceEndpoint = nextResource();
+                    assignments.put(op, resourceEndpoint.getDataEndpoint());
+                    String operatorId = op.getInstanceIdentifier();
+                    niOpAssignments.put(operatorId, resourceEndpoint.getControlEndpoint());
+                    computationIdToObjectMap.put(operatorId, op);
+                    niControlToDataEndPoints.put(resourceEndpoint.getControlEndpoint(), resourceEndpoint.getDataEndpoint());
+                    // write the assignments to ZooKeeper
+                    ZooKeeperUtils.createDirectory(zk, Constants.ZK_ZNODE_OP_ASSIGNMENTS + "/" + operatorId,
+                            resourceEndpoint.getDataEndpoint().getBytes(), CreateMode.PERSISTENT);
+                }
+                // send the deployment messages
+                for (Map.Entry<Operation, String> entry : assignments.entrySet()) {
+                    deployOperation(jobId, entry.getValue(), entry.getKey());
+                }
 
-        } catch (KeeperException | InterruptedException e) {
-            logger.error(e.getMessage(), e);
-            throw new DeploymentException(e.getMessage(), e);
+            } catch (KeeperException | InterruptedException e) {
+                logger.error(e.getMessage(), e);
+                throw new DeploymentException(e.getMessage(), e);
+            }
+        } else {
+            logger.error("Zero Granules Resources Discovered. Terminating the deployment.");
+            System.exit(-1);
         }
         return null;
     }
@@ -141,30 +146,34 @@ public class GeoSpatialDeployer extends JobDeployer {
         String jobId = uuidRetriever.getRandomBasedUUIDAsString();
         Map<Operation, String> assignments = new HashMap<>();
         Map<Operation, ResourceEndpoint> deploymentPlan = scheduler.schedule(ops, resourceEndpoints);
-        // process each group separately
-        for (Operation op : deploymentPlan.keySet()) {
-            ResourceEndpoint resourceEndpoint = deploymentPlan.get(op);
-            assignments.put(op, resourceEndpoint.getDataEndpoint());
-            // store them for migration by the NIResource deployer
-            String operatorId = op.getInstanceIdentifier();
-            niOpAssignments.put(operatorId, resourceEndpoint.getControlEndpoint());
-            computationIdToObjectMap.put(operatorId, op);
-            niControlToDataEndPoints.put(resourceEndpoint.getControlEndpoint(), resourceEndpoint.getDataEndpoint());
-            try {
-                // write the assignments to ZooKeeper
-                ZooKeeperUtils.createDirectory(zk, Constants.ZK_ZNODE_OP_ASSIGNMENTS + "/" + operatorId,
-                        resourceEndpoint.getDataEndpoint().getBytes(), CreateMode.PERSISTENT);
-            } catch (KeeperException | InterruptedException e) {
-                logger.error(e.getMessage(), e);
-                throw new DeploymentException(e.getMessage(), e);
+        if (!resourceEndpoints.isEmpty()) {
+            // process each group separately
+            for (Operation op : deploymentPlan.keySet()) {
+                ResourceEndpoint resourceEndpoint = deploymentPlan.get(op);
+                assignments.put(op, resourceEndpoint.getDataEndpoint());
+                // store them for migration by the NIResource deployer
+                String operatorId = op.getInstanceIdentifier();
+                niOpAssignments.put(operatorId, resourceEndpoint.getControlEndpoint());
+                computationIdToObjectMap.put(operatorId, op);
+                niControlToDataEndPoints.put(resourceEndpoint.getControlEndpoint(), resourceEndpoint.getDataEndpoint());
+                try {
+                    // write the assignments to ZooKeeper
+                    ZooKeeperUtils.createDirectory(zk, Constants.ZK_ZNODE_OP_ASSIGNMENTS + "/" + operatorId,
+                            resourceEndpoint.getDataEndpoint().getBytes(), CreateMode.PERSISTENT);
+                } catch (KeeperException | InterruptedException e) {
+                    logger.error(e.getMessage(), e);
+                    throw new DeploymentException(e.getMessage(), e);
+                }
             }
-        }
 
-        // send the deployment messages
-        for (Map.Entry<Operation, String> entry : assignments.entrySet()) {
-            deployOperation(jobId, entry.getValue(), entry.getKey());
+            // send the deployment messages
+            for (Map.Entry<Operation, String> entry : assignments.entrySet()) {
+                deployOperation(jobId, entry.getValue(), entry.getKey());
+            }
+        } else {
+            logger.error("Zero Granules Resources Discovered. Terminating the deployment.");
+            System.exit(-1);
         }
-
         return null;
     }
 
