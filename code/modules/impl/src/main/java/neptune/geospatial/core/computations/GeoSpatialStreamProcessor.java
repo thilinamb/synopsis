@@ -14,9 +14,12 @@ import neptune.geospatial.graph.messages.GeoHashIndexedRecord;
 import neptune.geospatial.partitioner.GeoHashPartitioner;
 import org.apache.log4j.Logger;
 
+import java.io.IOException;
 import java.text.DecimalFormat;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * Stream processor specialized for geo-spatial data processing.
@@ -34,7 +37,6 @@ public abstract class GeoSpatialStreamProcessor extends StreamProcessor {
         private String streamType;
         private long messageCount;
         private double messageRate;
-        private long tsLastUpdated;
 
         public MonitoredPrefix(String prefix, String streamType) {
             this.prefix = prefix;
@@ -43,7 +45,31 @@ public abstract class GeoSpatialStreamProcessor extends StreamProcessor {
 
         @Override
         public int compareTo(MonitoredPrefix o) {
-            return (int) (this.messageRate - o.messageRate);
+            if(this.messageRate == o.messageRate){
+                return this.prefix.compareTo(o.prefix);
+            } else {
+                return (int) (this.messageRate - o.messageRate);
+            }
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+
+            MonitoredPrefix that = (MonitoredPrefix) o;
+
+            if (!prefix.equals(that.prefix)) return false;
+            if (!streamType.equals(that.streamType)) return false;
+
+            return true;
+        }
+
+        @Override
+        public int hashCode() {
+            int result = prefix.hashCode();
+            result = 31 * result + streamType.hashCode();
+            return result;
         }
     }
 
@@ -62,8 +88,10 @@ public abstract class GeoSpatialStreamProcessor extends StreamProcessor {
     private static final String GEO_HASH_CHAR_SET = "0123456789bcdefghjkmnpqrstuvwxyz";
     public static final int GEO_HASH_LEN_IN_CHARS = 32;
     private static final int INPUT_RATE_UPDATE_INTERVAL = 10 * 1000;
+    private AtomicLong tsLastUpdated = new AtomicLong(0);
 
     private AtomicBoolean initialized = new AtomicBoolean(false);
+    private AtomicInteger messageSize = new AtomicInteger(-1);
     private Set<MonitoredPrefix> monitoredPrefixes = new TreeSet<>();
     private Map<String, MonitoredPrefix> monitoredPrefixMap = new HashMap<>();
     private Map<String, String> outGoingStreams = new HashMap<>();
@@ -74,8 +102,13 @@ public abstract class GeoSpatialStreamProcessor extends StreamProcessor {
         if (!initialized.get()) {
             try {
                 // register with the resource to enable monitoring
-                ManagedResource.getInstance().registerStreamProcessor(this);
                 initialized.set(true);
+                messageSize.set(getMessageSize(streamEvent));
+                ManagedResource.getInstance().registerStreamProcessor(this);
+                if(logger.isDebugEnabled()){
+                    logger.debug(String.format("[%s] Initialized. Message Size: %d", getInstanceIdentifier(),
+                            messageSize.get()));
+                }
             } catch (NIException e) {
                 logger.error("Error retrieving the resource instance.", e);
             }
@@ -112,7 +145,12 @@ public abstract class GeoSpatialStreamProcessor extends StreamProcessor {
             processLocally = !outGoingStreams.containsKey(prefix);
         }
         if (!processLocally) {
+            record.setPrefixLength(record.getPrefixLength() + 1);
             // send to the child node
+            if(logger.isDebugEnabled()){
+                logger.debug(String.format("[%s] Forwarding Message. Prefix: %s, Outgoing Stream: %s",
+                        getInstanceIdentifier(), prefix, outGoingStreams.get(prefix)));
+            }
             writeToStream(outGoingStreams.get(prefix), record);
         }
         return processLocally;
@@ -127,9 +165,17 @@ public abstract class GeoSpatialStreamProcessor extends StreamProcessor {
         if (pendingScaleOutRequests.containsKey(ack.getInResponseTo())) {
             PendingScaleOutRequests pendingReq = pendingScaleOutRequests.remove(ack.getInResponseTo());
             outGoingStreams.put(pendingReq.prefix, pendingReq.streamId);
-            if(pendingScaleOutRequests.isEmpty()){
+            if (logger.isDebugEnabled()) {
+                logger.debug(String.format("[%s] New Pass-Thru Prefix. Prefix: %s, Outgoing Stream: %s",
+                        getInstanceIdentifier(), pendingReq.prefix, pendingReq.streamId));
+            }
+
+            if (pendingScaleOutRequests.isEmpty()) {
                 try {
-                    ManagedResource.getInstance().scaleOutComplete(this.identifier);
+                    if (logger.isDebugEnabled()) {
+                        logger.debug(String.format("[%s] Scaling out complete for now.", getInstanceIdentifier()));
+                    }
+                    ManagedResource.getInstance().scaleOutComplete(this.getInstanceIdentifier());
                 } catch (NIException ignore) {
 
                 }
@@ -153,17 +199,21 @@ public abstract class GeoSpatialStreamProcessor extends StreamProcessor {
         monitoredPrefix.messageCount++;
 
         long timeNow = System.currentTimeMillis();
-        if (monitoredPrefix.tsLastUpdated == 0) {
-            monitoredPrefix.tsLastUpdated = timeNow;
-        } else if ((timeNow - monitoredPrefix.tsLastUpdated) > INPUT_RATE_UPDATE_INTERVAL) {
-            double timeElapsed = (timeNow - monitoredPrefix.tsLastUpdated) * 1.0;
-            DecimalFormat dFormat = new DecimalFormat();
-            monitoredPrefix.messageRate = monitoredPrefix.messageCount * 1000.0 / timeElapsed;
-            monitoredPrefix.messageCount = 0;
-            if (logger.isDebugEnabled()) {
-                logger.debug(String.format("Prefix: %s, Message Rate: %.3f", prefix, monitoredPrefix.messageRate));
+        for (String monitoredPrefStr : monitoredPrefixMap.keySet()) {
+            monitoredPrefix = monitoredPrefixMap.get(monitoredPrefStr);
+            if (tsLastUpdated.get() == 0) {
+                tsLastUpdated.set(timeNow);
+            } else if ((timeNow - tsLastUpdated.get()) > INPUT_RATE_UPDATE_INTERVAL) {
+                double timeElapsed = (timeNow - tsLastUpdated.get()) * 1.0;
+                DecimalFormat dFormat = new DecimalFormat();
+                monitoredPrefix.messageRate = monitoredPrefix.messageCount * 1000.0 / timeElapsed;
+                monitoredPrefix.messageCount = 0;
+                if (logger.isTraceEnabled()) {
+                    logger.trace(String.format("[%s] Prefix: %s, Message Rate: %.3f", getInstanceIdentifier(),
+                            prefix, monitoredPrefix.messageRate));
+                }
+                tsLastUpdated.set(timeNow);
             }
-            monitoredPrefix.tsLastUpdated = timeNow;
         }
     }
 
@@ -176,7 +226,7 @@ public abstract class GeoSpatialStreamProcessor extends StreamProcessor {
     }
 
     public long getBacklogLength() {
-        return streamDataset.getQueueLengthInBytes();
+        return streamDataset.getQueueLengthInBytes() / messageSize.get();
     }
 
     /**
@@ -188,20 +238,31 @@ public abstract class GeoSpatialStreamProcessor extends StreamProcessor {
         Iterator<MonitoredPrefix> itr = monitoredPrefixes.iterator();
         while (itr.hasNext() && cumulSumOfPrefixes < excess) {
             MonitoredPrefix monitoredPrefix = itr.next();
-            prefixesForScalingOut.add(monitoredPrefix.prefix);
-            cumulSumOfPrefixes += monitoredPrefix.messageRate;
+            if (!outGoingStreams.containsKey(monitoredPrefix.prefix) && monitoredPrefix.messageRate > 0) {
+                prefixesForScalingOut.add(monitoredPrefix.prefix);
+                cumulSumOfPrefixes += monitoredPrefix.messageRate * 2; // let's consider the number of messages accumulated
+            }
+            // over 2s.
         }
-        if(logger.isDebugEnabled()){
+        if (logger.isDebugEnabled()) {
             StringBuilder stringBuilder = new StringBuilder();
-            for(String prefix : prefixesForScalingOut){
+            for (String prefix : prefixesForScalingOut) {
                 stringBuilder.append(prefix).append("(").append(monitoredPrefixMap.get(prefix).messageRate).append("), ");
             }
             logger.debug(String.format("[%s] Scale Out recommendation. Excess: %.3f, Chosen Prefixes: %s",
                     getInstanceIdentifier(), excess, stringBuilder.toString()));
         }
-        for (String prefix : prefixesForScalingOut) {
-            String streamType = monitoredPrefixMap.get(prefix).streamType;
-            initiateScaleOut(prefix, streamType);
+        if (!prefixesForScalingOut.isEmpty()) {
+            for (String prefix : prefixesForScalingOut) {
+                String streamType = monitoredPrefixMap.get(prefix).streamType;
+                initiateScaleOut(prefix, streamType);
+            }
+        } else {
+            try {
+                ManagedResource.getInstance().scaleOutComplete(getInstanceIdentifier());
+            } catch (NIException ignore) {
+
+            }
         }
     }
 
@@ -229,7 +290,20 @@ public abstract class GeoSpatialStreamProcessor extends StreamProcessor {
     }
 
     private String getNewStreamIdentifier(String prefix) {
-        return getStreamIdentifier(OUTGOING_STREAM_BASE_ID + "-" + prefix);
+        return OUTGOING_STREAM_BASE_ID + "-" + prefix;
+    }
+
+    private int getMessageSize(StreamEvent event) {
+        try {
+            String streamId = event.getStreamId();
+            event.setStreamId(Integer.toString(0));
+            byte[] marshalled = event.marshall();
+            event.setStreamId(streamId);
+            return marshalled.length;
+        } catch (IOException e) {
+            logger.error("Error calculating the message size using the first message.", e);
+        }
+        return -1;
     }
 }
 

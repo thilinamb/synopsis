@@ -49,6 +49,10 @@ public class ManagedResource {
         private double monitor() {
             long currentBacklog = computation.getBacklogLength();
             backLogHistory.get().add(currentBacklog);
+            if(logger.isDebugEnabled()){
+                logger.debug(String.format("Monitoring computation: %s. Adding a backlog: %d",
+                        computation.getInstanceIdentifier(), currentBacklog));
+            }
             while (backLogHistory.get().size() > MONITORED_BACKLOG_HISTORY_LENGTH) {
                 backLogHistory.get().remove(0);
             }
@@ -56,16 +60,20 @@ public class ManagedResource {
         }
 
         private double isBacklogDeveloping() {
+            double excess = 0;
             if (backLogHistory.get().size() >= MONITORED_BACKLOG_HISTORY_LENGTH) {
+                boolean isBacklogDeveloping = true;
                 for (int i = 0; i < backLogHistory.get().size(); i++) {
                     if (backLogHistory.get().get(i) < THRESHOLD) {
+                        isBacklogDeveloping = false; // if any of the monitored entries are below the threshold
                         break;
                     }
                 }
-                return backLogHistory.get().get(backLogHistory.get().size() - 1);
-            } else {
-                return 0;
+                if(isBacklogDeveloping) {
+                    excess = backLogHistory.get().get(backLogHistory.get().size() - 1) - THRESHOLD;
+                }
             }
+            return excess;
         }
     }
 
@@ -75,8 +83,11 @@ public class ManagedResource {
     class ComputationMonitor implements Runnable {
         @Override
         public void run() {
+            if(logger.isDebugEnabled()){
+                logger.debug("Monitoring thread is executing.");
+            }
             try {
-                synchronized (ManagedResource.this) {
+                synchronized (monitoredProcessors) {
                     // wait till computations are registered. avoid busy waiting at the beginning.
                     if (monitoredProcessors.isEmpty()) {
                         monitoredProcessors.wait();
@@ -87,8 +98,8 @@ public class ManagedResource {
                             double excess = monitoredComputationState.monitor();
                             if (excess > 0) {
                                 // trigger scale up
-                                monitoredComputationState.computation.recommendScaleOut(excess);
                                 monitoredComputationState.eligibleForScaleOut.set(false);
+                                monitoredComputationState.computation.recommendScaleOut(excess);
                             }
                         }
                     }
@@ -102,13 +113,13 @@ public class ManagedResource {
 
     private static Logger logger = Logger.getLogger(ManagedResource.class.getName());
     public static final int MONITORED_BACKLOG_HISTORY_LENGTH = 5;
-    public static final long THRESHOLD = 5 * 1024;
-    public static final int MONITORING_PERIOD = 10 * 1000;
+    public static final long THRESHOLD = 100;
+    public static final int MONITORING_PERIOD = 5 * 1000;
 
     private static ManagedResource instance;
     private String deployerEndpoint = null;
     private CountDownLatch countDownLatch = new CountDownLatch(1);
-    private Map<String, MonitoredComputationState> monitoredProcessors = new HashMap<>();
+    private final Map<String, MonitoredComputationState> monitoredProcessors = new HashMap<>();
     private ScheduledExecutorService monitoringService = Executors.newSingleThreadScheduledExecutor();
 
     public ManagedResource(Properties inProps, int numOfThreads) throws CommunicationsException {
@@ -200,9 +211,11 @@ public class ManagedResource {
         }
     }
 
-    public synchronized void registerStreamProcessor(GeoSpatialStreamProcessor processor) {
-        monitoredProcessors.put(processor.getInstanceIdentifier(), new MonitoredComputationState(processor));
-        monitoredProcessors.notifyAll();
+    public void registerStreamProcessor(GeoSpatialStreamProcessor processor) {
+        synchronized (monitoredProcessors) {
+            monitoredProcessors.put(processor.getInstanceIdentifier(), new MonitoredComputationState(processor));
+            monitoredProcessors.notifyAll();
+        }
     }
 
     public void scaleOutComplete(String computationIdentifier) {

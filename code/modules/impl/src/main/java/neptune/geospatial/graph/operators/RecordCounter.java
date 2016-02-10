@@ -22,5 +22,11 @@ public class RecordCounter extends GeoSpatialStreamProcessor {
             logger.info(String.format("[" + getInstanceIdentifier() + "] Record received. Counter: %d Hash: %s " +
                     "Timestamp: %d", counter, record.getGeoHash(), record.getTsIngested()));
         }
+        // temporarily simulating a compute intensive task to check if scale out works
+        /*try {
+            Thread.sleep(2);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }*/
     }
 }
