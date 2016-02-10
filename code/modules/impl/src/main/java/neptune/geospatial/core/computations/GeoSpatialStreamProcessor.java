@@ -45,10 +45,10 @@ public abstract class GeoSpatialStreamProcessor extends StreamProcessor {
 
         @Override
         public int compareTo(MonitoredPrefix o) {
-            if(this.messageRate == o.messageRate){
+            if (this.messageRate == o.messageRate) {
                 return this.prefix.compareTo(o.prefix);
             } else {
-                return (int) (this.messageRate - o.messageRate);
+                return (-1) * (int) (this.messageRate - o.messageRate);
             }
         }
 
@@ -74,11 +74,11 @@ public abstract class GeoSpatialStreamProcessor extends StreamProcessor {
     }
 
     private class PendingScaleOutRequests {
-        private String prefix;
+        private List<String> prefixes;
         private String streamId;
 
-        public PendingScaleOutRequests(String prefix, String streamId) {
-            this.prefix = prefix;
+        public PendingScaleOutRequests(List<String> prefixes, String streamId) {
+            this.prefixes = prefixes;
             this.streamId = streamId;
         }
     }
@@ -89,6 +89,7 @@ public abstract class GeoSpatialStreamProcessor extends StreamProcessor {
     public static final int GEO_HASH_LEN_IN_CHARS = 32;
     private static final int INPUT_RATE_UPDATE_INTERVAL = 10 * 1000;
     private AtomicLong tsLastUpdated = new AtomicLong(0);
+    private AtomicInteger outGoingStreamIdSeqGenerator = new AtomicInteger(100);
 
     private AtomicBoolean initialized = new AtomicBoolean(false);
     private AtomicInteger messageSize = new AtomicInteger(-1);
@@ -105,7 +106,7 @@ public abstract class GeoSpatialStreamProcessor extends StreamProcessor {
                 initialized.set(true);
                 messageSize.set(getMessageSize(streamEvent));
                 ManagedResource.getInstance().registerStreamProcessor(this);
-                if(logger.isDebugEnabled()){
+                if (logger.isDebugEnabled()) {
                     logger.debug(String.format("[%s] Initialized. Message Size: %d", getInstanceIdentifier(),
                             messageSize.get()));
                 }
@@ -147,7 +148,7 @@ public abstract class GeoSpatialStreamProcessor extends StreamProcessor {
         if (!processLocally) {
             record.setPrefixLength(record.getPrefixLength() + 1);
             // send to the child node
-            if(logger.isDebugEnabled()){
+            if (logger.isDebugEnabled()) {
                 logger.debug(String.format("[%s] Forwarding Message. Prefix: %s, Outgoing Stream: %s",
                         getInstanceIdentifier(), prefix, outGoingStreams.get(prefix)));
             }
@@ -164,10 +165,12 @@ public abstract class GeoSpatialStreamProcessor extends StreamProcessor {
     public synchronized void handleTriggerScaleAck(TriggerScaleAck ack) {
         if (pendingScaleOutRequests.containsKey(ack.getInResponseTo())) {
             PendingScaleOutRequests pendingReq = pendingScaleOutRequests.remove(ack.getInResponseTo());
-            outGoingStreams.put(pendingReq.prefix, pendingReq.streamId);
-            if (logger.isDebugEnabled()) {
-                logger.debug(String.format("[%s] New Pass-Thru Prefix. Prefix: %s, Outgoing Stream: %s",
-                        getInstanceIdentifier(), pendingReq.prefix, pendingReq.streamId));
+            for (String prefix : pendingReq.prefixes) {
+                outGoingStreams.put(prefix, pendingReq.streamId);
+                if (logger.isDebugEnabled()) {
+                    logger.debug(String.format("[%s] New Pass-Thru Prefix. Prefix: %s, Outgoing Stream: %s",
+                            getInstanceIdentifier(), prefix, pendingReq.streamId));
+                }
             }
 
             if (pendingScaleOutRequests.isEmpty()) {
@@ -253,10 +256,9 @@ public abstract class GeoSpatialStreamProcessor extends StreamProcessor {
                     getInstanceIdentifier(), excess, stringBuilder.toString()));
         }
         if (!prefixesForScalingOut.isEmpty()) {
-            for (String prefix : prefixesForScalingOut) {
-                String streamType = monitoredPrefixMap.get(prefix).streamType;
-                initiateScaleOut(prefix, streamType);
-            }
+            // We assume we use the same message type throughout the graph.
+            String streamType = monitoredPrefixMap.get(prefixesForScalingOut.get(0)).streamType;
+            initiateScaleOut(prefixesForScalingOut, streamType);
         } else {
             try {
                 ManagedResource.getInstance().scaleOutComplete(getInstanceIdentifier());
@@ -266,10 +268,10 @@ public abstract class GeoSpatialStreamProcessor extends StreamProcessor {
         }
     }
 
-    public void initiateScaleOut(String prefix, String streamType) {
+    public void initiateScaleOut(List<String> prefix, String streamType) {
         try {
             GeoHashPartitioner partitioner = new GeoHashPartitioner();
-            String outGoingStreamId = getNewStreamIdentifier(prefix);
+            String outGoingStreamId = getNewStreamIdentifier();
             declareStream(outGoingStreamId, streamType);
             // initialize the meta-data
             Topic[] topics = deployStream(outGoingStreamId, 1, partitioner);
@@ -289,8 +291,8 @@ public abstract class GeoSpatialStreamProcessor extends StreamProcessor {
         }
     }
 
-    private String getNewStreamIdentifier(String prefix) {
-        return OUTGOING_STREAM_BASE_ID + "-" + prefix;
+    private String getNewStreamIdentifier() {
+        return OUTGOING_STREAM_BASE_ID + "-" + outGoingStreamIdSeqGenerator.getAndIncrement();
     }
 
     private int getMessageSize(StreamEvent event) {
