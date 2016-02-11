@@ -221,7 +221,7 @@ public class GeoSpatialDeployer extends JobDeployer {
             throw new GeoSpatialDeployerException("Invalid computation: " + computationId);
         }
         StreamProcessor currentComp = (StreamProcessor) computationIdToObjectMap.get(computationId);
-        boolean success = false;
+        TriggerScaleAck ack = null;
         try {
             StreamProcessor clone = currentComp.getClass().newInstance();
             // copy the minimal state
@@ -242,7 +242,8 @@ public class GeoSpatialDeployer extends JobDeployer {
             deployOperation(this.jobId, resourceEndpoint.getDataEndpoint(), clone);
             computationIdToObjectMap.put(clone.getInstanceIdentifier(), clone);
             niOpAssignments.put(clone.getInstanceIdentifier(), resourceEndpoint.getControlEndpoint());
-            success = true;
+            ack = new TriggerScaleAck(scaleOutReq.getMessageId(), computationId, true,
+                    clone.getInstanceIdentifier(), resourceEndpoint.getControlEndpoint());
             if (logger.isDebugEnabled()) {
                 logger.debug(String.format("Successfully deployed the new instance. Instance Id: %s, Location: %s",
                         clone.getInstanceIdentifier(), resourceEndpoint.getDataEndpoint()));
@@ -254,7 +255,9 @@ public class GeoSpatialDeployer extends JobDeployer {
         } catch (KeeperException | InterruptedException e) {
             throw new GeoSpatialDeployerException("Error writing the deployment data to ZK.", e);
         } finally {
-            TriggerScaleAck ack = new TriggerScaleAck(scaleOutReq.getMessageId(), computationId, success);
+            if (ack == null) {
+                ack = new TriggerScaleAck(scaleOutReq.getMessageId(), computationId, false);
+            }
             try {
                 SendUtility.sendControlMessage(scaleOutReq.getOriginEndpoint(), ack);
             } catch (CommunicationsException | IOException e) {

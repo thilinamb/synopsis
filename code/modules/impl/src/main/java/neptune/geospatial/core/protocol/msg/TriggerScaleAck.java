@@ -15,6 +15,8 @@ public class TriggerScaleAck extends ControlMessage {
     private String inResponseTo;
     private boolean status;
     private String targetComputation;
+    private String newComputationId;
+    private String newLocationURL;
 
     public TriggerScaleAck() {
         super(ProtocolTypes.TRIGGER_SCALING_ACK);
@@ -27,11 +29,22 @@ public class TriggerScaleAck extends ControlMessage {
         this.status = status;
     }
 
+    public TriggerScaleAck(String inResponseTo, String targetComputation, boolean status, String newComputationId, String newLocationURL) {
+        super(ProtocolTypes.TRIGGER_SCALING_ACK);
+        this.inResponseTo = inResponseTo;
+        this.targetComputation = targetComputation;
+        this.status = status;
+        this.newComputationId = newComputationId;
+        this.newLocationURL = newLocationURL;
+    }
+
     @Override
     public void readValues(DataInputStream dis) throws IOException {
         this.inResponseTo = dis.readUTF();
         this.targetComputation = dis.readUTF();
         this.status = dis.readBoolean();
+        this.newComputationId = dis.readUTF();
+        this.newLocationURL = dis.readUTF();
     }
 
     @Override
@@ -39,6 +52,8 @@ public class TriggerScaleAck extends ControlMessage {
         dos.writeUTF(this.inResponseTo);
         dos.writeUTF(this.targetComputation);
         dos.writeBoolean(this.status);
+        dos.writeUTF(this.newComputationId);
+        dos.writeUTF(this.newLocationURL);
     }
 
     public String getInResponseTo() {
@@ -51,5 +66,13 @@ public class TriggerScaleAck extends ControlMessage {
 
     public String getTargetComputation() {
         return targetComputation;
+    }
+
+    public String getNewComputationId() {
+        return newComputationId;
+    }
+
+    public String getNewLocationURL() {
+        return newLocationURL;
     }
 }

@@ -58,11 +58,7 @@ public abstract class GeoSpatialStreamProcessor extends StreamProcessor {
             if (o == null || getClass() != o.getClass()) return false;
 
             MonitoredPrefix that = (MonitoredPrefix) o;
-
-            if (!prefix.equals(that.prefix)) return false;
-            if (!streamType.equals(that.streamType)) return false;
-
-            return true;
+            return prefix.equals(that.prefix) && streamType.equals(that.streamType);
         }
 
         @Override
@@ -83,6 +79,18 @@ public abstract class GeoSpatialStreamProcessor extends StreamProcessor {
         }
     }
 
+    private class PassThroughPrefix{
+        private String outGoingStream;
+        private String destComputationId;
+        private String destResourceCtrlEndpoint;
+
+        public PassThroughPrefix(String outGoingStream, String destComputationId, String destResourceCtrlEndpoint) {
+            this.outGoingStream = outGoingStream;
+            this.destComputationId = destComputationId;
+            this.destResourceCtrlEndpoint = destResourceCtrlEndpoint;
+        }
+    }
+
     private Logger logger = Logger.getLogger(GeoSpatialStreamProcessor.class.getName());
     public static final String OUTGOING_STREAM_BASE_ID = "out-going";
     private static final String GEO_HASH_CHAR_SET = "0123456789bcdefghjkmnpqrstuvwxyz";
@@ -95,7 +103,7 @@ public abstract class GeoSpatialStreamProcessor extends StreamProcessor {
     private AtomicInteger messageSize = new AtomicInteger(-1);
     private Set<MonitoredPrefix> monitoredPrefixes = new TreeSet<>();
     private Map<String, MonitoredPrefix> monitoredPrefixMap = new HashMap<>();
-    private Map<String, String> outGoingStreams = new HashMap<>();
+    private Map<String, PassThroughPrefix> outGoingStreams = new HashMap<>();
     private Map<String, PendingScaleOutRequests> pendingScaleOutRequests = new HashMap<>();
 
     @Override
@@ -131,6 +139,8 @@ public abstract class GeoSpatialStreamProcessor extends StreamProcessor {
      */
     protected abstract void process(GeoHashIndexedRecord event);
 
+
+
     /**
      * Preprocess every record to extract meta-data such as triggering
      * scale out operations. This is prior to performing actual processing
@@ -153,7 +163,7 @@ public abstract class GeoSpatialStreamProcessor extends StreamProcessor {
                 logger.debug(String.format("[%s] Forwarding Message. Prefix: %s, Outgoing Stream: %s",
                         getInstanceIdentifier(), prefix, outGoingStreams.get(prefix)));
             }
-            writeToStream(outGoingStreams.get(prefix), record);
+            writeToStream(outGoingStreams.get(prefix).outGoingStream, record);
         }
         return processLocally;
     }
@@ -167,7 +177,8 @@ public abstract class GeoSpatialStreamProcessor extends StreamProcessor {
         if (pendingScaleOutRequests.containsKey(ack.getInResponseTo())) {
             PendingScaleOutRequests pendingReq = pendingScaleOutRequests.remove(ack.getInResponseTo());
             for (String prefix : pendingReq.prefixes) {
-                outGoingStreams.put(prefix, pendingReq.streamId);
+                outGoingStreams.put(prefix, new PassThroughPrefix(pendingReq.streamId,
+                        ack.getNewComputationId(), ack.getNewLocationURL()));
                 if (logger.isDebugEnabled()) {
                     logger.debug(String.format("[%s] New Pass-Thru Prefix. Prefix: %s, Outgoing Stream: %s",
                             getInstanceIdentifier(), prefix, pendingReq.streamId));
