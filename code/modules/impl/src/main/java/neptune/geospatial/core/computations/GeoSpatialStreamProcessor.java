@@ -116,10 +116,10 @@ public abstract class GeoSpatialStreamProcessor extends StreamProcessor {
         }
         GeoHashIndexedRecord geoHashIndexedRecord = (GeoHashIndexedRecord) streamEvent;
         // preprocess each message
-        /*if (preprocess(geoHashIndexedRecord)) {
+        if (preprocess(geoHashIndexedRecord)) {
             // perform the business logic: do this selectively. Send through the traffic we don't process.
             process(geoHashIndexedRecord);
-        }*/
+        }
         process(geoHashIndexedRecord);
     }
 
