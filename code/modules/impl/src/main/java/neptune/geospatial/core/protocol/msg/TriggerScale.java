@@ -22,11 +22,11 @@ public class TriggerScale extends ControlMessage {
     private String streamType;
 
     public TriggerScale() {
-        super(ProtocolTypes.TRIGGER_SCALING);
+        super(ProtocolTypes.SCALE_OUT_REQ);
     }
 
     public TriggerScale(String currentComputation, String streamId, String topic, String messageType) {
-        super(ProtocolTypes.TRIGGER_SCALING);
+        super(ProtocolTypes.SCALE_OUT_REQ);
         this.currentComputation = currentComputation;
         this.streamId = streamId;
         this.topic = topic;

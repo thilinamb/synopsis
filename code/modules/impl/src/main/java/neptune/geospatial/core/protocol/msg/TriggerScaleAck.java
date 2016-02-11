@@ -19,18 +19,18 @@ public class TriggerScaleAck extends ControlMessage {
     private String newLocationURL;
 
     public TriggerScaleAck() {
-        super(ProtocolTypes.TRIGGER_SCALING_ACK);
+        super(ProtocolTypes.SCALE_OUT_RESP);
     }
 
     public TriggerScaleAck(String inResponseTo, String targetComputation, boolean status) {
-        super(ProtocolTypes.TRIGGER_SCALING_ACK);
+        super(ProtocolTypes.SCALE_OUT_RESP);
         this.inResponseTo = inResponseTo;
         this.targetComputation = targetComputation;
         this.status = status;
     }
 
     public TriggerScaleAck(String inResponseTo, String targetComputation, boolean status, String newComputationId, String newLocationURL) {
-        super(ProtocolTypes.TRIGGER_SCALING_ACK);
+        super(ProtocolTypes.SCALE_OUT_RESP);
         this.inResponseTo = inResponseTo;
         this.targetComputation = targetComputation;
         this.status = status;

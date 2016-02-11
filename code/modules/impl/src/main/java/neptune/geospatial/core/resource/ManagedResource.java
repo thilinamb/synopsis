@@ -12,6 +12,7 @@ import ds.granules.util.Constants;
 import ds.granules.util.NeptuneRuntime;
 import ds.granules.util.ParamsReader;
 import neptune.geospatial.core.computations.GeoSpatialStreamProcessor;
+import neptune.geospatial.core.computations.ScalingException;
 import neptune.geospatial.core.protocol.AbstractProtocolHandler;
 import neptune.geospatial.core.protocol.msg.TriggerScaleAck;
 import org.apache.log4j.Logger;
@@ -104,7 +105,13 @@ public class ManagedResource {
                             if (excess != 0) {
                                 // trigger scale up
                                 monitoredComputationState.eligibleForScaling.set(false);
-                                monitoredComputationState.computation.recommendScaling(excess);
+                                try {
+                                    monitoredComputationState.computation.recommendScaling(excess);
+                                } catch (ScalingException e) {
+                                    logger.error("Error scaling the computation " +
+                                            monitoredComputationState.computation.getInstanceIdentifier());
+                                    monitoredComputationState.eligibleForScaling.set(true);
+                                }
                             }
                         }
                     }
@@ -119,7 +126,7 @@ public class ManagedResource {
     private static Logger logger = Logger.getLogger(ManagedResource.class.getName());
     public static final int MONITORED_BACKLOG_HISTORY_LENGTH = 5;
     public static final long HIGH_THRESHOLD = 100;
-    public static final long LOW_THRESHOLD = 20;
+    public static final long LOW_THRESHOLD = 10;
     public static final int MONITORING_PERIOD = 5 * 1000;
 
     private static ManagedResource instance;

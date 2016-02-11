@@ -5,7 +5,8 @@ package neptune.geospatial.core.protocol;
  */
 public final class ProtocolTypes {
 
-    public static final int TRIGGER_SCALING = 12100;
-    public static final int TRIGGER_SCALING_ACK = 12101;
-
+    public static final int SCALE_OUT_REQ = 12100;
+    public static final int SCALE_OUT_RESP = 12101;
+    public static final int SCALE_IN_REQ = 12200;
+    public static final int SCALE_IN_RESP = 12201;
 }

@@ -25,7 +25,7 @@ public class DeployerProtocolHandler extends AbstractProtocolHandler {
         int type = ctrlMsg.getMessageType();
         try {
             switch (type) {
-                case ProtocolTypes.TRIGGER_SCALING:
+                case ProtocolTypes.SCALE_OUT_REQ:
                     TriggerScale triggerScale = (TriggerScale) ctrlMsg;
                     if (logger.isDebugEnabled()) {
                         logger.debug("Received a trigger scale message from " + triggerScale.getCurrentComputation());

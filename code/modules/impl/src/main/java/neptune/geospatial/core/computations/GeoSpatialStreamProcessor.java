@@ -2,11 +2,14 @@ package neptune.geospatial.core.computations;
 
 
 import ds.funnel.topic.Topic;
+import ds.granules.communication.direct.control.SendUtility;
 import ds.granules.dataset.StreamEvent;
+import ds.granules.exception.CommunicationsException;
 import ds.granules.neptune.interfere.core.NIException;
 import ds.granules.streaming.core.StreamProcessor;
 import ds.granules.streaming.core.exception.StreamingDatasetException;
 import ds.granules.streaming.core.exception.StreamingGraphConfigurationException;
+import neptune.geospatial.core.protocol.msg.ScaleInRequest;
 import neptune.geospatial.core.protocol.msg.TriggerScale;
 import neptune.geospatial.core.protocol.msg.TriggerScaleAck;
 import neptune.geospatial.core.resource.ManagedResource;
@@ -32,11 +35,20 @@ import java.util.concurrent.atomic.AtomicLong;
 @SuppressWarnings("unused")
 public abstract class GeoSpatialStreamProcessor extends StreamProcessor {
 
+    /**
+     * Represents a monitored prefix.
+     * Used to keep track of the message rates for each prefix under the
+     * purview of the current computation.
+     */
     private class MonitoredPrefix implements Comparable<MonitoredPrefix> {
         private String prefix;
         private String streamType;
         private long messageCount;
         private double messageRate;
+        private boolean isPassThroughTraffic;
+        private String outGoingStream;
+        private String destComputationId;
+        private String destResourceCtrlEndpoint;
 
         public MonitoredPrefix(String prefix, String streamType) {
             this.prefix = prefix;
@@ -45,10 +57,11 @@ public abstract class GeoSpatialStreamProcessor extends StreamProcessor {
 
         @Override
         public int compareTo(MonitoredPrefix o) {
+            // ascending sort based on input rates
             if (this.messageRate == o.messageRate) {
                 return this.prefix.compareTo(o.prefix);
             } else {
-                return (-1) * (int) (this.messageRate - o.messageRate);
+                return (int) (this.messageRate - o.messageRate);
             }
         }
 
@@ -69,6 +82,11 @@ public abstract class GeoSpatialStreamProcessor extends StreamProcessor {
         }
     }
 
+    /**
+     * Pending Scale Out Requests.
+     * A scale out request message is sent to the deployer and we are waiting
+     * for a response.
+     */
     private class PendingScaleOutRequests {
         private List<String> prefixes;
         private String streamId;
@@ -76,18 +94,6 @@ public abstract class GeoSpatialStreamProcessor extends StreamProcessor {
         public PendingScaleOutRequests(List<String> prefixes, String streamId) {
             this.prefixes = prefixes;
             this.streamId = streamId;
-        }
-    }
-
-    private class PassThroughPrefix{
-        private String outGoingStream;
-        private String destComputationId;
-        private String destResourceCtrlEndpoint;
-
-        public PassThroughPrefix(String outGoingStream, String destComputationId, String destResourceCtrlEndpoint) {
-            this.outGoingStream = outGoingStream;
-            this.destComputationId = destComputationId;
-            this.destResourceCtrlEndpoint = destResourceCtrlEndpoint;
         }
     }
 
@@ -103,7 +109,6 @@ public abstract class GeoSpatialStreamProcessor extends StreamProcessor {
     private AtomicInteger messageSize = new AtomicInteger(-1);
     private Set<MonitoredPrefix> monitoredPrefixes = new TreeSet<>();
     private Map<String, MonitoredPrefix> monitoredPrefixMap = new HashMap<>();
-    private Map<String, PassThroughPrefix> outGoingStreams = new HashMap<>();
     private Map<String, PendingScaleOutRequests> pendingScaleOutRequests = new HashMap<>();
 
     @Override
@@ -140,7 +145,6 @@ public abstract class GeoSpatialStreamProcessor extends StreamProcessor {
     protected abstract void process(GeoHashIndexedRecord event);
 
 
-
     /**
      * Preprocess every record to extract meta-data such as triggering
      * scale out operations. This is prior to performing actual processing
@@ -151,19 +155,20 @@ public abstract class GeoSpatialStreamProcessor extends StreamProcessor {
     protected boolean preprocess(GeoHashIndexedRecord record) throws StreamingDatasetException {
         updateIncomingRatesForSubPrefixes(record);
         String prefix = getPrefix(record);
+        MonitoredPrefix monitoredPrefix = monitoredPrefixMap.get(prefix);
         boolean processLocally;
         // if there is an outgoing stream, then this should be sent to a child node.
         synchronized (this) {
-            processLocally = !outGoingStreams.containsKey(prefix);
+            processLocally = !monitoredPrefix.isPassThroughTraffic;
         }
         if (!processLocally) {
             record.setPrefixLength(record.getPrefixLength() + 1);
             // send to the child node
             if (logger.isDebugEnabled()) {
                 logger.debug(String.format("[%s] Forwarding Message. Prefix: %s, Outgoing Stream: %s",
-                        getInstanceIdentifier(), prefix, outGoingStreams.get(prefix)));
+                        getInstanceIdentifier(), prefix, monitoredPrefix.outGoingStream));
             }
-            writeToStream(outGoingStreams.get(prefix).outGoingStream, record);
+            writeToStream(monitoredPrefix.outGoingStream, record);
         }
         return processLocally;
     }
@@ -177,8 +182,10 @@ public abstract class GeoSpatialStreamProcessor extends StreamProcessor {
         if (pendingScaleOutRequests.containsKey(ack.getInResponseTo())) {
             PendingScaleOutRequests pendingReq = pendingScaleOutRequests.remove(ack.getInResponseTo());
             for (String prefix : pendingReq.prefixes) {
-                outGoingStreams.put(prefix, new PassThroughPrefix(pendingReq.streamId,
-                        ack.getNewComputationId(), ack.getNewLocationURL()));
+                MonitoredPrefix monitoredPrefix = monitoredPrefixMap.get(prefix);
+                monitoredPrefix.isPassThroughTraffic = true;
+                monitoredPrefix.destComputationId = ack.getNewComputationId();
+                monitoredPrefix.destResourceCtrlEndpoint = ack.getNewLocationURL();
                 if (logger.isDebugEnabled()) {
                     logger.debug(String.format("[%s] New Pass-Thru Prefix. Prefix: %s, Outgoing Stream: %s",
                             getInstanceIdentifier(), prefix, pendingReq.streamId));
@@ -247,44 +254,74 @@ public abstract class GeoSpatialStreamProcessor extends StreamProcessor {
     /**
      * Resource recommends scaling out for one or more prefixes.
      */
-    public synchronized void recommendScaling(double excess) {
-        if (excess > 0) {
-            List<String> prefixesForScalingOut = new ArrayList<>();
-            double cumulSumOfPrefixes = 0;
-            Iterator<MonitoredPrefix> itr = monitoredPrefixes.iterator();
-            while (itr.hasNext() && cumulSumOfPrefixes < excess) {
-                MonitoredPrefix monitoredPrefix = itr.next();
-                if (!outGoingStreams.containsKey(monitoredPrefix.prefix) && monitoredPrefix.messageRate > 0) {
-                    prefixesForScalingOut.add(monitoredPrefix.prefix);
-                    cumulSumOfPrefixes += monitoredPrefix.messageRate * 2; // let's consider the number of messages accumulated
+    public synchronized void recommendScaling(double excess) throws ScalingException {
+        try {
+            // in the case of scaling out
+            if (excess > 0) {
+                List<String> prefixesForScalingOut = new ArrayList<>();
+                double cumulSumOfPrefixes = 0;
+                Iterator<MonitoredPrefix> itr = monitoredPrefixes.iterator();
+                while (itr.hasNext() && cumulSumOfPrefixes < excess) {
+                    MonitoredPrefix monitoredPrefix = itr.next();
+                    if (!monitoredPrefix.isPassThroughTraffic && monitoredPrefix.messageRate > 0) {
+                        prefixesForScalingOut.add(monitoredPrefix.prefix);
+                        // let's consider the number of messages accumulated over 2s.
+                        cumulSumOfPrefixes += monitoredPrefix.messageRate * 2;
+                    }
                 }
-                // over 2s.
-            }
-            if (logger.isDebugEnabled()) {
-                StringBuilder stringBuilder = new StringBuilder();
-                for (String prefix : prefixesForScalingOut) {
-                    stringBuilder.append(prefix).append("(").append(monitoredPrefixMap.get(prefix).messageRate).append("), ");
+                if (logger.isDebugEnabled()) {
+                    StringBuilder stringBuilder = new StringBuilder();
+                    for (String prefix : prefixesForScalingOut) {
+                        stringBuilder.append(prefix).append("(").append(monitoredPrefixMap.get(prefix).messageRate).
+                                append("), ");
+                    }
+                    logger.debug(String.format("[%s] Scale Out recommendation. Excess: %.3f, Chosen Prefixes: %s",
+                            getInstanceIdentifier(), excess, stringBuilder.toString()));
                 }
-                logger.debug(String.format("[%s] Scale Out recommendation. Excess: %.3f, Chosen Prefixes: %s",
-                        getInstanceIdentifier(), excess, stringBuilder.toString()));
-            }
-            if (!prefixesForScalingOut.isEmpty()) {
-                // We assume we use the same message type throughout the graph.
-                String streamType = monitoredPrefixMap.get(prefixesForScalingOut.get(0)).streamType;
-                initiateScaleOut(prefixesForScalingOut, streamType);
-            } else {
-                try {
+                if (!prefixesForScalingOut.isEmpty()) {
+                    // We assume we use the same message type throughout the graph.
+                    String streamType = monitoredPrefixMap.get(prefixesForScalingOut.get(0)).streamType;
+                    initiateScaleOut(prefixesForScalingOut, streamType);
+                } else {
+                    // we couldn't find any suitable prefixes
                     ManagedResource.getInstance().scaleOutComplete(getInstanceIdentifier());
-                } catch (NIException ignore) {
-
+                }
+            } else {    // in the case of scaling down
+                // find the prefixes with the lowest input rates that are pass-through traffic
+                Iterator<MonitoredPrefix> itr = monitoredPrefixes.iterator();
+                MonitoredPrefix chosenToScaleIn = null;
+                while (itr.hasNext()) {
+                    MonitoredPrefix monitoredPrefix = itr.next();
+                    if (monitoredPrefix.isPassThroughTraffic && monitoredPrefix.messageRate <
+                            ManagedResource.LOW_THRESHOLD) {
+                        // FIXME: Scale in just one computation, just to make sure protocol works
+                        chosenToScaleIn = monitoredPrefix;
+                        break;
+                    }
+                }
+                if (chosenToScaleIn != null) {
+                    initiateScaleIn(chosenToScaleIn);
+                } else {
+                    // we couldn't find any suitable prefixes
+                    ManagedResource.getInstance().scaleOutComplete(getInstanceIdentifier());
                 }
             }
-        } else {
-            //TODO: add scaling-down logic
+        } catch (NIException e) {
+            throw handleError("Error getting the ManagedResource instance.", e);
         }
     }
 
-    public void initiateScaleOut(List<String> prefix, String streamType) {
+    private void initiateScaleIn(MonitoredPrefix monitoredPrefix) throws ScalingException {
+        ScaleInRequest scaleInReq = new ScaleInRequest(monitoredPrefix.prefix, getInstanceIdentifier());
+        try {
+            SendUtility.sendControlMessage(monitoredPrefix.destResourceCtrlEndpoint, scaleInReq);
+        } catch (CommunicationsException | IOException e) {
+            String errorMsg = "Error sending out ScaleInRequest to " + monitoredPrefix.destResourceCtrlEndpoint;
+            throw handleError(errorMsg, e);
+        }
+    }
+
+    private void initiateScaleOut(List<String> prefix, String streamType) throws ScalingException {
         try {
             GeoHashPartitioner partitioner = new GeoHashPartitioner();
             String outGoingStreamId = getNewStreamIdentifier();
@@ -300,10 +337,12 @@ public abstract class GeoSpatialStreamProcessor extends StreamProcessor {
                 logger.debug(String.format("[%s] Sent a trigger scale message to deployer for the prefix: %s.",
                         getInstanceIdentifier(), prefix));
             }
-        } catch (StreamingDatasetException | StreamingGraphConfigurationException e) {
-            logger.error("Error creating new stream from the current computation.", e);
+        } catch (StreamingGraphConfigurationException e) {
+            throw handleError("Error declaring a stream for scaling out.", e);
+        } catch (StreamingDatasetException e) {
+            throw handleError("Error deploying the new stream.", e);
         } catch (NIException e) {
-            logger.error("Error sending a trigger scale message to the deployer. ", e);
+            throw handleError("Error retrieving an instance of the ManagedResource.", e);
         }
     }
 
@@ -322,6 +361,11 @@ public abstract class GeoSpatialStreamProcessor extends StreamProcessor {
             logger.error("Error calculating the message size using the first message.", e);
         }
         return -1;
+    }
+
+    private ScalingException handleError(String errorMsg, Throwable e) {
+        logger.error(errorMsg, e);
+        return new ScalingException(errorMsg, e);
     }
 }
 

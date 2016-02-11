@@ -26,7 +26,7 @@ public class ResourceProtocolHandler extends AbstractProtocolHandler {
     public void handle(ControlMessage ctrlMsg) {
         int type = ctrlMsg.getMessageType();
         switch (type) {
-            case ProtocolTypes.TRIGGER_SCALING_ACK:
+            case ProtocolTypes.SCALE_OUT_RESP:
                 TriggerScaleAck triggerScaleAck = (TriggerScaleAck) ctrlMsg;
                 if (logger.isDebugEnabled()) {
                     logger.debug("Received a trigger scale ack message for " + triggerScaleAck.getTargetComputation());
