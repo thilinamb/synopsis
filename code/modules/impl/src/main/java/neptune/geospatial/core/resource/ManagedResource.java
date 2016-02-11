@@ -40,7 +40,7 @@ public class ManagedResource {
         private GeoSpatialStreamProcessor computation;
         private AtomicReference<ArrayList<Long>> backLogHistory = new AtomicReference<>(
                 new ArrayList<Long>(MONITORED_BACKLOG_HISTORY_LENGTH));
-        private AtomicBoolean eligibleForScaleOut = new AtomicBoolean(true);
+        private AtomicBoolean eligibleForScaling = new AtomicBoolean(true);
 
         private MonitoredComputationState(GeoSpatialStreamProcessor computation) {
             this.computation = computation;
@@ -49,7 +49,7 @@ public class ManagedResource {
         private double monitor() {
             long currentBacklog = computation.getBacklogLength();
             backLogHistory.get().add(currentBacklog);
-            if(logger.isDebugEnabled()){
+            if (logger.isDebugEnabled()) {
                 logger.debug(String.format("Monitoring computation: %s. Adding a backlog: %d",
                         computation.getInstanceIdentifier(), currentBacklog));
             }
@@ -62,15 +62,20 @@ public class ManagedResource {
         private double isBacklogDeveloping() {
             double excess = 0;
             if (backLogHistory.get().size() >= MONITORED_BACKLOG_HISTORY_LENGTH) {
-                boolean isBacklogDeveloping = true;
+                boolean increasing = true;
+                boolean decreasing = true;
                 for (int i = 0; i < backLogHistory.get().size(); i++) {
-                    if (backLogHistory.get().get(i) < THRESHOLD) {
-                        isBacklogDeveloping = false; // if any of the monitored entries are below the threshold
-                        break;
+                    double entry = backLogHistory.get().get(i);
+                    if (entry < HIGH_THRESHOLD) {
+                        increasing = false;
+                    } else if (entry > LOW_THRESHOLD) {
+                        decreasing = false;
                     }
                 }
-                if(isBacklogDeveloping) {
-                    excess = backLogHistory.get().get(backLogHistory.get().size() - 1) - THRESHOLD;
+                if (increasing) {
+                    excess = backLogHistory.get().get(backLogHistory.get().size() - 1) - HIGH_THRESHOLD;
+                } else if (decreasing) {
+                    excess = backLogHistory.get().get(backLogHistory.get().size() - 1) - LOW_THRESHOLD;
                 }
             }
             return excess;
@@ -83,7 +88,7 @@ public class ManagedResource {
     class ComputationMonitor implements Runnable {
         @Override
         public void run() {
-            if(logger.isDebugEnabled()){
+            if (logger.isDebugEnabled()) {
                 logger.debug("Monitoring thread is executing.");
             }
             try {
@@ -94,12 +99,12 @@ public class ManagedResource {
                     }
                     for (String identifier : monitoredProcessors.keySet()) {
                         MonitoredComputationState monitoredComputationState = monitoredProcessors.get(identifier);
-                        if (monitoredComputationState.eligibleForScaleOut.get()) {
+                        if (monitoredComputationState.eligibleForScaling.get()) {
                             double excess = monitoredComputationState.monitor();
-                            if (excess > 0) {
+                            if (excess != 0) {
                                 // trigger scale up
-                                monitoredComputationState.eligibleForScaleOut.set(false);
-                                monitoredComputationState.computation.recommendScaleOut(excess);
+                                monitoredComputationState.eligibleForScaling.set(false);
+                                monitoredComputationState.computation.recommendScaling(excess);
                             }
                         }
                     }
@@ -113,7 +118,8 @@ public class ManagedResource {
 
     private static Logger logger = Logger.getLogger(ManagedResource.class.getName());
     public static final int MONITORED_BACKLOG_HISTORY_LENGTH = 5;
-    public static final long THRESHOLD = 100;
+    public static final long HIGH_THRESHOLD = 100;
+    public static final long LOW_THRESHOLD = 20;
     public static final int MONITORING_PERIOD = 5 * 1000;
 
     private static ManagedResource instance;
@@ -221,7 +227,7 @@ public class ManagedResource {
     public void scaleOutComplete(String computationIdentifier) {
         MonitoredComputationState monitoredComputationState = monitoredProcessors.get(computationIdentifier);
         monitoredComputationState.backLogHistory.get().clear();
-        monitoredComputationState.eligibleForScaleOut.set(true);
+        monitoredComputationState.eligibleForScaling.set(true);
     }
 
     public void handleTriggerScaleAck(TriggerScaleAck ack) {

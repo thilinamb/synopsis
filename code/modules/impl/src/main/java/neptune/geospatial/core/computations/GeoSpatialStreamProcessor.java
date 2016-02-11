@@ -247,36 +247,40 @@ public abstract class GeoSpatialStreamProcessor extends StreamProcessor {
     /**
      * Resource recommends scaling out for one or more prefixes.
      */
-    public synchronized void recommendScaleOut(double excess) {
-        List<String> prefixesForScalingOut = new ArrayList<>();
-        double cumulSumOfPrefixes = 0;
-        Iterator<MonitoredPrefix> itr = monitoredPrefixes.iterator();
-        while (itr.hasNext() && cumulSumOfPrefixes < excess) {
-            MonitoredPrefix monitoredPrefix = itr.next();
-            if (!outGoingStreams.containsKey(monitoredPrefix.prefix) && monitoredPrefix.messageRate > 0) {
-                prefixesForScalingOut.add(monitoredPrefix.prefix);
-                cumulSumOfPrefixes += monitoredPrefix.messageRate * 2; // let's consider the number of messages accumulated
+    public synchronized void recommendScaling(double excess) {
+        if (excess > 0) {
+            List<String> prefixesForScalingOut = new ArrayList<>();
+            double cumulSumOfPrefixes = 0;
+            Iterator<MonitoredPrefix> itr = monitoredPrefixes.iterator();
+            while (itr.hasNext() && cumulSumOfPrefixes < excess) {
+                MonitoredPrefix monitoredPrefix = itr.next();
+                if (!outGoingStreams.containsKey(monitoredPrefix.prefix) && monitoredPrefix.messageRate > 0) {
+                    prefixesForScalingOut.add(monitoredPrefix.prefix);
+                    cumulSumOfPrefixes += monitoredPrefix.messageRate * 2; // let's consider the number of messages accumulated
+                }
+                // over 2s.
             }
-            // over 2s.
-        }
-        if (logger.isDebugEnabled()) {
-            StringBuilder stringBuilder = new StringBuilder();
-            for (String prefix : prefixesForScalingOut) {
-                stringBuilder.append(prefix).append("(").append(monitoredPrefixMap.get(prefix).messageRate).append("), ");
+            if (logger.isDebugEnabled()) {
+                StringBuilder stringBuilder = new StringBuilder();
+                for (String prefix : prefixesForScalingOut) {
+                    stringBuilder.append(prefix).append("(").append(monitoredPrefixMap.get(prefix).messageRate).append("), ");
+                }
+                logger.debug(String.format("[%s] Scale Out recommendation. Excess: %.3f, Chosen Prefixes: %s",
+                        getInstanceIdentifier(), excess, stringBuilder.toString()));
             }
-            logger.debug(String.format("[%s] Scale Out recommendation. Excess: %.3f, Chosen Prefixes: %s",
-                    getInstanceIdentifier(), excess, stringBuilder.toString()));
-        }
-        if (!prefixesForScalingOut.isEmpty()) {
-            // We assume we use the same message type throughout the graph.
-            String streamType = monitoredPrefixMap.get(prefixesForScalingOut.get(0)).streamType;
-            initiateScaleOut(prefixesForScalingOut, streamType);
-        } else {
-            try {
-                ManagedResource.getInstance().scaleOutComplete(getInstanceIdentifier());
-            } catch (NIException ignore) {
+            if (!prefixesForScalingOut.isEmpty()) {
+                // We assume we use the same message type throughout the graph.
+                String streamType = monitoredPrefixMap.get(prefixesForScalingOut.get(0)).streamType;
+                initiateScaleOut(prefixesForScalingOut, streamType);
+            } else {
+                try {
+                    ManagedResource.getInstance().scaleOutComplete(getInstanceIdentifier());
+                } catch (NIException ignore) {
 
+                }
             }
+        } else {
+            //TODO: add scaling-down logic
         }
     }
 
