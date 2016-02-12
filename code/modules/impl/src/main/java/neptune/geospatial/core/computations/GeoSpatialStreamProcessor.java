@@ -9,7 +9,7 @@ import ds.granules.neptune.interfere.core.NIException;
 import ds.granules.streaming.core.StreamProcessor;
 import ds.granules.streaming.core.exception.StreamingDatasetException;
 import ds.granules.streaming.core.exception.StreamingGraphConfigurationException;
-import neptune.geospatial.core.protocol.msg.ScaleInRequest;
+import neptune.geospatial.core.protocol.msg.ScaleInLockRequest;
 import neptune.geospatial.core.protocol.msg.ScaleOutRequest;
 import neptune.geospatial.core.protocol.msg.ScaleOutResponse;
 import neptune.geospatial.core.resource.ManagedResource;
@@ -23,6 +23,7 @@ import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * Stream processor specialized for geo-spatial data processing.
@@ -116,8 +117,8 @@ public abstract class GeoSpatialStreamProcessor extends StreamProcessor {
 
     private Set<MonitoredPrefix> monitoredPrefixes = new TreeSet<>();
     private Map<String, MonitoredPrefix> monitoredPrefixMap = new HashMap<>();
-
     private Map<String, PendingScaleOutRequests> pendingScaleOutRequests = new HashMap<>();
+    private AtomicReference<ArrayList<String>> lockedSubTrees = new AtomicReference<>(new ArrayList<String>());
 
     @Override
     public final void onEvent(StreamEvent streamEvent) throws StreamingDatasetException {
@@ -161,8 +162,8 @@ public abstract class GeoSpatialStreamProcessor extends StreamProcessor {
      * @param record <code>GeoHashIndexedRecord</code> element
      */
     protected boolean preprocess(GeoHashIndexedRecord record) throws StreamingDatasetException {
-        updateIncomingRatesForSubPrefixes(record);
         String prefix = getPrefix(record);
+        updateIncomingRatesForSubPrefixes(prefix, record);
         MonitoredPrefix monitoredPrefix = monitoredPrefixMap.get(prefix);
         // if there is an outgoing stream, then this should be sent to a child node.
         boolean processLocally = !monitoredPrefix.isPassThroughTraffic.get();
@@ -203,7 +204,7 @@ public abstract class GeoSpatialStreamProcessor extends StreamProcessor {
                     if (logger.isDebugEnabled()) {
                         logger.debug(String.format("[%s] Scaling out complete for now.", getInstanceIdentifier()));
                     }
-                    ManagedResource.getInstance().scaleOutComplete(this.getInstanceIdentifier());
+                    ManagedResource.getInstance().scalingOperationComplete(this.getInstanceIdentifier());
                 } catch (NIException ignore) {
 
                 }
@@ -213,8 +214,7 @@ public abstract class GeoSpatialStreamProcessor extends StreamProcessor {
         }
     }
 
-    private synchronized void updateIncomingRatesForSubPrefixes(GeoHashIndexedRecord record) {
-        String prefix = getPrefix(record);
+    private synchronized void updateIncomingRatesForSubPrefixes(String prefix, GeoHashIndexedRecord record) {
         MonitoredPrefix monitoredPrefix;
         if (monitoredPrefixMap.containsKey(prefix)) {
             monitoredPrefix = monitoredPrefixMap.get(prefix);
@@ -290,7 +290,7 @@ public abstract class GeoSpatialStreamProcessor extends StreamProcessor {
                     initiateScaleOut(prefixesForScalingOut, streamType);
                 } else {
                     // we couldn't find any suitable prefixes
-                    ManagedResource.getInstance().scaleOutComplete(getInstanceIdentifier());
+                    ManagedResource.getInstance().scalingOperationComplete(getInstanceIdentifier());
                 }
             } else {    // in the case of scaling down
                 // find the prefixes with the lowest input rates that are pass-through traffic
@@ -309,7 +309,7 @@ public abstract class GeoSpatialStreamProcessor extends StreamProcessor {
                     initiateScaleIn(chosenToScaleIn);
                 } else {
                     // we couldn't find any suitable prefixes
-                    ManagedResource.getInstance().scaleOutComplete(getInstanceIdentifier());
+                    ManagedResource.getInstance().scalingOperationComplete(getInstanceIdentifier());
                 }
             }
         } catch (NIException e) {
@@ -318,12 +318,39 @@ public abstract class GeoSpatialStreamProcessor extends StreamProcessor {
     }
 
     private void initiateScaleIn(MonitoredPrefix monitoredPrefix) throws ScalingException {
-        ScaleInRequest scaleInReq = new ScaleInRequest(monitoredPrefix.prefix, getInstanceIdentifier());
-        try {
-            SendUtility.sendControlMessage(monitoredPrefix.destResourceCtrlEndpoint, scaleInReq);
-        } catch (CommunicationsException | IOException e) {
-            String errorMsg = "Error sending out ScaleInRequest to " + monitoredPrefix.destResourceCtrlEndpoint;
-            throw handleError(errorMsg, e);
+        // first check if the sub-tree is locked. This is possibly due to a request from the parent.
+        boolean locked = false;
+        for (String lockedPrefix : lockedSubTrees.get()) {
+            if (monitoredPrefix.prefix.startsWith(lockedPrefix)) {
+                locked = true;
+                break;
+            }
+        }
+        // tree is not locked. ask child nodes to lock.
+        if (!locked) {
+            ScaleInLockRequest lockReq = new ScaleInLockRequest(monitoredPrefix.prefix,
+                    monitoredPrefix.destComputationId, getInstanceIdentifier());
+            try {
+                SendUtility.sendControlMessage(monitoredPrefix.destResourceCtrlEndpoint, lockReq);
+                lockedSubTrees.get().add(monitoredPrefix.prefix);
+                // TODO: book keeping of the request
+                if (logger.isDebugEnabled()) {
+                    logger.debug(String.format("[%s] Sent a lock request. Prefix: %s, Destination: %s",
+                            getInstanceIdentifier(), monitoredPrefix.prefix, monitoredPrefix.destResourceCtrlEndpoint));
+                }
+            } catch (CommunicationsException | IOException e) {
+                String errorMsg = "Error sending out Lock Request to " + monitoredPrefix.destResourceCtrlEndpoint;
+                throw handleError(errorMsg, e);
+            }
+        } else {
+            // unable to get the lock. Already a scale-in operation is in progress.
+            try {
+                ManagedResource.getInstance().scalingOperationComplete(getInstanceIdentifier());
+            } catch (NIException e) {
+                String errMsg = "Error retrieving the ManagedResource instance.";
+                logger.error(errMsg);
+                throw new ScalingException(errMsg, e);
+            }
         }
     }
 
@@ -350,6 +377,50 @@ public abstract class GeoSpatialStreamProcessor extends StreamProcessor {
         } catch (NIException e) {
             throw handleError("Error retrieving an instance of the ManagedResource.", e);
         }
+    }
+
+    public synchronized void handleScaleInLockReq(ScaleInLockRequest lockReq) {
+        String prefixForLock = lockReq.getPrefix();
+        boolean lockReturned = true;
+        for (String lockedPrefix : lockedSubTrees.get()) {
+            if (lockedPrefix.startsWith(prefixForLock)) {
+                // we have already locked the subtree
+                lockReturned = false;
+                if (logger.isDebugEnabled()) {
+                    logger.debug(String.format("[%s] Unable to grant lock for prefix: %s. Already locked for %s",
+                            getInstanceIdentifier(), prefixForLock, lockedPrefix));
+                }
+                break;
+            }
+        }
+
+        if (!lockReturned) {
+
+            // TODO: Send response back to the source.
+        } else {
+            // need to find out the available sub prefixes
+            for (String monitoredPrefix : monitoredPrefixMap.keySet()) {
+                if (monitoredPrefix.startsWith(prefixForLock)) {
+                    MonitoredPrefix pref = monitoredPrefixMap.get(prefixForLock);
+                    ScaleInLockRequest childLockReq = new ScaleInLockRequest(monitoredPrefix, pref.destComputationId,
+                            getInstanceIdentifier());
+                    try {
+                        SendUtility.sendControlMessage(pref.destResourceCtrlEndpoint, childLockReq);
+                        lockedSubTrees.get().add(monitoredPrefix);
+                        // TODO: Book keeping
+                        if (logger.isDebugEnabled()) {
+                            logger.debug(String.format("[%s] Propagating lock requests to child elements. " +
+                                            "Parent prefix: %s, Child Prefix: %s", getInstanceIdentifier(), prefixForLock,
+                                    monitoredPrefix));
+                        }
+                    } catch (CommunicationsException | IOException e) {
+                        logger.error("Error sending a lock request to child for prefix: " + monitoredPrefix);
+                    }
+                }
+            }
+            // TODO: Bookkeeping. wait until locks responses are propagated.
+        }
+
     }
 
     private String getNewStreamIdentifier() {

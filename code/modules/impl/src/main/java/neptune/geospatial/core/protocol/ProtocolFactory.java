@@ -2,10 +2,7 @@ package neptune.geospatial.core.protocol;
 
 import ds.funnel.topic.TopicDataEvent;
 import ds.granules.communication.direct.control.ControlMessage;
-import neptune.geospatial.core.protocol.msg.ScaleInRequest;
-import neptune.geospatial.core.protocol.msg.ScaleInResponse;
-import neptune.geospatial.core.protocol.msg.ScaleOutRequest;
-import neptune.geospatial.core.protocol.msg.ScaleOutResponse;
+import neptune.geospatial.core.protocol.msg.*;
 
 import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;
@@ -46,6 +43,9 @@ public class ProtocolFactory {
                     break;
                 case ProtocolTypes.SCALE_IN_RESP:
                     message = new ScaleInResponse();
+                    break;
+                case ProtocolTypes.SCALE_IN_LOCK_REQ:
+                    message = new ScaleInLockRequest();
                     break;
                 default:
                     String errorMsg = "Unsupported message type: " + messageType;

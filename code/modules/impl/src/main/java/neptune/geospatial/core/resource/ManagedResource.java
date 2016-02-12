@@ -14,6 +14,7 @@ import ds.granules.util.ParamsReader;
 import neptune.geospatial.core.computations.GeoSpatialStreamProcessor;
 import neptune.geospatial.core.computations.ScalingException;
 import neptune.geospatial.core.protocol.AbstractProtocolHandler;
+import neptune.geospatial.core.protocol.msg.ScaleInLockRequest;
 import neptune.geospatial.core.protocol.msg.ScaleOutResponse;
 import org.apache.log4j.Logger;
 
@@ -231,7 +232,7 @@ public class ManagedResource {
         }
     }
 
-    public void scaleOutComplete(String computationIdentifier) {
+    public void scalingOperationComplete(String computationIdentifier) {
         MonitoredComputationState monitoredComputationState = monitoredProcessors.get(computationIdentifier);
         monitoredComputationState.backLogHistory.get().clear();
         monitoredComputationState.eligibleForScaling.set(true);
@@ -243,6 +244,15 @@ public class ManagedResource {
             monitoredProcessors.get(processorId).computation.handleTriggerScaleAck(ack);
         } else {
             logger.warn("ScaleTriggerAck for an invalid computation: " + processorId);
+        }
+    }
+
+    public void handleScaleInLockReq(ScaleInLockRequest lockReq) {
+        String computationId = lockReq.getTargetComputation();
+        if (monitoredProcessors.containsKey(computationId)) {
+            monitoredProcessors.get(computationId).computation.handleScaleInLockReq(lockReq);
+        } else {
+            logger.warn("Invalid ScaleInLockReq for computation: " + computationId);
         }
     }
 }
