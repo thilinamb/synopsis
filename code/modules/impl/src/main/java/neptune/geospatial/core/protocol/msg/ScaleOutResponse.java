@@ -10,7 +10,7 @@ import java.io.IOException;
 /**
  * @author Thilina Buddhika
  */
-public class TriggerScaleAck extends ControlMessage {
+public class ScaleOutResponse extends ControlMessage {
 
     private String inResponseTo;
     private boolean status;
@@ -18,18 +18,18 @@ public class TriggerScaleAck extends ControlMessage {
     private String newComputationId;
     private String newLocationURL;
 
-    public TriggerScaleAck() {
+    public ScaleOutResponse() {
         super(ProtocolTypes.SCALE_OUT_RESP);
     }
 
-    public TriggerScaleAck(String inResponseTo, String targetComputation, boolean status) {
+    public ScaleOutResponse(String inResponseTo, String targetComputation, boolean status) {
         super(ProtocolTypes.SCALE_OUT_RESP);
         this.inResponseTo = inResponseTo;
         this.targetComputation = targetComputation;
         this.status = status;
     }
 
-    public TriggerScaleAck(String inResponseTo, String targetComputation, boolean status, String newComputationId, String newLocationURL) {
+    public ScaleOutResponse(String inResponseTo, String targetComputation, boolean status, String newComputationId, String newLocationURL) {
         super(ProtocolTypes.SCALE_OUT_RESP);
         this.inResponseTo = inResponseTo;
         this.targetComputation = targetComputation;

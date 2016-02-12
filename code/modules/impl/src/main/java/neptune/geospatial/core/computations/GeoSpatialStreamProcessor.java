@@ -10,8 +10,8 @@ import ds.granules.streaming.core.StreamProcessor;
 import ds.granules.streaming.core.exception.StreamingDatasetException;
 import ds.granules.streaming.core.exception.StreamingGraphConfigurationException;
 import neptune.geospatial.core.protocol.msg.ScaleInRequest;
-import neptune.geospatial.core.protocol.msg.TriggerScale;
-import neptune.geospatial.core.protocol.msg.TriggerScaleAck;
+import neptune.geospatial.core.protocol.msg.ScaleOutRequest;
+import neptune.geospatial.core.protocol.msg.ScaleOutResponse;
 import neptune.geospatial.core.resource.ManagedResource;
 import neptune.geospatial.graph.messages.GeoHashIndexedRecord;
 import neptune.geospatial.partitioner.GeoHashPartitioner;
@@ -45,10 +45,11 @@ public abstract class GeoSpatialStreamProcessor extends StreamProcessor {
         private String streamType;
         private long messageCount;
         private double messageRate;
-        private boolean isPassThroughTraffic;
+        private AtomicBoolean isPassThroughTraffic;
         private String outGoingStream;
         private String destComputationId;
         private String destResourceCtrlEndpoint;
+        private AtomicLong lastMessageSent;
 
         public MonitoredPrefix(String prefix, String streamType) {
             this.prefix = prefix;
@@ -97,18 +98,25 @@ public abstract class GeoSpatialStreamProcessor extends StreamProcessor {
         }
     }
 
+    private class PendingScaleInRequests {
+        private String prefix;
+        private Map<String, String> pendingComputations;
+    }
+
     private Logger logger = Logger.getLogger(GeoSpatialStreamProcessor.class.getName());
     public static final String OUTGOING_STREAM_BASE_ID = "out-going";
     private static final String GEO_HASH_CHAR_SET = "0123456789bcdefghjkmnpqrstuvwxyz";
     public static final int GEO_HASH_LEN_IN_CHARS = 32;
     private static final int INPUT_RATE_UPDATE_INTERVAL = 10 * 1000;
-    private AtomicLong tsLastUpdated = new AtomicLong(0);
-    private AtomicInteger outGoingStreamIdSeqGenerator = new AtomicInteger(100);
 
+    private AtomicInteger outGoingStreamIdSeqGenerator = new AtomicInteger(100);
     private AtomicBoolean initialized = new AtomicBoolean(false);
     private AtomicInteger messageSize = new AtomicInteger(-1);
+    private AtomicLong tsLastUpdated = new AtomicLong(0);
+
     private Set<MonitoredPrefix> monitoredPrefixes = new TreeSet<>();
     private Map<String, MonitoredPrefix> monitoredPrefixMap = new HashMap<>();
+
     private Map<String, PendingScaleOutRequests> pendingScaleOutRequests = new HashMap<>();
 
     @Override
@@ -156,12 +164,10 @@ public abstract class GeoSpatialStreamProcessor extends StreamProcessor {
         updateIncomingRatesForSubPrefixes(record);
         String prefix = getPrefix(record);
         MonitoredPrefix monitoredPrefix = monitoredPrefixMap.get(prefix);
-        boolean processLocally;
         // if there is an outgoing stream, then this should be sent to a child node.
-        synchronized (this) {
-            processLocally = !monitoredPrefix.isPassThroughTraffic;
-        }
+        boolean processLocally = !monitoredPrefix.isPassThroughTraffic.get();
         if (!processLocally) {
+            monitoredPrefix.lastMessageSent.set(record.getMessageIdentifier());
             record.setPrefixLength(record.getPrefixLength() + 1);
             // send to the child node
             if (logger.isDebugEnabled()) {
@@ -178,12 +184,12 @@ public abstract class GeoSpatialStreamProcessor extends StreamProcessor {
         // leaf node of the graph. no outgoing edges.
     }
 
-    public synchronized void handleTriggerScaleAck(TriggerScaleAck ack) {
+    public synchronized void handleTriggerScaleAck(ScaleOutResponse ack) {
         if (pendingScaleOutRequests.containsKey(ack.getInResponseTo())) {
             PendingScaleOutRequests pendingReq = pendingScaleOutRequests.remove(ack.getInResponseTo());
             for (String prefix : pendingReq.prefixes) {
                 MonitoredPrefix monitoredPrefix = monitoredPrefixMap.get(prefix);
-                monitoredPrefix.isPassThroughTraffic = true;
+                monitoredPrefix.isPassThroughTraffic.set(true);
                 monitoredPrefix.destComputationId = ack.getNewComputationId();
                 monitoredPrefix.destResourceCtrlEndpoint = ack.getNewLocationURL();
                 if (logger.isDebugEnabled()) {
@@ -263,7 +269,7 @@ public abstract class GeoSpatialStreamProcessor extends StreamProcessor {
                 Iterator<MonitoredPrefix> itr = monitoredPrefixes.iterator();
                 while (itr.hasNext() && cumulSumOfPrefixes < excess) {
                     MonitoredPrefix monitoredPrefix = itr.next();
-                    if (!monitoredPrefix.isPassThroughTraffic && monitoredPrefix.messageRate > 0) {
+                    if (!monitoredPrefix.isPassThroughTraffic.get() && monitoredPrefix.messageRate > 0) {
                         prefixesForScalingOut.add(monitoredPrefix.prefix);
                         // let's consider the number of messages accumulated over 2s.
                         cumulSumOfPrefixes += monitoredPrefix.messageRate * 2;
@@ -292,7 +298,7 @@ public abstract class GeoSpatialStreamProcessor extends StreamProcessor {
                 MonitoredPrefix chosenToScaleIn = null;
                 while (itr.hasNext()) {
                     MonitoredPrefix monitoredPrefix = itr.next();
-                    if (monitoredPrefix.isPassThroughTraffic && monitoredPrefix.messageRate <
+                    if (monitoredPrefix.isPassThroughTraffic.get() && monitoredPrefix.messageRate <
                             ManagedResource.LOW_THRESHOLD) {
                         // FIXME: Scale in just one computation, just to make sure protocol works
                         chosenToScaleIn = monitoredPrefix;
@@ -329,7 +335,7 @@ public abstract class GeoSpatialStreamProcessor extends StreamProcessor {
             // initialize the meta-data
             Topic[] topics = deployStream(outGoingStreamId, 1, partitioner);
 
-            TriggerScale triggerMessage = new TriggerScale(getInstanceIdentifier(), outGoingStreamId,
+            ScaleOutRequest triggerMessage = new ScaleOutRequest(getInstanceIdentifier(), outGoingStreamId,
                     topics[0].toString(), streamType);
             pendingScaleOutRequests.put(triggerMessage.getMessageId(), new PendingScaleOutRequests(prefix, outGoingStreamId));
             ManagedResource.getInstance().sendToDeployer(triggerMessage);

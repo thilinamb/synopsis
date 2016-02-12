@@ -24,13 +24,15 @@ public class GeoHashIndexedRecord extends AbstractStreamEvent {
 
     // this is a temp field until we populate the messages with real data
     private long tsIngested;
+    private long messageIdentifier;
 
     public GeoHashIndexedRecord() {
     }
 
-    public GeoHashIndexedRecord(String geoHash, int prefixLength, long tsIngested) {
+    public GeoHashIndexedRecord(String geoHash, int prefixLength, long messageIdentifier, long tsIngested) {
         this.geoHash = geoHash;
         this.prefixLength = prefixLength;
+        this.messageIdentifier = messageIdentifier;
         this.tsIngested = tsIngested;
     }
 
@@ -38,13 +40,15 @@ public class GeoHashIndexedRecord extends AbstractStreamEvent {
     protected void readValues(DataInputStream dataInputStream) throws IOException {
         this.geoHash = dataInputStream.readUTF();
         this.prefixLength = dataInputStream.readInt();
+        this.messageIdentifier = dataInputStream.readLong();
         this.tsIngested = dataInputStream.readLong();
     }
 
     @Override
     protected void writeValues(DataOutputStream dataOutputStream) throws IOException {
         dataOutputStream.writeUTF(this.geoHash);
-        dataOutputStream.writeInt(prefixLength);
+        dataOutputStream.writeInt(this.prefixLength);
+        dataOutputStream.writeLong(this.messageIdentifier);
         dataOutputStream.writeLong(this.tsIngested);
     }
 
@@ -62,5 +66,9 @@ public class GeoHashIndexedRecord extends AbstractStreamEvent {
 
     public void setPrefixLength(int prefixLength) {
         this.prefixLength = prefixLength;
+    }
+
+    public long getMessageIdentifier() {
+        return messageIdentifier;
     }
 }

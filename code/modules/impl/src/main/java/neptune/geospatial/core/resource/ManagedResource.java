@@ -14,7 +14,7 @@ import ds.granules.util.ParamsReader;
 import neptune.geospatial.core.computations.GeoSpatialStreamProcessor;
 import neptune.geospatial.core.computations.ScalingException;
 import neptune.geospatial.core.protocol.AbstractProtocolHandler;
-import neptune.geospatial.core.protocol.msg.TriggerScaleAck;
+import neptune.geospatial.core.protocol.msg.ScaleOutResponse;
 import org.apache.log4j.Logger;
 
 import java.io.File;
@@ -237,7 +237,7 @@ public class ManagedResource {
         monitoredComputationState.eligibleForScaling.set(true);
     }
 
-    public void handleTriggerScaleAck(TriggerScaleAck ack) {
+    public void handleTriggerScaleAck(ScaleOutResponse ack) {
         String processorId = ack.getTargetComputation();
         if (monitoredProcessors.containsKey(processorId)) {
             monitoredProcessors.get(processorId).computation.handleTriggerScaleAck(ack);

@@ -3,7 +3,7 @@ package neptune.geospatial.core.resource;
 import ds.granules.communication.direct.control.ControlMessage;
 import neptune.geospatial.core.protocol.AbstractProtocolHandler;
 import neptune.geospatial.core.protocol.ProtocolTypes;
-import neptune.geospatial.core.protocol.msg.TriggerScaleAck;
+import neptune.geospatial.core.protocol.msg.ScaleOutResponse;
 import org.apache.log4j.Logger;
 
 /**
@@ -27,11 +27,11 @@ public class ResourceProtocolHandler extends AbstractProtocolHandler {
         int type = ctrlMsg.getMessageType();
         switch (type) {
             case ProtocolTypes.SCALE_OUT_RESP:
-                TriggerScaleAck triggerScaleAck = (TriggerScaleAck) ctrlMsg;
+                ScaleOutResponse scaleOutResponse = (ScaleOutResponse) ctrlMsg;
                 if (logger.isDebugEnabled()) {
-                    logger.debug("Received a trigger scale ack message for " + triggerScaleAck.getTargetComputation());
+                    logger.debug("Received a trigger scale ack message for " + scaleOutResponse.getTargetComputation());
                 }
-                managedResource.handleTriggerScaleAck(triggerScaleAck);
+                managedResource.handleTriggerScaleAck(scaleOutResponse);
         }
     }
 

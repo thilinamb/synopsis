@@ -14,18 +14,18 @@ import java.io.IOException;
  *
  * @author Thilina Buddhika
  */
-public class TriggerScale extends ControlMessage {
+public class ScaleOutRequest extends ControlMessage {
 
     private String currentComputation;
     private String streamId;
     private String topic;
     private String streamType;
 
-    public TriggerScale() {
+    public ScaleOutRequest() {
         super(ProtocolTypes.SCALE_OUT_REQ);
     }
 
-    public TriggerScale(String currentComputation, String streamId, String topic, String messageType) {
+    public ScaleOutRequest(String currentComputation, String streamId, String topic, String messageType) {
         super(ProtocolTypes.SCALE_OUT_REQ);
         this.currentComputation = currentComputation;
         this.streamId = streamId;
