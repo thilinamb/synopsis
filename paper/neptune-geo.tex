@@ -1,0 +1,37 @@
+\documentclass{vldb}
+\usepackage{graphicx}
+\usepackage{balance}  % for  \balance command ON LAST PAGE  (only there!)
+\usepackage{url}
+\PassOptionsToPackage{hyphens}{url}\usepackage{hyperref}
+\usepackage{multirow}
+
+\begin{document}
+
+\title{Rivulet/Trident/Otter: A Distributed Sketch for Voluminous Spatio-Temporal Observational Streams to Support High Throughput Query Evaluations}
+
+\numberofauthors{1}
+\author{
+\alignauthor
+Name1, Name2, Name3, Name4\\
+       \affaddr{Department of Computer Science}\\
+       \affaddr{Colorado State University}\\
+       \affaddr{Fort Collins, Colorado, USA}\\
+       \email{\{name1,name2,name3,name4\}@cs.colostate.edu}
+}
+
+
+\maketitle
+
+\input{sections/abstract}
+\input{sections/introduction}
+\input{sections/related}
+\input{sections/conclusions}
+\input{sections/acknowledgments}
+
+% ensure same length columns on last page (might need two sub-sequent latex runs)
+% \balance
+
+\bibliographystyle{abbrv}
+\bibliography{references}
+
+\end{document}
