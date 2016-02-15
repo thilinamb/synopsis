@@ -565,7 +565,7 @@ public abstract class GeoSpatialStreamProcessor extends StreamProcessor {
         return new ScalingException(errorMsg, e);
     }
 
-    private void handleScaleInActivateReq(ScaleInActivateReq activationReq){
+    public void handleScaleInActivateReq(ScaleInActivateReq activationReq){
         String prefix  = activationReq.getPrefix();
         if (!pendingScaleInRequests.containsKey(prefix)) {
             logger.warn("Invalid ScaleInActivateReq for prefix: " + prefix);

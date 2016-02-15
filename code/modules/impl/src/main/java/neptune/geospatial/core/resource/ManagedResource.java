@@ -14,7 +14,9 @@ import ds.granules.util.ParamsReader;
 import neptune.geospatial.core.computations.GeoSpatialStreamProcessor;
 import neptune.geospatial.core.computations.ScalingException;
 import neptune.geospatial.core.protocol.AbstractProtocolHandler;
+import neptune.geospatial.core.protocol.msg.ScaleInActivateReq;
 import neptune.geospatial.core.protocol.msg.ScaleInLockRequest;
+import neptune.geospatial.core.protocol.msg.ScaleInLockResponse;
 import neptune.geospatial.core.protocol.msg.ScaleOutResponse;
 import org.apache.log4j.Logger;
 
@@ -251,6 +253,24 @@ public class ManagedResource {
         String computationId = lockReq.getTargetComputation();
         if (monitoredProcessors.containsKey(computationId)) {
             monitoredProcessors.get(computationId).computation.handleScaleInLockReq(lockReq);
+        } else {
+            logger.warn("Invalid ScaleInLockReq for computation: " + computationId);
+        }
+    }
+
+    public void handleScaleInLockResp(ScaleInLockResponse lockResponse){
+        String computationId = lockResponse.getComputation();
+        if(monitoredProcessors.containsKey(computationId)){
+            monitoredProcessors.get(computationId).computation.handleScaleInLockResponse(lockResponse);
+        } else {
+            logger.warn("Invalid ScaleInLockResponse for computation: " + computationId);
+        }
+    }
+
+    public void handleScaleInActivateReq(ScaleInActivateReq activateReq){
+        String computationId = activateReq.getTargetComputation();
+        if (monitoredProcessors.containsKey(computationId)) {
+            monitoredProcessors.get(computationId).computation.handleScaleInActivateReq(activateReq);
         } else {
             logger.warn("Invalid ScaleInLockReq for computation: " + computationId);
         }

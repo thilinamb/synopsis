@@ -3,7 +3,9 @@ package neptune.geospatial.core.resource;
 import ds.granules.communication.direct.control.ControlMessage;
 import neptune.geospatial.core.protocol.AbstractProtocolHandler;
 import neptune.geospatial.core.protocol.ProtocolTypes;
+import neptune.geospatial.core.protocol.msg.ScaleInActivateReq;
 import neptune.geospatial.core.protocol.msg.ScaleInLockRequest;
+import neptune.geospatial.core.protocol.msg.ScaleInLockResponse;
 import neptune.geospatial.core.protocol.msg.ScaleOutResponse;
 import org.apache.log4j.Logger;
 
@@ -40,6 +42,20 @@ public class ResourceProtocolHandler extends AbstractProtocolHandler {
                     logger.debug("Received a ScaleInLockRequest for " + lockReq.getTargetComputation());
                 }
                 managedResource.handleScaleInLockReq(lockReq);
+                break;
+            case ProtocolTypes.SCALE_IN_LOCK_RESP:
+                ScaleInLockResponse lockResponse = (ScaleInLockResponse) ctrlMsg;
+                if (logger.isDebugEnabled()) {
+                    logger.debug("Received a ScaleInLockResponse for " + lockResponse.getComputation());
+                }
+                managedResource.handleScaleInLockResp(lockResponse);
+                break;
+            case ProtocolTypes.SCALE_IN_ACTIVATION_REQ:
+                ScaleInActivateReq activateReq = (ScaleInActivateReq) ctrlMsg;
+                if (logger.isDebugEnabled()) {
+                    logger.debug("Received a ScaleInActivateReq for " + activateReq.getTargetComputation());
+                }
+                managedResource.handleScaleInActivateReq(activateReq);
                 break;
             default:
                 logger.warn("Unsupported message type: " + type);
