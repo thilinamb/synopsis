@@ -9,10 +9,7 @@ import ds.granules.neptune.interfere.core.NIException;
 import ds.granules.streaming.core.StreamProcessor;
 import ds.granules.streaming.core.exception.StreamingDatasetException;
 import ds.granules.streaming.core.exception.StreamingGraphConfigurationException;
-import neptune.geospatial.core.protocol.msg.ScaleInLockRequest;
-import neptune.geospatial.core.protocol.msg.ScaleInLockResponse;
-import neptune.geospatial.core.protocol.msg.ScaleOutRequest;
-import neptune.geospatial.core.protocol.msg.ScaleOutResponse;
+import neptune.geospatial.core.protocol.msg.*;
 import neptune.geospatial.core.resource.ManagedResource;
 import neptune.geospatial.graph.messages.GeoHashIndexedRecord;
 import neptune.geospatial.partitioner.GeoHashPartitioner;
@@ -201,18 +198,21 @@ public abstract class GeoSpatialStreamProcessor extends StreamProcessor {
     protected boolean preprocess(GeoHashIndexedRecord record) throws StreamingDatasetException {
         String prefix = getPrefix(record);
         updateIncomingRatesForSubPrefixes(prefix, record);
-        MonitoredPrefix monitoredPrefix = monitoredPrefixMap.get(prefix);
-        // if there is an outgoing stream, then this should be sent to a child node.
-        boolean processLocally = !monitoredPrefix.isPassThroughTraffic.get();
-        if (!processLocally) {
-            monitoredPrefix.lastMessageSent.set(record.getMessageIdentifier());
-            record.setPrefixLength(record.getPrefixLength() + 1);
-            // send to the child node
-            if (logger.isDebugEnabled()) {
-                logger.debug(String.format("[%s] Forwarding Message. Prefix: %s, Outgoing Stream: %s",
-                        getInstanceIdentifier(), prefix, monitoredPrefix.outGoingStream));
+        boolean processLocally;
+        synchronized (this) {
+            MonitoredPrefix monitoredPrefix = monitoredPrefixMap.get(prefix);
+            // if there is an outgoing stream, then this should be sent to a child node.
+            processLocally = !monitoredPrefix.isPassThroughTraffic.get();
+            if (!processLocally) {
+                monitoredPrefix.lastMessageSent.set(record.getMessageIdentifier());
+                record.setPrefixLength(record.getPrefixLength() + 1);
+                // send to the child node
+                if (logger.isDebugEnabled()) {
+                    logger.debug(String.format("[%s] Forwarding Message. Prefix: %s, Outgoing Stream: %s",
+                            getInstanceIdentifier(), prefix, monitoredPrefix.outGoingStream));
+                }
+                writeToStream(monitoredPrefix.outGoingStream, record);
             }
-            writeToStream(monitoredPrefix.outGoingStream, record);
         }
         return processLocally;
     }
@@ -497,7 +497,19 @@ public abstract class GeoSpatialStreamProcessor extends StreamProcessor {
             if (pendingReq.sentCount == pendingReq.receivedCount) {
                 if (pendingReq.initiatedLocally) {
                     if (pendingReq.lockAcquired) {
-                        // TODO: initiate the rest of the protocol
+                        for (String lockedPrefix : pendingReq.sentOutRequests.keySet()) {
+                            // disable pass-through
+                            MonitoredPrefix monitoredPrefix = monitoredPrefixMap.get(prefix);
+                            monitoredPrefix.isPassThroughTraffic.set(false);
+                            QualifiedComputationAddr reqInfo = pendingReq.sentOutRequests.get(lockedPrefix);
+                            ScaleInActivationReq scaleInActivationReq = new ScaleInActivationReq(lockedPrefix,
+                                    reqInfo.computationId, monitoredPrefix.lastMessageSent.get());
+                            try {
+                                SendUtility.sendControlMessage(reqInfo.ctrlEndpointAddr, scaleInActivationReq);
+                            } catch (CommunicationsException | IOException e) {
+                                logger.error("Error sending ScaleInActivationRequest to " + reqInfo.ctrlEndpointAddr, e);
+                            }
+                        }
                     } else {
                         // haven't been able to acquire all the locks. Reset the locks.
                         resetLocks(pendingReq.sentOutRequests.keySet());
