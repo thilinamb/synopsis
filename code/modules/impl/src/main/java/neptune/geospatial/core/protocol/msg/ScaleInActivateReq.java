@@ -13,17 +13,17 @@ import java.io.IOException;
  *
  * @author Thilina Buddhika
  */
-public class ScaleInActivationReq extends ControlMessage {
+public class ScaleInActivateReq extends ControlMessage {
 
     private String prefix;
     private String orginComputation;
     private long lastMessageSent;
 
-    public ScaleInActivationReq() {
+    public ScaleInActivateReq() {
         super(ProtocolTypes.SCALE_IN_ACTIVATION_REQ);
     }
 
-    public ScaleInActivationReq(String prefix, String orginComputation, long lastMessageSent) {
+    public ScaleInActivateReq(String prefix, String orginComputation, long lastMessageSent) {
         super(ProtocolTypes.SCALE_IN_ACTIVATION_REQ);
         this.prefix = prefix;
         this.orginComputation = orginComputation;
