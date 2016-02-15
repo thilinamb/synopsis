@@ -10,5 +10,6 @@ public final class ProtocolTypes {
     public static final int SCALE_IN_REQ = 12200;
     public static final int SCALE_IN_RESP = 12201;
     public static final int SCALE_IN_LOCK_REQ = 12202;
-    public static final int SCALE_IN_LOCK_RESP = 120203;
+    public static final int SCALE_IN_LOCK_RESP = 12203;
+    public static final int SCALE_IN_ACTIVATION_REQ = 12204;
 }

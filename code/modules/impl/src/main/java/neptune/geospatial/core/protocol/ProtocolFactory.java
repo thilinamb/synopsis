@@ -47,6 +47,9 @@ public class ProtocolFactory {
                 case ProtocolTypes.SCALE_IN_LOCK_REQ:
                     message = new ScaleInLockRequest();
                     break;
+                case ProtocolTypes.SCALE_IN_ACTIVATION_REQ:
+                    message = new ScaleInActivationReq();
+                    break;
                 default:
                     String errorMsg = "Unsupported message type: " + messageType;
                     throw new ProtocolException(errorMsg);
