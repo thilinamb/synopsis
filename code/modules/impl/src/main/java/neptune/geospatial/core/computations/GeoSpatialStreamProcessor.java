@@ -108,6 +108,7 @@ public abstract class GeoSpatialStreamProcessor extends StreamProcessor {
         private String originComputation;
         private boolean initiatedLocally;
         private boolean lockAcquired = true;
+        private List<String> prefixesAcknowledged = new ArrayList<>();
 
         public PendingScaleInRequest(String prefix, int sentCount, String originCtrlEndpoint, String originComputation) {
             this.prefix = prefix;
@@ -472,14 +473,22 @@ public abstract class GeoSpatialStreamProcessor extends StreamProcessor {
             logger.warn("Invalid ScaleInLockResponse for prefix: " + prefix);
         } else {
             PendingScaleInRequest pendingReq = pendingScaleInRequests.get(prefix);
+            pendingReq.prefixesAcknowledged.add(prefix);
             pendingReq.receivedCount++;
             pendingReq.lockAcquired = pendingReq.lockAcquired & lockResponse.isSuccess();
             if (pendingReq.sentCount == pendingReq.receivedCount) {
                 if (pendingReq.initiatedLocally) {
-                    // TODO: got all the responses. Depending on the status, initiate the rest
-                    // TODO: of the protocol
-                    // TODO: Reset the lock status
+                    if (pendingReq.lockAcquired) {
+                        // TODO: initiate the rest of the protocol
+                    } else {
+                        // haven't been able to acquire all the locks. Reset the locks.
+                        resetLocks(pendingReq.prefixesAcknowledged);
+                    }
                 } else { // send the parent the status
+                    if (!pendingReq.lockAcquired) {
+                        // some of the child locks were not granted. Reset.
+                        resetLocks(pendingReq.prefixesAcknowledged);
+                    }
                     ScaleInLockResponse lockRespToParent = new ScaleInLockResponse(pendingReq.lockAcquired, pendingReq.prefix,
                             pendingReq.originComputation);
                     try {
@@ -491,7 +500,12 @@ public abstract class GeoSpatialStreamProcessor extends StreamProcessor {
                 pendingScaleInRequests.remove(prefix);
             }
         }
+    }
 
+    private void resetLocks(List<String> lockedPrefixes) {
+        for (String lockedPref : lockedPrefixes) {
+            lockedSubTrees.get().remove(lockedPref);
+        }
     }
 
     private String getNewStreamIdentifier() {
