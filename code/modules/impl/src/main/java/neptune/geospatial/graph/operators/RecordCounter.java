@@ -19,8 +19,7 @@ public class RecordCounter extends GeoSpatialStreamProcessor {
     @Override
     protected void process(GeoHashIndexedRecord record) {
         if (++counter % 100000 == 0) {
-            logger.info(String.format("[" + getInstanceIdentifier() + "] Record received. Counter: %d Hash: %s " +
-                    "Timestamp: %d", counter, record.getGeoHash(), record.getTsIngested()));
+            logger.info(String.format("[%s] Record received. Counter: %d", getInstanceIdentifier(), counter));
         }
     }
 }

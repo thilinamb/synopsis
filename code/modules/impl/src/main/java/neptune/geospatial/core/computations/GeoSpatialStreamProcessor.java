@@ -44,11 +44,11 @@ public abstract class GeoSpatialStreamProcessor extends StreamProcessor {
         private String streamType;
         private long messageCount;
         private double messageRate;
-        private AtomicBoolean isPassThroughTraffic;
+        private AtomicBoolean isPassThroughTraffic = new AtomicBoolean(false);
         private String outGoingStream;
         private String destComputationId;
         private String destResourceCtrlEndpoint;
-        private AtomicLong lastMessageSent;
+        private AtomicLong lastMessageSent = new AtomicLong(0);
 
         public MonitoredPrefix(String prefix, String streamType) {
             this.prefix = prefix;
@@ -155,6 +155,9 @@ public abstract class GeoSpatialStreamProcessor extends StreamProcessor {
     private AtomicReference<ArrayList<String>> lockedSubTrees = new AtomicReference<>(new ArrayList<String>());
     private Map<String, PendingScaleInRequest> pendingScaleInRequests = new HashMap<>();
 
+    // temporary counter to test scale-in and out.
+    private AtomicLong scaleInOutTrigger = new AtomicLong(0);
+
     @Override
     public final void onEvent(StreamEvent streamEvent) throws StreamingDatasetException {
         if (!initialized.get()) {
@@ -177,7 +180,19 @@ public abstract class GeoSpatialStreamProcessor extends StreamProcessor {
             // perform the business logic: do this selectively. Send through the traffic we don't process.
             process(geoHashIndexedRecord);
         }
-        process(geoHashIndexedRecord);
+        long count = scaleInOutTrigger.incrementAndGet();
+        try {
+            if (count == 1000000) {
+                logger.debug("Scaling Out!");
+                recommendScaling(10);
+            }
+            if (count == 1500000) {
+                logger.debug("Scaling In!");
+                recommendScaling(-10);
+            }
+        } catch (Exception e) {
+
+        }
     }
 
     /**
@@ -195,6 +210,7 @@ public abstract class GeoSpatialStreamProcessor extends StreamProcessor {
      * on a message.
      *
      * @param record <code>GeoHashIndexedRecord</code> element
+     * @return Whether to process the record locally(true) or not(false).
      */
     protected boolean preprocess(GeoHashIndexedRecord record) throws StreamingDatasetException {
         String prefix = getPrefix(record);
