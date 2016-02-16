@@ -43,6 +43,11 @@
                 </exclusion>
             </exclusions>
         </dependency>
+        <dependency>
+            <groupId>io.sigpipe</groupId>
+            <artifactId>sing</artifactId>
+            <version>1.0</version>
+        </dependency>
     </dependencies>
 
     <build>
