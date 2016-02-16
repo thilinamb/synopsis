@@ -11,5 +11,6 @@ public class Constants {
      */
     public class Streams {
         public static final String GEO_HASH_INDEXED_RECORDS = "geo-hash-indexed-records";
+        public static final String SPATIAL_INDEXED_RECORDS = "spatial-indexed-records";
     }
 }
