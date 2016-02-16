@@ -182,11 +182,11 @@ public abstract class GeoSpatialStreamProcessor extends StreamProcessor {
         }
         long count = scaleInOutTrigger.incrementAndGet();
         try {
-            if (count == 1000000) {
+            if (count % 10000000 == 0) {
                 logger.debug("Scaling Out!");
                 recommendScaling(10);
             }
-            if (count == 1500000) {
+            if (count % 14900000 == 0) {
                 logger.debug("Scaling In!");
                 recommendScaling(-10);
             }
@@ -224,8 +224,8 @@ public abstract class GeoSpatialStreamProcessor extends StreamProcessor {
                 monitoredPrefix.lastMessageSent.set(record.getMessageIdentifier());
                 record.setPrefixLength(record.getPrefixLength() + 1);
                 // send to the child node
-                if (logger.isDebugEnabled()) {
-                    logger.debug(String.format("[%s] Forwarding Message. Prefix: %s, Outgoing Stream: %s",
+                if (logger.isTraceEnabled()) {
+                    logger.trace(String.format("[%s] Forwarding Message. Prefix: %s, Outgoing Stream: %s",
                             getInstanceIdentifier(), prefix, monitoredPrefix.outGoingStream));
                 }
                 writeToStream(monitoredPrefix.outGoingStream, record);
@@ -247,6 +247,7 @@ public abstract class GeoSpatialStreamProcessor extends StreamProcessor {
                 monitoredPrefix.isPassThroughTraffic.set(true);
                 monitoredPrefix.destComputationId = ack.getNewComputationId();
                 monitoredPrefix.destResourceCtrlEndpoint = ack.getNewLocationURL();
+                monitoredPrefix.outGoingStream = pendingReq.streamId;
                 if (logger.isDebugEnabled()) {
                     logger.debug(String.format("[%s] New Pass-Thru Prefix. Prefix: %s, Outgoing Stream: %s",
                             getInstanceIdentifier(), prefix, pendingReq.streamId));
@@ -352,8 +353,7 @@ public abstract class GeoSpatialStreamProcessor extends StreamProcessor {
                 MonitoredPrefix chosenToScaleIn = null;
                 while (itr.hasNext()) {
                     MonitoredPrefix monitoredPrefix = itr.next();
-                    if (monitoredPrefix.isPassThroughTraffic.get() && monitoredPrefix.messageRate <
-                            ManagedResource.LOW_THRESHOLD) {
+                    if (monitoredPrefix.isPassThroughTraffic.get()) {
                         // FIXME: Scale in just one computation, just to make sure protocol works
                         chosenToScaleIn = monitoredPrefix;
                         break;
@@ -512,7 +512,7 @@ public abstract class GeoSpatialStreamProcessor extends StreamProcessor {
                 ScaleInLockResponse lockResp = new ScaleInLockResponse(true, prefixForLock,
                         lockReq.getSourceComputation());
                 try {
-                    SendUtility.sendControlMessage(lockReq.getOriginEndpoint(), lockReq);
+                    SendUtility.sendControlMessage(lockReq.getOriginEndpoint(), lockResp);
                     if (logger.isDebugEnabled()) {
                         logger.debug(String.format("[%s] No Child Sub-prefixes found for prefix: %s. " +
                                         "Acknowledging parent: %s, %s", getInstanceIdentifier(), prefixForLock,
@@ -551,6 +551,8 @@ public abstract class GeoSpatialStreamProcessor extends StreamProcessor {
                                     reqInfo.computationId, monitoredPrefix.lastMessageSent.get());
                             try {
                                 SendUtility.sendControlMessage(reqInfo.ctrlEndpointAddr, scaleInActivateReq);
+                                // TODO: Removing the lock temporarily. But it should be done only when state transfer is complete.
+                                lockedSubTrees.get().remove(prefix);
                                 if (logger.isDebugEnabled()) {
                                     logger.debug(String.format("[%s] Sent a ScaleInActivateReq for parent prefix: %s, " +
                                                     "child prefix: %s, To: %s -> %s, Last Message Sent: %d",
@@ -652,8 +654,10 @@ public abstract class GeoSpatialStreamProcessor extends StreamProcessor {
             for (String localPrefix : pendingReq.locallyProcessedPrefixes) {
                 if (logger.isDebugEnabled()) {
                     logger.debug(String.format("[%s] ScaleInActivationReq for locally processed prefix. " +
-                            "Parent Prefix: %s, Child Prefix: %s", getInstanceIdentifier(), prefix, localPrefix));
+                                    "Parent Prefix: %s, Child Prefix: %s, Last Processed Sent: %d",
+                            getInstanceIdentifier(), prefix, localPrefix, activationReq.getLastMessageSent()));
                 }
+                scaleInOutTrigger.set(0);
                 // TODO: wait it processes the last message and start migrating the state.
             }
         }
