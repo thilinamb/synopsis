@@ -109,9 +109,9 @@ public class ManagedResource {
                             double excess = monitoredComputationState.monitor();
                             if (excess != 0) {
                                 // trigger scale up
-                                monitoredComputationState.eligibleForScaling.set(false);
                                 try {
-                                    monitoredComputationState.computation.recommendScaling(excess);
+                                    boolean success = monitoredComputationState.computation.recommendScaling(excess);
+                                    monitoredComputationState.eligibleForScaling.set(!success);
                                 } catch (ScalingException e) {
                                     logger.error("Error scaling the computation " +
                                             monitoredComputationState.computation.getInstanceIdentifier());
