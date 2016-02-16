@@ -38,14 +38,11 @@ public class ProtocolFactory {
                 case ProtocolTypes.SCALE_OUT_RESP:
                     message = new ScaleOutResponse();
                     break;
-                case ProtocolTypes.SCALE_IN_REQ:
-                    message = new ScaleInRequest();
-                    break;
-                case ProtocolTypes.SCALE_IN_RESP:
-                    message = new ScaleInResponse();
-                    break;
                 case ProtocolTypes.SCALE_IN_LOCK_REQ:
                     message = new ScaleInLockRequest();
+                    break;
+                case ProtocolTypes.SCALE_IN_LOCK_RESP:
+                    message = new ScaleInLockResponse();
                     break;
                 case ProtocolTypes.SCALE_IN_ACTIVATION_REQ:
                     message = new ScaleInActivateReq();
