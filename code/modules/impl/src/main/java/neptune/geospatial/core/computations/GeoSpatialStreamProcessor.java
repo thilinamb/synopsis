@@ -5,10 +5,13 @@ import ds.funnel.topic.Topic;
 import ds.granules.communication.direct.control.SendUtility;
 import ds.granules.dataset.StreamEvent;
 import ds.granules.exception.CommunicationsException;
+import ds.granules.exception.GranulesConfigurationException;
 import ds.granules.neptune.interfere.core.NIException;
 import ds.granules.streaming.core.StreamProcessor;
 import ds.granules.streaming.core.exception.StreamingDatasetException;
 import ds.granules.streaming.core.exception.StreamingGraphConfigurationException;
+import ds.granules.util.Constants;
+import ds.granules.util.NeptuneRuntime;
 import neptune.geospatial.core.protocol.msg.*;
 import neptune.geospatial.core.resource.ManagedResource;
 import neptune.geospatial.graph.messages.GeoHashIndexedRecord;
@@ -16,6 +19,8 @@ import neptune.geospatial.partitioner.GeoHashPartitioner;
 import org.apache.log4j.Logger;
 
 import java.io.IOException;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.text.DecimalFormat;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -123,6 +128,7 @@ public abstract class GeoSpatialStreamProcessor extends StreamProcessor {
         private boolean lockAcquired = true;
         private Map<String, QualifiedComputationAddr> sentOutRequests = new HashMap<>();
         private List<String> locallyProcessedPrefixes = new ArrayList<>();
+        private List<String> childLeafPrefixes = new ArrayList<>();
 
         public PendingScaleInRequest(String prefix, int sentCount, String originCtrlEndpoint, String originComputation) {
             this.prefix = prefix;
@@ -194,7 +200,7 @@ public abstract class GeoSpatialStreamProcessor extends StreamProcessor {
                 logger.debug("Scaling In!");
                 recommendScaling(-10);
             }
-        } catch (Exception e) {
+        } catch (Exception ignore) {
 
         }
     }
@@ -426,41 +432,41 @@ public abstract class GeoSpatialStreamProcessor extends StreamProcessor {
             }
         }*/
         // tree is not locked. ask child nodes to lock.
-        if (!locked) {
-            ScaleInLockRequest lockReq = new ScaleInLockRequest(monitoredPrefix.prefix,
-                    getInstanceIdentifier(), monitoredPrefix.destComputationId);
-            try {
-                SendUtility.sendControlMessage(monitoredPrefix.destResourceCtrlEndpoint, lockReq);
-                //lockedSubTrees.get().add(monitoredPrefix.prefix);
-                // book keeping of the sent out requests.
-                PendingScaleInRequest pendingScaleInReq = new PendingScaleInRequest(monitoredPrefix.prefix, 1);
-                pendingScaleInReq.sentOutRequests.put(monitoredPrefix.prefix, new QualifiedComputationAddr(
-                        monitoredPrefix.destResourceCtrlEndpoint, monitoredPrefix.destComputationId));
-                pendingScaleInRequests.put(monitoredPrefix.prefix, pendingScaleInReq);
+        //if (!locked) {
+        ScaleInLockRequest lockReq = new ScaleInLockRequest(monitoredPrefix.prefix,
+                getInstanceIdentifier(), monitoredPrefix.destComputationId);
+        try {
+            SendUtility.sendControlMessage(monitoredPrefix.destResourceCtrlEndpoint, lockReq);
+            //lockedSubTrees.get().add(monitoredPrefix.prefix);
+            // book keeping of the sent out requests.
+            PendingScaleInRequest pendingScaleInReq = new PendingScaleInRequest(monitoredPrefix.prefix, 1);
+            pendingScaleInReq.sentOutRequests.put(monitoredPrefix.prefix, new QualifiedComputationAddr(
+                    monitoredPrefix.destResourceCtrlEndpoint, monitoredPrefix.destComputationId));
+            pendingScaleInRequests.put(monitoredPrefix.prefix, pendingScaleInReq);
 
-                if (logger.isDebugEnabled()) {
-                    logger.debug(String.format("[%s] Sent a lock request. Prefix: %s, Destination Node: %s, " +
-                                    "Destination Computation: %s", getInstanceIdentifier(), monitoredPrefix.prefix,
-                            monitoredPrefix.destResourceCtrlEndpoint, monitoredPrefix.destComputationId));
-                }
-            } catch (CommunicationsException | IOException e) {
-                String errorMsg = "Error sending out Lock Request to " + monitoredPrefix.destResourceCtrlEndpoint;
-                throw handleError(errorMsg, e);
-            }
-        } else {
             if (logger.isDebugEnabled()) {
-                logger.debug(String.format("[%s] Unable to acquire lock for prefix: %s", getInstanceIdentifier(),
-                        monitoredPrefix.prefix));
+                logger.debug(String.format("[%s] Sent a lock request. Prefix: %s, Destination Node: %s, " +
+                                "Destination Computation: %s", getInstanceIdentifier(), monitoredPrefix.prefix,
+                        monitoredPrefix.destResourceCtrlEndpoint, monitoredPrefix.destComputationId));
             }
-            // unable to get the lock. Already a scale-in operation is in progress.
-            try {
-                ManagedResource.getInstance().scalingOperationComplete(getInstanceIdentifier());
-            } catch (NIException e) {
-                String errMsg = "Error retrieving the ManagedResource instance.";
-                logger.error(errMsg);
-                throw new ScalingException(errMsg, e);
-            }
+        } catch (CommunicationsException | IOException e) {
+            String errorMsg = "Error sending out Lock Request to " + monitoredPrefix.destResourceCtrlEndpoint;
+            throw handleError(errorMsg, e);
         }
+        //} else {
+        if (logger.isDebugEnabled()) {
+            logger.debug(String.format("[%s] Unable to acquire lock for prefix: %s", getInstanceIdentifier(),
+                    monitoredPrefix.prefix));
+        }
+        // unable to get the lock. Already a scale-in operation is in progress.
+        try {
+            ManagedResource.getInstance().scalingOperationComplete(getInstanceIdentifier());
+        } catch (NIException e) {
+            String errMsg = "Error retrieving the ManagedResource instance.";
+            logger.error(errMsg);
+            throw new ScalingException(errMsg, e);
+        }
+        //}
     }
 
     public synchronized void handleScaleInLockReq(ScaleInLockRequest lockReq) {
@@ -480,7 +486,7 @@ public abstract class GeoSpatialStreamProcessor extends StreamProcessor {
 
         if (!lockAvailable) {
             ScaleInLockResponse lockResp = new ScaleInLockResponse(false, lockReq.getPrefix(),
-                    lockReq.getSourceComputation());
+                    lockReq.getSourceComputation(), null);
             try {
                 SendUtility.sendControlMessage(lockReq.getOriginEndpoint(), lockReq);
             } catch (CommunicationsException | IOException e) {
@@ -530,7 +536,7 @@ public abstract class GeoSpatialStreamProcessor extends StreamProcessor {
             // breaking condition of the recursive calls.
             if (requestsSentOut.size() == 0) {
                 ScaleInLockResponse lockResp = new ScaleInLockResponse(true, prefixForLock,
-                        lockReq.getSourceComputation());
+                        lockReq.getSourceComputation(), locallyProcessedPrefixes);
                 try {
                     SendUtility.sendControlMessage(lockReq.getOriginEndpoint(), lockResp);
                     if (logger.isDebugEnabled()) {
@@ -553,6 +559,9 @@ public abstract class GeoSpatialStreamProcessor extends StreamProcessor {
             PendingScaleInRequest pendingReq = pendingScaleInRequests.get(prefix);
             pendingReq.receivedCount++;
             pendingReq.lockAcquired = pendingReq.lockAcquired & lockResponse.isSuccess();
+            if (lockResponse.getLeafPrefixes() != null) {
+                pendingReq.childLeafPrefixes.addAll(lockResponse.getLeafPrefixes());
+            }
             if (logger.isDebugEnabled()) {
                 logger.debug(String.format("[%s] Received a ScaleInLockResponse. Prefix: %s, " +
                                 "SentCount: %d, ReceivedCount: %d, Lock Acquired: %b",
@@ -567,19 +576,19 @@ public abstract class GeoSpatialStreamProcessor extends StreamProcessor {
                             MonitoredPrefix monitoredPrefix = monitoredPrefixMap.get(prefix);
                             monitoredPrefix.isPassThroughTraffic.set(false);
                             QualifiedComputationAddr reqInfo = pendingReq.sentOutRequests.get(lockedPrefix);
-                            ScaleInActivateReq scaleInActivateReq = new ScaleInActivateReq(prefix,
-                                    reqInfo.computationId, monitoredPrefix.lastMessageSent.get());
                             try {
+                                ScaleInActivateReq scaleInActivateReq = new ScaleInActivateReq(prefix,
+                                        reqInfo.computationId, monitoredPrefix.lastMessageSent.get(),
+                                        getCtrlEndpoint(), getInstanceIdentifier());
                                 SendUtility.sendControlMessage(reqInfo.ctrlEndpointAddr, scaleInActivateReq);
-                                // TODO: Removing the lock temporarily. But it should be done only when state transfer is complete.
-                                //lockedSubTrees.get().remove(prefix);
+
                                 if (logger.isDebugEnabled()) {
                                     logger.debug(String.format("[%s] Sent a ScaleInActivateReq for parent prefix: %s, " +
                                                     "child prefix: %s, To: %s -> %s, Last Message Sent: %d",
                                             getInstanceIdentifier(), prefix, lockedPrefix, reqInfo.ctrlEndpointAddr,
                                             reqInfo.computationId, monitoredPrefix.lastMessageSent.get()));
                                 }
-                            } catch (CommunicationsException | IOException e) {
+                            } catch (CommunicationsException | IOException | GranulesConfigurationException e) {
                                 logger.error("Error sending ScaleInActivationRequest to " + reqInfo.ctrlEndpointAddr, e);
                             }
                         }
@@ -602,8 +611,11 @@ public abstract class GeoSpatialStreamProcessor extends StreamProcessor {
                         //resetLocks(pendingReq.sentOutRequests.keySet());
                         mutex.unlock();
                     }
+                    List<String> leafPrefixes = new ArrayList<>();
+                    leafPrefixes.addAll(pendingReq.locallyProcessedPrefixes);
+                    leafPrefixes.addAll(pendingReq.childLeafPrefixes);
                     ScaleInLockResponse lockRespToParent = new ScaleInLockResponse(pendingReq.lockAcquired, pendingReq.prefix,
-                            pendingReq.originComputation);
+                            pendingReq.originComputation, leafPrefixes);
                     try {
                         SendUtility.sendControlMessage(pendingReq.originCtrlEndpoint, lockRespToParent);
                         if (logger.isDebugEnabled()) {
@@ -660,16 +672,16 @@ public abstract class GeoSpatialStreamProcessor extends StreamProcessor {
                 MonitoredPrefix monitoredPrefix = monitoredPrefixMap.get(prefix);
                 monitoredPrefix.isPassThroughTraffic.set(false);
                 QualifiedComputationAddr reqInfo = pendingReq.sentOutRequests.get(lockedPrefix);
-                ScaleInActivateReq scaleInActivateReq = new ScaleInActivateReq(prefix,
-                        reqInfo.computationId, monitoredPrefix.lastMessageSent.get());
                 try {
+                    ScaleInActivateReq scaleInActivateReq = new ScaleInActivateReq(prefix, reqInfo.computationId,
+                            monitoredPrefix.lastMessageSent.get(), getCtrlEndpoint(), getInstanceIdentifier());
                     SendUtility.sendControlMessage(reqInfo.ctrlEndpointAddr, scaleInActivateReq);
                     if (logger.isDebugEnabled()) {
                         logger.debug(String.format("[%s] Propagating ScaleInActivateReq to children. " +
                                         "Parent prefix: %s, Child prefix: %s, Last message processed: %d",
                                 getInstanceIdentifier(), prefix, lockedPrefix, monitoredPrefix.lastMessageSent.get()));
                     }
-                } catch (CommunicationsException | IOException e) {
+                } catch (CommunicationsException | IOException | GranulesConfigurationException e) {
                     logger.error("Error sending ScaleInActivationRequest to " + reqInfo.ctrlEndpointAddr, e);
                 }
             }
@@ -683,6 +695,26 @@ public abstract class GeoSpatialStreamProcessor extends StreamProcessor {
                 // TODO: wait it processes the last message and start migrating the state.
             }
         }
+    }
+
+    private String getCtrlEndpoint() throws GranulesConfigurationException {
+        try {
+            return getHostInetAddress().getHostName() + ":" + NeptuneRuntime.getInstance().getProperties().getProperty(
+                    Constants.DIRECT_COMM_CONTROL_PLANE_SERVER_PORT);
+        } catch (GranulesConfigurationException e) {
+            logger.error("Error when retrieving the hostname.", e);
+            throw e;
+        }
+    }
+
+    private InetAddress getHostInetAddress() {
+        InetAddress inetAddr;
+        try {
+            inetAddr = InetAddress.getLocalHost();
+        } catch (UnknownHostException e) {
+            inetAddr = InetAddress.getLoopbackAddress();
+        }
+        return inetAddr;
     }
 }
 

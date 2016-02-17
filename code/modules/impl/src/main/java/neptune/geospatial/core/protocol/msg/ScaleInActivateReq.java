@@ -18,16 +18,21 @@ public class ScaleInActivateReq extends ControlMessage {
     private String prefix;
     private String targetComputation;
     private long lastMessageSent;
+    private String originNodeOfScalingOperation;
+    private String originComputationOfScalingOperation;
 
     public ScaleInActivateReq() {
         super(ProtocolTypes.SCALE_IN_ACTIVATION_REQ);
     }
 
-    public ScaleInActivateReq(String prefix, String targetComputation, long lastMessageSent) {
+    public ScaleInActivateReq(String prefix, String targetComputation, long lastMessageSent,
+                              String originNodeOfScalingOperation, String originComputationOfScalingOperation) {
         super(ProtocolTypes.SCALE_IN_ACTIVATION_REQ);
         this.prefix = prefix;
         this.targetComputation = targetComputation;
         this.lastMessageSent = lastMessageSent;
+        this.originNodeOfScalingOperation = originNodeOfScalingOperation;
+        this.originComputationOfScalingOperation = originComputationOfScalingOperation;
     }
 
     @Override
@@ -35,6 +40,8 @@ public class ScaleInActivateReq extends ControlMessage {
         this.prefix = dis.readUTF();
         this.targetComputation = dis.readUTF();
         this.lastMessageSent = dis.readLong();
+        this.originNodeOfScalingOperation = dis.readUTF();
+        this.originComputationOfScalingOperation = dis.readUTF();
     }
 
     @Override
@@ -42,6 +49,8 @@ public class ScaleInActivateReq extends ControlMessage {
         dos.writeUTF(this.prefix);
         dos.writeUTF(this.targetComputation);
         dos.writeLong(this.lastMessageSent);
+        dos.writeUTF(this.originNodeOfScalingOperation);
+        dos.writeUTF(this.originComputationOfScalingOperation);
     }
 
     public String getPrefix() {
@@ -54,5 +63,13 @@ public class ScaleInActivateReq extends ControlMessage {
 
     public long getLastMessageSent() {
         return lastMessageSent;
+    }
+
+    public String getOriginNodeOfScalingOperation() {
+        return originNodeOfScalingOperation;
+    }
+
+    public String getOriginComputationOfScalingOperation() {
+        return originComputationOfScalingOperation;
     }
 }
