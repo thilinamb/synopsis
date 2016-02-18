@@ -18,6 +18,8 @@ public class ScaleInActivateReq extends ControlMessage {
     private String prefix;
     private String targetComputation;
     private long lastMessageSent;
+    private String lastGeoHashSent;
+    private int currentPrefixLength;
     private String originNodeOfScalingOperation;
     private String originComputationOfScalingOperation;
 
@@ -25,12 +27,14 @@ public class ScaleInActivateReq extends ControlMessage {
         super(ProtocolTypes.SCALE_IN_ACTIVATION_REQ);
     }
 
-    public ScaleInActivateReq(String prefix, String targetComputation, long lastMessageSent,
-                              String originNodeOfScalingOperation, String originComputationOfScalingOperation) {
+    public ScaleInActivateReq(String prefix, String targetComputation, long lastMessageSent, String lastGeoHashSent,
+                              int currentPrefixLength, String originNodeOfScalingOperation, String originComputationOfScalingOperation) {
         super(ProtocolTypes.SCALE_IN_ACTIVATION_REQ);
         this.prefix = prefix;
         this.targetComputation = targetComputation;
         this.lastMessageSent = lastMessageSent;
+        this.lastGeoHashSent = lastGeoHashSent;
+        this.currentPrefixLength = currentPrefixLength;
         this.originNodeOfScalingOperation = originNodeOfScalingOperation;
         this.originComputationOfScalingOperation = originComputationOfScalingOperation;
     }
@@ -40,6 +44,8 @@ public class ScaleInActivateReq extends ControlMessage {
         this.prefix = dis.readUTF();
         this.targetComputation = dis.readUTF();
         this.lastMessageSent = dis.readLong();
+        this.lastGeoHashSent = dis.readUTF();
+        this.currentPrefixLength = dis.readInt();
         this.originNodeOfScalingOperation = dis.readUTF();
         this.originComputationOfScalingOperation = dis.readUTF();
     }
@@ -49,6 +55,8 @@ public class ScaleInActivateReq extends ControlMessage {
         dos.writeUTF(this.prefix);
         dos.writeUTF(this.targetComputation);
         dos.writeLong(this.lastMessageSent);
+        dos.writeUTF(this.lastGeoHashSent);
+        dos.writeInt(this.currentPrefixLength);
         dos.writeUTF(this.originNodeOfScalingOperation);
         dos.writeUTF(this.originComputationOfScalingOperation);
     }
@@ -71,5 +79,13 @@ public class ScaleInActivateReq extends ControlMessage {
 
     public String getOriginComputationOfScalingOperation() {
         return originComputationOfScalingOperation;
+    }
+
+    public String getLastGeoHashSent() {
+        return lastGeoHashSent;
+    }
+
+    public int getCurrentPrefixLength() {
+        return currentPrefixLength;
     }
 }

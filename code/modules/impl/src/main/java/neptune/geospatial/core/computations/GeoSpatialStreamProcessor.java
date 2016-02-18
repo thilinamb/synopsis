@@ -55,6 +55,9 @@ public abstract class GeoSpatialStreamProcessor extends StreamProcessor {
         private String destComputationId;
         private String destResourceCtrlEndpoint;
         private AtomicLong lastMessageSent = new AtomicLong(0);
+        private String lastGeoHashSent;
+        private long terminationPoint = -1;
+        private ScaleInActivateReq activateReq;
 
         public MonitoredPrefix(String prefix, String streamType) {
             this.prefix = prefix;
@@ -230,8 +233,9 @@ public abstract class GeoSpatialStreamProcessor extends StreamProcessor {
             MonitoredPrefix monitoredPrefix = monitoredPrefixMap.get(prefix);
             // if there is an outgoing stream, then this should be sent to a child node.
             processLocally = !monitoredPrefix.isPassThroughTraffic.get();
+            monitoredPrefix.lastMessageSent.set(record.getMessageIdentifier());
+            monitoredPrefix.lastGeoHashSent = record.getGeoHash();
             if (!processLocally) {
-                monitoredPrefix.lastMessageSent.set(record.getMessageIdentifier());
                 record.setPrefixLength(record.getPrefixLength() + 1);
                 // send to the child node
                 if (logger.isTraceEnabled()) {
@@ -239,6 +243,9 @@ public abstract class GeoSpatialStreamProcessor extends StreamProcessor {
                             getInstanceIdentifier(), prefix, monitoredPrefix.outGoingStream));
                 }
                 writeToStream(monitoredPrefix.outGoingStream, record);
+            }
+            if (monitoredPrefix.terminationPoint == monitoredPrefix.lastMessageSent.get()) {
+                propagateScaleInActivationRequests(monitoredPrefix.activateReq);
             }
         }
         return processLocally;
@@ -281,7 +288,11 @@ public abstract class GeoSpatialStreamProcessor extends StreamProcessor {
     }
 
     private String getPrefix(GeoHashIndexedRecord record) {
-        return record.getGeoHash().substring(0, record.getPrefixLength() + 1);
+        return getPrefix(record.getGeoHash(), record.getPrefixLength());
+    }
+
+    private String getPrefix(String geohash, int prefixLength) {
+        return geohash.substring(0, prefixLength + 1);
     }
 
     private int getIndexForSubPrefix(String geohash, int prefixLength) {
@@ -579,6 +590,7 @@ public abstract class GeoSpatialStreamProcessor extends StreamProcessor {
                             try {
                                 ScaleInActivateReq scaleInActivateReq = new ScaleInActivateReq(prefix,
                                         reqInfo.computationId, monitoredPrefix.lastMessageSent.get(),
+                                        monitoredPrefix.lastGeoHashSent, monitoredPrefix.prefix.length(),
                                         getCtrlEndpoint(), getInstanceIdentifier());
                                 SendUtility.sendControlMessage(reqInfo.ctrlEndpointAddr, scaleInActivateReq);
 
@@ -658,41 +670,65 @@ public abstract class GeoSpatialStreamProcessor extends StreamProcessor {
         return new ScalingException(errorMsg, e);
     }
 
-    public void handleScaleInActivateReq(ScaleInActivateReq activationReq) {
+    public synchronized void handleScaleInActivateReq(ScaleInActivateReq activationReq) {
         String prefix = activationReq.getPrefix();
         if (!pendingScaleInRequests.containsKey(prefix)) {
             logger.warn("Invalid ScaleInActivateReq for prefix: " + prefix);
         } else {
-            PendingScaleInRequest pendingReq = pendingScaleInRequests.get(prefix);
-            if (logger.isDebugEnabled()) {
-                logger.debug(String.format("[%s] ScaleInActivateReq for prefix: %s", getInstanceIdentifier(), prefix));
+            String lastMessagePrefix = getPrefix(activationReq.getLastGeoHashSent(), activationReq.getCurrentPrefixLength());
+            MonitoredPrefix monitoredPrefix = monitoredPrefixMap.get(lastMessagePrefix);
+            if (monitoredPrefix.lastMessageSent.get() == activationReq.getLastMessageSent()) {
+                // we have already seen this message.
+                propagateScaleInActivationRequests(activationReq);
+            } else {
+                monitoredPrefix.terminationPoint = activationReq.getLastMessageSent();
+                monitoredPrefix.activateReq = activationReq;
             }
-            for (String lockedPrefix : pendingReq.sentOutRequests.keySet()) {
-                // disable pass-through
-                MonitoredPrefix monitoredPrefix = monitoredPrefixMap.get(prefix);
-                monitoredPrefix.isPassThroughTraffic.set(false);
-                QualifiedComputationAddr reqInfo = pendingReq.sentOutRequests.get(lockedPrefix);
-                try {
-                    ScaleInActivateReq scaleInActivateReq = new ScaleInActivateReq(prefix, reqInfo.computationId,
-                            monitoredPrefix.lastMessageSent.get(), getCtrlEndpoint(), getInstanceIdentifier());
-                    SendUtility.sendControlMessage(reqInfo.ctrlEndpointAddr, scaleInActivateReq);
-                    if (logger.isDebugEnabled()) {
-                        logger.debug(String.format("[%s] Propagating ScaleInActivateReq to children. " +
-                                        "Parent prefix: %s, Child prefix: %s, Last message processed: %d",
-                                getInstanceIdentifier(), prefix, lockedPrefix, monitoredPrefix.lastMessageSent.get()));
-                    }
-                } catch (CommunicationsException | IOException | GranulesConfigurationException e) {
-                    logger.error("Error sending ScaleInActivationRequest to " + reqInfo.ctrlEndpointAddr, e);
-                }
-            }
-            for (String localPrefix : pendingReq.locallyProcessedPrefixes) {
+        }
+    }
+
+    private void propagateScaleInActivationRequests(ScaleInActivateReq activationReq) {
+        String prefix = activationReq.getPrefix();
+        PendingScaleInRequest pendingReq = pendingScaleInRequests.get(prefix);
+        if (logger.isDebugEnabled()) {
+            logger.debug(String.format("[%s] Received ScaleInActivateReq for prefix: %s", getInstanceIdentifier(), prefix));
+        }
+        for (String lockedPrefix : pendingReq.sentOutRequests.keySet()) {
+            // disable pass-through
+            MonitoredPrefix monitoredPrefix = monitoredPrefixMap.get(prefix);
+            monitoredPrefix.isPassThroughTraffic.set(false);
+            QualifiedComputationAddr reqInfo = pendingReq.sentOutRequests.get(lockedPrefix);
+
+            try {
+                ScaleInActivateReq scaleInActivateReq = new ScaleInActivateReq(prefix, reqInfo.computationId,
+                        monitoredPrefix.lastMessageSent.get(),  monitoredPrefix.lastGeoHashSent, lockedPrefix.length(),
+                        activationReq.getOriginNodeOfScalingOperation(),
+                        activationReq.getOriginComputationOfScalingOperation());
+                SendUtility.sendControlMessage(reqInfo.ctrlEndpointAddr, scaleInActivateReq);
                 if (logger.isDebugEnabled()) {
-                    logger.debug(String.format("[%s] ScaleInActivationReq for locally processed prefix. " +
-                                    "Parent Prefix: %s, Child Prefix: %s, Last Processed Sent: %d",
-                            getInstanceIdentifier(), prefix, localPrefix, activationReq.getLastMessageSent()));
+                    logger.debug(String.format("[%s] Propagating ScaleInActivateReq to children. " +
+                                    "Parent prefix: %s, Child prefix: %s, Last message processed: %d",
+                            getInstanceIdentifier(), prefix, lockedPrefix, monitoredPrefix.lastMessageSent.get()));
                 }
-                scaleInOutTrigger.set(0);
-                // TODO: wait it processes the last message and start migrating the state.
+            } catch (CommunicationsException | IOException e) {
+                logger.error("Error sending ScaleInActivationRequest to " + reqInfo.ctrlEndpointAddr, e);
+            }
+        }
+        for (String localPrefix : pendingReq.locallyProcessedPrefixes) {
+            if (logger.isDebugEnabled()) {
+                logger.debug(String.format("[%s] ScaleInActivationReq for locally processed prefix. " +
+                                "Parent Prefix: %s, Child Prefix: %s, Last Processed Sent: %d",
+                        getInstanceIdentifier(), prefix, localPrefix, activationReq.getLastMessageSent()));
+            }
+            scaleInOutTrigger.set(0);
+            byte[] state = split(localPrefix);
+            StateTransferMsg stateTransMsg = new StateTransferMsg(localPrefix, state,
+                    activationReq.getOriginComputationOfScalingOperation());
+            try {
+                SendUtility.sendControlMessage(activationReq.getOriginNodeOfScalingOperation(), stateTransMsg);
+            } catch (CommunicationsException | IOException e) {
+                logger.error("Error when sending out the StateTransfer message to " +
+                        activationReq.getOriginNodeOfScalingOperation());
             }
         }
     }
@@ -716,6 +752,10 @@ public abstract class GeoSpatialStreamProcessor extends StreamProcessor {
         }
         return inetAddr;
     }
+
+    public abstract byte[] split(String prefix);
+
+    public abstract void merge(String prefix, byte[] serializedSketch);
 }
 
 

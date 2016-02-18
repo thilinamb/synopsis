@@ -47,6 +47,9 @@ public class ProtocolFactory {
                 case ProtocolTypes.SCALE_IN_ACTIVATION_REQ:
                     message = new ScaleInActivateReq();
                     break;
+                case ProtocolTypes.STATE_TRANSFER_MSG:
+                    message = new StateTransferMsg();
+                    break;
                 default:
                     String errorMsg = "Unsupported message type: " + messageType;
                     throw new ProtocolException(errorMsg);
