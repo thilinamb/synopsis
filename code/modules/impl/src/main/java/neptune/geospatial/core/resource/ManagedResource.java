@@ -283,4 +283,13 @@ public class ManagedResource {
             logger.warn("Invalid StateTransferMsg to " + computationId);
         }
     }
+
+    public void handleScaleInCompleteMsg(ScaleInComplete completeMsg){
+        String computationId = completeMsg.getTargetComputation();
+        if(monitoredProcessors.containsKey(computationId)){
+            monitoredProcessors.get(computationId).computation.handleScaleInCompleteMsg(completeMsg);
+        } else {
+            logger.warn("Invalid ScaleInComplete msg to " + computationId);
+        }
+    }
 }

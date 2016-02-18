@@ -60,6 +60,14 @@ public class ResourceProtocolHandler extends AbstractProtocolHandler {
                     logger.debug("Received a StateTransferMessage for " + stateTransferMsg.getTargetComputation());
                 }
                 managedResource.handleStateTransferMsg(stateTransferMsg);
+                break;
+            case ProtocolTypes.SCALE_IN_COMPLETE:
+                ScaleInComplete completeMsg = (ScaleInComplete) ctrlMsg;
+                if (logger.isDebugEnabled()) {
+                    logger.debug("Received a ScaleInComplete for " + completeMsg.getTargetComputation());
+                }
+                managedResource.handleScaleInCompleteMsg(completeMsg);
+                break;
             default:
                 logger.warn("Unsupported message type: " + type);
         }

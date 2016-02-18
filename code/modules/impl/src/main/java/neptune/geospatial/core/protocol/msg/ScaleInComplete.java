@@ -16,27 +16,35 @@ import java.io.IOException;
 public class ScaleInComplete extends ControlMessage {
 
     private String prefix;
+    private String targetComputation;
 
-    public ScaleInComplete(int messageType) {
+    public ScaleInComplete() {
         super(ProtocolTypes.SCALE_IN_COMPLETE);
     }
 
-    public ScaleInComplete(String prefix) {
+    public ScaleInComplete(String prefix, String targetComputation) {
         super(ProtocolTypes.SCALE_IN_COMPLETE);
         this.prefix = prefix;
+        this.targetComputation = targetComputation;
     }
 
     @Override
     public void readValues(DataInputStream dis) throws IOException {
         this.prefix = dis.readUTF();
+        this.targetComputation = dis.readUTF();
     }
 
     @Override
     public void writeValues(DataOutputStream dos) throws IOException {
         dos.writeUTF(this.prefix);
+        dos.writeUTF(this.targetComputation);
     }
 
     public String getPrefix() {
         return prefix;
+    }
+
+    public String getTargetComputation() {
+        return targetComputation;
     }
 }

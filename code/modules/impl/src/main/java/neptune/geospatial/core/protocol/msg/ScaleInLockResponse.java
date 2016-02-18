@@ -1,6 +1,5 @@
 package neptune.geospatial.core.protocol.msg;
 
-import com.sun.istack.internal.Nullable;
 import ds.granules.communication.direct.control.ControlMessage;
 import neptune.geospatial.core.protocol.ProtocolTypes;
 
@@ -75,7 +74,6 @@ public class ScaleInLockResponse extends ControlMessage {
         return computation;
     }
 
-    @Nullable
     public List<String> getLeafPrefixes() {
         return leafPrefixes;
     }

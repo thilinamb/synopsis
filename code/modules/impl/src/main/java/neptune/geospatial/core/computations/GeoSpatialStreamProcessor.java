@@ -695,18 +695,36 @@ public abstract class GeoSpatialStreamProcessor extends StreamProcessor {
             merge(stateTransferMsg.getPrefix(), stateTransferMsg.getSerializedData());
             if (pendingReq.childLeafPrefixes.isEmpty()) {
                 // initiate the scale-in complete request.
-                ScaleInComplete scaleInComplete = new ScaleInComplete(stateTransferMsg.getKeyPrefix());
                 for (Map.Entry<String, QualifiedComputationAddr> participant : pendingReq.sentOutRequests.entrySet()) {
+                    ScaleInComplete scaleInComplete = new ScaleInComplete(stateTransferMsg.getKeyPrefix(),
+                            participant.getValue().computationId);
                     try {
                         SendUtility.sendControlMessage(participant.getValue().ctrlEndpointAddr, scaleInComplete);
                     } catch (CommunicationsException | IOException e) {
-                        logger.error("Error sending out ScaleInComplte to " + participant.getValue().ctrlEndpointAddr, e);
+                        logger.error("Error sending out ScaleInComplete to " + participant.getValue().ctrlEndpointAddr, e);
                     }
                 }
+                pendingScaleInRequests.remove(stateTransferMsg.getKeyPrefix());
+                mutex.unlock();
             }
         } else {
             // TODO: In case of scale out.
         }
+    }
+
+    public synchronized void handleScaleInCompleteMsg(ScaleInComplete scaleInCompleteMsg) {
+        PendingScaleInRequest pendingReq = pendingScaleInRequests.get(scaleInCompleteMsg.getPrefix());
+        for (Map.Entry<String, QualifiedComputationAddr> participant : pendingReq.sentOutRequests.entrySet()) {
+            try {
+                ScaleInComplete scaleInComplete = new ScaleInComplete(scaleInCompleteMsg.getPrefix(),
+                        participant.getValue().computationId);
+                SendUtility.sendControlMessage(participant.getValue().ctrlEndpointAddr, scaleInComplete);
+            } catch (CommunicationsException | IOException e) {
+                logger.error("Error sending out ScaleInComplete to " + participant.getValue().ctrlEndpointAddr, e);
+            }
+        }
+        pendingScaleInRequests.remove(scaleInCompleteMsg.getPrefix());
+        mutex.unlock();
     }
 
     private void propagateScaleInActivationRequests(ScaleInActivateReq activationReq) {

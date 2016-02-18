@@ -22,4 +22,14 @@ public class RecordCounter extends GeoSpatialStreamProcessor {
             logger.info(String.format("[%s] Record received. Counter: %d", getInstanceIdentifier(), counter));
         }
     }
+
+    @Override
+    public byte[] split(String prefix) {
+        return new byte[0];
+    }
+
+    @Override
+    public void merge(String prefix, byte[] serializedSketch) {
+
+    }
 }
