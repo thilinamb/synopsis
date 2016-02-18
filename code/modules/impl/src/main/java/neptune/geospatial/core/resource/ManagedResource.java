@@ -14,10 +14,7 @@ import ds.granules.util.ParamsReader;
 import neptune.geospatial.core.computations.GeoSpatialStreamProcessor;
 import neptune.geospatial.core.computations.ScalingException;
 import neptune.geospatial.core.protocol.AbstractProtocolHandler;
-import neptune.geospatial.core.protocol.msg.ScaleInActivateReq;
-import neptune.geospatial.core.protocol.msg.ScaleInLockRequest;
-import neptune.geospatial.core.protocol.msg.ScaleInLockResponse;
-import neptune.geospatial.core.protocol.msg.ScaleOutResponse;
+import neptune.geospatial.core.protocol.msg.*;
 import org.apache.log4j.Logger;
 
 import java.io.File;
@@ -275,6 +272,15 @@ public class ManagedResource {
             monitoredProcessors.get(computationId).computation.handleScaleInActivateReq(activateReq);
         } else {
             logger.warn("Invalid ScaleInLockReq for computation: " + computationId);
+        }
+    }
+
+    public void handleStateTransferMsg(StateTransferMsg stateTransferMsg){
+        String computationId = stateTransferMsg.getTargetComputation();
+        if(monitoredProcessors.containsKey(computationId)){
+            monitoredProcessors.get(computationId).computation.handleStateTransferReq(stateTransferMsg);
+        } else {
+            logger.warn("Invalid StateTransferMsg to " + computationId);
         }
     }
 }

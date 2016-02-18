@@ -687,6 +687,28 @@ public abstract class GeoSpatialStreamProcessor extends StreamProcessor {
         }
     }
 
+    public synchronized void handleStateTransferReq(StateTransferMsg stateTransferMsg) {
+        boolean scaleType = stateTransferMsg.isScaleType();
+        if (scaleType) { // scale-in
+            PendingScaleInRequest pendingReq = pendingScaleInRequests.get(stateTransferMsg.getKeyPrefix());
+            pendingReq.childLeafPrefixes.remove(stateTransferMsg.getPrefix());
+            merge(stateTransferMsg.getPrefix(), stateTransferMsg.getSerializedData());
+            if (pendingReq.childLeafPrefixes.isEmpty()) {
+                // initiate the scale-in complete request.
+                ScaleInComplete scaleInComplete = new ScaleInComplete(stateTransferMsg.getKeyPrefix());
+                for (Map.Entry<String, QualifiedComputationAddr> participant : pendingReq.sentOutRequests.entrySet()) {
+                    try {
+                        SendUtility.sendControlMessage(participant.getValue().ctrlEndpointAddr, scaleInComplete);
+                    } catch (CommunicationsException | IOException e) {
+                        logger.error("Error sending out ScaleInComplte to " + participant.getValue().ctrlEndpointAddr, e);
+                    }
+                }
+            }
+        } else {
+            // TODO: In case of scale out.
+        }
+    }
+
     private void propagateScaleInActivationRequests(ScaleInActivateReq activationReq) {
         String prefix = activationReq.getPrefix();
         PendingScaleInRequest pendingReq = pendingScaleInRequests.get(prefix);
@@ -701,7 +723,7 @@ public abstract class GeoSpatialStreamProcessor extends StreamProcessor {
 
             try {
                 ScaleInActivateReq scaleInActivateReq = new ScaleInActivateReq(prefix, reqInfo.computationId,
-                        monitoredPrefix.lastMessageSent.get(),  monitoredPrefix.lastGeoHashSent, lockedPrefix.length(),
+                        monitoredPrefix.lastMessageSent.get(), monitoredPrefix.lastGeoHashSent, lockedPrefix.length(),
                         activationReq.getOriginNodeOfScalingOperation(),
                         activationReq.getOriginComputationOfScalingOperation());
                 SendUtility.sendControlMessage(reqInfo.ctrlEndpointAddr, scaleInActivateReq);
@@ -722,8 +744,8 @@ public abstract class GeoSpatialStreamProcessor extends StreamProcessor {
             }
             scaleInOutTrigger.set(0);
             byte[] state = split(localPrefix);
-            StateTransferMsg stateTransMsg = new StateTransferMsg(localPrefix, state,
-                    activationReq.getOriginComputationOfScalingOperation());
+            StateTransferMsg stateTransMsg = new StateTransferMsg(localPrefix, prefix, state,
+                    activationReq.getOriginComputationOfScalingOperation(), StateTransferMsg.SCALE_IN);
             try {
                 SendUtility.sendControlMessage(activationReq.getOriginNodeOfScalingOperation(), stateTransMsg);
             } catch (CommunicationsException | IOException e) {

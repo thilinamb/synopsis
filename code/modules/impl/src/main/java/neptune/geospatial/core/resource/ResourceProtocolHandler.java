@@ -3,10 +3,7 @@ package neptune.geospatial.core.resource;
 import ds.granules.communication.direct.control.ControlMessage;
 import neptune.geospatial.core.protocol.AbstractProtocolHandler;
 import neptune.geospatial.core.protocol.ProtocolTypes;
-import neptune.geospatial.core.protocol.msg.ScaleInActivateReq;
-import neptune.geospatial.core.protocol.msg.ScaleInLockRequest;
-import neptune.geospatial.core.protocol.msg.ScaleInLockResponse;
-import neptune.geospatial.core.protocol.msg.ScaleOutResponse;
+import neptune.geospatial.core.protocol.msg.*;
 import org.apache.log4j.Logger;
 
 /**
@@ -57,6 +54,12 @@ public class ResourceProtocolHandler extends AbstractProtocolHandler {
                 }
                 managedResource.handleScaleInActivateReq(activateReq);
                 break;
+            case ProtocolTypes.STATE_TRANSFER_MSG:
+                StateTransferMsg stateTransferMsg = (StateTransferMsg) ctrlMsg;
+                if (logger.isDebugEnabled()) {
+                    logger.debug("Received a StateTransferMessage for " + stateTransferMsg.getTargetComputation());
+                }
+                managedResource.handleStateTransferMsg(stateTransferMsg);
             default:
                 logger.warn("Unsupported message type: " + type);
         }
