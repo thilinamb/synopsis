@@ -1,0 +1,51 @@
+\section{Methodology}
+\label{sec:methodology}
+
+\subsection{Construction of the Sketch}
+Metadata extraction and organization
+
+Fine-grained/coarse-grained representations
+
+Dynamic reorientations of the graph
+
+Representativeness across time intervals
+
+\subsection{Coping with High Data Rates: Scaling out}
+\input{sections/geohash} % This needs to be moved as we get the paper structure finalized
+
+\subsection{Downscaling}
+
+\subsection{Query Evaluations}
+Accounting for data arrival rates, accuracy requirements, memory pressures, and the capacity of network links result in dynamic upscaling and downscaling of nodes that comprise Rivulet. The result of these scaling operations is a distributed sketch, with constituent nodes holding compact representations of observational data from different geographic locations. 
+
+Information about nodes that comprise the Rivulet sketch is maintained as a prefix tree at each node. Addition and removal of nodes comprising the distributed sketch due to scaling maneuvers are propagated through the system and the prefix trees updated. Information within the prefix trees is designed to be eventually consistent.  Alongside each vertex in this prefix tree, we maintain information about the spatiotemporal scope/range and the set of features available at the node.  
+
+Rivulet incorporates support for discrete and continuous queries specified by users. Queries specified by a user are evaluated over the distributed sketch. Depending on the spatial scopes that may be implicitly or explicitly specified within these queries, query evaluations will be performed on one or more nodes comprising the distributed sketch. 
+
+The entry point for these queries may be any of the nodes comprising the distributed sketch – we refer to this node as the conduit for the particular query.  During query evaluations, a first step is to identify the set of Rivulet nodes that must be targeted for query evaluations. The conduit node consults its prefix tree to identify nodes to contact based on the spatial, chronological, and particular features implied in the query. Conduit nodes are responsible for forwarding queries to the relevant nodes comprising the distributed sketch where the query must be evaluated.  The conduit node also responds to the client with the list of nodes that will be responding to the query. 
+
+Results from query evaluations performed over the distributed sketch are streamed back to the client.  Precisely what is streamed depends on the nature of the query.  For example, if a client is interested in retrieving average temperatures in Colorado for July 2015 and if there are multiple nodes (within Rivulet) that hold relevant portions of this data; then the query must be forwarded to all these nodes. The results returned from each of these nodes would include <temperature, frequency> tuples that would then be combined at the client side to compute the final average temperature.
+
+Alternatively, Rivulet nodes participating in the query evaluations will return vertices and edges (from their internal sketches) that satisfied the specified query constraints. The vertices and edges will be restricted to those pertinent to the query. For example, if a query targets a particular feature (say humidity) then vertices/edges relating to other features not targeted by the query will be pruned and not returned.  Spatiotemporal features are exempt from this constraint. As vertices and edges are streamed back to the client from multiple nodes comprising Rivulet, these are organized into a graph that is then used to return the final results. 
+
+The prefix tree also allows query evaluations during both upscaling and downscaling operations. During query evaluations, queries are forwarded to child nodes (created during a recent upscaling operation). When the conduit forwards a query to a Rivulet node and the node is unavailable, it is either due to a failure at that node or a downscaling operation that merges the child node with its parent node. When a node is unreachable, the conduit forwards the query to the parent node. 
+
+
+\subsection{Correlation/statistical queries supported over Rivulet}
+
+\subsection{Kernel Density estimation queries?}
+
+\subsection{Membership (Bloom Filters)}
+
+\subsection{HyperLogLog: probabilistic estimator for approximating the cardinality of a dataset}
+
+\subsection{Count-Min: approximate frequencies of repeated elements within a dataset}
+
+\subsection{Forecasting Queries}
+Queries that we have discussed so far report on what has happened; a forecasting query requests information about what will happen.
+
+\subsection{Support for High throughput Query Evaluations}
+
+\subsection{Coping with Failures in Rivulet}
+
+
