@@ -23,11 +23,11 @@ import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.text.DecimalFormat;
 import java.util.*;
+import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * Stream processor specialized for geo-spatial data processing.
@@ -166,7 +166,7 @@ public abstract class GeoSpatialStreamProcessor extends StreamProcessor {
     private Map<String, PendingScaleInRequest> pendingScaleInRequests = new HashMap<>();
 
     // mutex to ensure only a single scale in/out operations takes place at a given time
-    private ReentrantLock mutex = new ReentrantLock();
+    private final Semaphore mutex = new Semaphore(1);
 
     // temporary counter to test scale-in and out.
     private AtomicLong scaleInOutTrigger = new AtomicLong(0);
@@ -312,9 +312,9 @@ public abstract class GeoSpatialStreamProcessor extends StreamProcessor {
      * triggered.
      * @throws ScalingException Error when initiating scaling.
      */
-    public synchronized boolean recommendScaling(double excess) throws ScalingException {
+    public synchronized boolean recommendScaling(double excess) {
         // try to get the lock first
-        if (!mutex.tryLock()) {
+        if (!mutex.tryAcquire()) {
             if (logger.isDebugEnabled()) {
                 logger.debug(String.format("[%s] Unable to acquire the mutex for scale in/out operation. Excess: %.3f",
                         getInstanceIdentifier(), excess));
@@ -326,55 +326,63 @@ public abstract class GeoSpatialStreamProcessor extends StreamProcessor {
             logger.debug(String.format("[%s] Successfully acquired the mutex for scale in/out operation. Excess: %.3f",
                     getInstanceIdentifier(), excess));
         }
-        // in the case of scaling out
-        if (excess > 0) {
-            List<String> prefixesForScalingOut = new ArrayList<>();
-            double cumulSumOfPrefixes = 0;
-            Iterator<MonitoredPrefix> itr = monitoredPrefixes.iterator();
-            while (itr.hasNext() && cumulSumOfPrefixes < excess) {
-                MonitoredPrefix monitoredPrefix = itr.next();
-                if (!monitoredPrefix.isPassThroughTraffic.get() && monitoredPrefix.messageRate > 0) {
-                    prefixesForScalingOut.add(monitoredPrefix.prefix);
-                    // let's consider the number of messages accumulated over 2s.
-                    cumulSumOfPrefixes += monitoredPrefix.messageRate * 2;
+        try {
+            // in the case of scaling out
+            if (excess > 0) {
+                List<String> prefixesForScalingOut = new ArrayList<>();
+                double cumulSumOfPrefixes = 0;
+                Iterator<MonitoredPrefix> itr = monitoredPrefixes.iterator();
+                while (itr.hasNext() && cumulSumOfPrefixes < excess) {
+                    MonitoredPrefix monitoredPrefix = itr.next();
+                    if (!monitoredPrefix.isPassThroughTraffic.get() && monitoredPrefix.messageRate > 0) {
+                        prefixesForScalingOut.add(monitoredPrefix.prefix);
+                        // let's consider the number of messages accumulated over 2s.
+                        cumulSumOfPrefixes += monitoredPrefix.messageRate * 2;
+                    }
+                }
+                if (logger.isDebugEnabled()) {
+                    StringBuilder stringBuilder = new StringBuilder();
+                    for (String prefix : prefixesForScalingOut) {
+                        stringBuilder.append(prefix).append("(").append(monitoredPrefixMap.get(prefix).messageRate).
+                                append("), ");
+                    }
+                    logger.debug(String.format("[%s] Scale Out recommendation. Excess: %.3f, Chosen Prefixes: %s",
+                            getInstanceIdentifier(), excess, stringBuilder.toString()));
+                }
+                if (!prefixesForScalingOut.isEmpty()) {
+                    // We assume we use the same message type throughout the graph.
+                    String streamType = monitoredPrefixMap.get(prefixesForScalingOut.get(0)).streamType;
+                    initiateScaleOut(prefixesForScalingOut, streamType);
+                    return true;
+                } else {
+                    // we couldn't find any suitable prefixes
+                    mutex.release();
+                    return false;
+                }
+            } else {    // in the case of scaling down
+                // find the prefixes with the lowest input rates that are pass-through traffic
+                Iterator<MonitoredPrefix> itr = monitoredPrefixes.iterator();
+                MonitoredPrefix chosenToScaleIn = null;
+                while (itr.hasNext()) {
+                    MonitoredPrefix monitoredPrefix = itr.next();
+                    if (monitoredPrefix.isPassThroughTraffic.get()) {
+                        // FIXME: Scale in just one computation, just to make sure protocol works
+                        chosenToScaleIn = monitoredPrefix;
+                        break;
+                    }
+                }
+                if (chosenToScaleIn != null) {
+                    initiateScaleIn(chosenToScaleIn);
+                    return true;
+                } else {
+                    mutex.release();
+                    return false;
                 }
             }
-            if (logger.isDebugEnabled()) {
-                StringBuilder stringBuilder = new StringBuilder();
-                for (String prefix : prefixesForScalingOut) {
-                    stringBuilder.append(prefix).append("(").append(monitoredPrefixMap.get(prefix).messageRate).
-                            append("), ");
-                }
-                logger.debug(String.format("[%s] Scale Out recommendation. Excess: %.3f, Chosen Prefixes: %s",
-                        getInstanceIdentifier(), excess, stringBuilder.toString()));
-            }
-            if (!prefixesForScalingOut.isEmpty()) {
-                // We assume we use the same message type throughout the graph.
-                String streamType = monitoredPrefixMap.get(prefixesForScalingOut.get(0)).streamType;
-                initiateScaleOut(prefixesForScalingOut, streamType);
-                return true;
-            } else {
-                // we couldn't find any suitable prefixes
-                return false;
-            }
-        } else {    // in the case of scaling down
-            // find the prefixes with the lowest input rates that are pass-through traffic
-            Iterator<MonitoredPrefix> itr = monitoredPrefixes.iterator();
-            MonitoredPrefix chosenToScaleIn = null;
-            while (itr.hasNext()) {
-                MonitoredPrefix monitoredPrefix = itr.next();
-                if (monitoredPrefix.isPassThroughTraffic.get()) {
-                    // FIXME: Scale in just one computation, just to make sure protocol works
-                    chosenToScaleIn = monitoredPrefix;
-                    break;
-                }
-            }
-            if (chosenToScaleIn != null) {
-                initiateScaleIn(chosenToScaleIn);
-                return true;
-            } else {
-                return false;
-            }
+        } catch (Throwable e) { // Defending against any runtime exception.
+            logger.error("Scaling Error.", e);
+            mutex.release();
+            return false;
         }
     }
 
@@ -416,18 +424,17 @@ public abstract class GeoSpatialStreamProcessor extends StreamProcessor {
                     logger.debug(String.format("[%s] New Pass-Thru Prefix. Prefix: %s, Outgoing Stream: %s",
                             getInstanceIdentifier(), prefix, pendingReq.streamId));
                 }
+                // TODO: Initiate state transfer
             }
-
             try {
                 if (logger.isDebugEnabled()) {
                     logger.debug(String.format("[%s] Scaling out complete for now.", getInstanceIdentifier()));
                 }
-                mutex.unlock();
+                mutex.release();
                 ManagedResource.getInstance().scalingOperationComplete(this.getInstanceIdentifier());
             } catch (NIException ignore) {
 
             }
-
         } else {
             logger.warn("Invalid trigger ack for the prefix. Request Id: " + ack.getInResponseTo());
         }
@@ -435,7 +442,7 @@ public abstract class GeoSpatialStreamProcessor extends StreamProcessor {
 
     private void initiateScaleIn(MonitoredPrefix monitoredPrefix) throws ScalingException {
         // first check if the sub-tree is locked. This is possibly due to a request from the parent.
-        boolean locked = true;
+        //boolean locked = true;
         /*for (String lockedPrefix : lockedSubTrees.get()) {
             if (monitoredPrefix.prefix.startsWith(lockedPrefix)) {
                 locked = true;
@@ -464,7 +471,7 @@ public abstract class GeoSpatialStreamProcessor extends StreamProcessor {
             String errorMsg = "Error sending out Lock Request to " + monitoredPrefix.destResourceCtrlEndpoint;
             throw handleError(errorMsg, e);
         }
-        //} else {
+        /*} else {
         if (logger.isDebugEnabled()) {
             logger.debug(String.format("[%s] Unable to acquire lock for prefix: %s", getInstanceIdentifier(),
                     monitoredPrefix.prefix));
@@ -477,12 +484,12 @@ public abstract class GeoSpatialStreamProcessor extends StreamProcessor {
             logger.error(errMsg);
             throw new ScalingException(errMsg, e);
         }
-        //}
+        }*/
     }
 
     public synchronized void handleScaleInLockReq(ScaleInLockRequest lockReq) {
         String prefixForLock = lockReq.getPrefix();
-        boolean lockAvailable = mutex.tryLock();
+        boolean lockAvailable = mutex.tryAcquire();
         /*for (String lockedPrefix : lockedSubTrees.get()) {
             if (lockedPrefix.startsWith(prefixForLock)) {
                 // we have already locked the subtree
@@ -596,9 +603,10 @@ public abstract class GeoSpatialStreamProcessor extends StreamProcessor {
 
                                 if (logger.isDebugEnabled()) {
                                     logger.debug(String.format("[%s] Sent a ScaleInActivateReq for parent prefix: %s, " +
-                                                    "child prefix: %s, To: %s -> %s, Last Message Sent: %d",
+                                                    "child prefix: %s, To: %s -> %s, Last Message Sent: %d, Geohash: %s",
                                             getInstanceIdentifier(), prefix, lockedPrefix, reqInfo.ctrlEndpointAddr,
-                                            reqInfo.computationId, monitoredPrefix.lastMessageSent.get()));
+                                            reqInfo.computationId, monitoredPrefix.lastMessageSent.get(),
+                                            monitoredPrefix.lastGeoHashSent));
                                 }
                             } catch (CommunicationsException | IOException | GranulesConfigurationException e) {
                                 logger.error("Error sending ScaleInActivationRequest to " + reqInfo.ctrlEndpointAddr, e);
@@ -610,8 +618,7 @@ public abstract class GeoSpatialStreamProcessor extends StreamProcessor {
                                     getInstanceIdentifier(), prefix));
                         }
                         // haven't been able to acquire all the locks. Reset the locks.
-                        //resetLocks(pendingReq.sentOutRequests.keySet());
-                        mutex.unlock();
+                        completeScaleIn(prefix, pendingReq);
                     }
                 } else { // send the parent the status
                     if (!pendingReq.lockAcquired) {
@@ -619,9 +626,6 @@ public abstract class GeoSpatialStreamProcessor extends StreamProcessor {
                             logger.debug(String.format("[%s] Failed to acquire lock for prefix %s. Resetting locks.",
                                     getInstanceIdentifier(), prefix));
                         }
-                        // some of the child locks were not granted. Reset.
-                        //resetLocks(pendingReq.sentOutRequests.keySet());
-                        mutex.unlock();
                     }
                     List<String> leafPrefixes = new ArrayList<>();
                     leafPrefixes.addAll(pendingReq.locallyProcessedPrefixes);
@@ -639,12 +643,6 @@ public abstract class GeoSpatialStreamProcessor extends StreamProcessor {
                     }
                 }
             }
-        }
-    }
-
-    private void resetLocks(Set<String> lockedPrefixes) {
-        for (String lockedPref : lockedPrefixes) {
-            lockedSubTrees.get().remove(lockedPref);
         }
     }
 
@@ -693,22 +691,38 @@ public abstract class GeoSpatialStreamProcessor extends StreamProcessor {
             PendingScaleInRequest pendingReq = pendingScaleInRequests.get(stateTransferMsg.getKeyPrefix());
             pendingReq.childLeafPrefixes.remove(stateTransferMsg.getPrefix());
             merge(stateTransferMsg.getPrefix(), stateTransferMsg.getSerializedData());
+            if (logger.isDebugEnabled()) {
+                logger.debug(String.format("[%s]Received a StateTransferMsg. Prefix: %s, Key Prefix: %s, Remaining: %d",
+                        getInstanceIdentifier(), stateTransferMsg.getPrefix(), stateTransferMsg.getKeyPrefix(),
+                        pendingReq.childLeafPrefixes.size()));
+            }
             if (pendingReq.childLeafPrefixes.isEmpty()) {
-                // initiate the scale-in complete request.
-                for (Map.Entry<String, QualifiedComputationAddr> participant : pendingReq.sentOutRequests.entrySet()) {
-                    ScaleInComplete scaleInComplete = new ScaleInComplete(stateTransferMsg.getKeyPrefix(),
-                            participant.getValue().computationId);
-                    try {
-                        SendUtility.sendControlMessage(participant.getValue().ctrlEndpointAddr, scaleInComplete);
-                    } catch (CommunicationsException | IOException e) {
-                        logger.error("Error sending out ScaleInComplete to " + participant.getValue().ctrlEndpointAddr, e);
-                    }
-                }
-                pendingScaleInRequests.remove(stateTransferMsg.getKeyPrefix());
-                mutex.unlock();
+                completeScaleIn(stateTransferMsg.getKeyPrefix(), pendingReq);
             }
         } else {
             // TODO: In case of scale out.
+        }
+    }
+
+    private void completeScaleIn(String prefix, PendingScaleInRequest pendingReq) {
+        // initiate the scale-in complete request.
+        for (Map.Entry<String, QualifiedComputationAddr> participant : pendingReq.sentOutRequests.entrySet()) {
+            ScaleInComplete scaleInComplete = new ScaleInComplete(prefix, participant.getValue().computationId);
+            try {
+                SendUtility.sendControlMessage(participant.getValue().ctrlEndpointAddr, scaleInComplete);
+                if (logger.isDebugEnabled()) {
+                    logger.debug(String.format("[%s] Received all StateTransferMsgs. " +
+                                    "Initiating ProtocolEnd message flow. Prefix: %s",
+                            getInstanceIdentifier(), prefix));
+                }
+            } catch (CommunicationsException | IOException e) {
+                logger.error("Error sending out ScaleInComplete to " + participant.getValue().ctrlEndpointAddr, e);
+            }
+        }
+        pendingScaleInRequests.remove(prefix);
+        mutex.release();
+        if (logger.isDebugEnabled()) {
+            logger.debug(String.format("[%s] Unlocking the mutex at node.", getInstanceIdentifier()));
         }
     }
 
@@ -719,12 +733,20 @@ public abstract class GeoSpatialStreamProcessor extends StreamProcessor {
                 ScaleInComplete scaleInComplete = new ScaleInComplete(scaleInCompleteMsg.getPrefix(),
                         participant.getValue().computationId);
                 SendUtility.sendControlMessage(participant.getValue().ctrlEndpointAddr, scaleInComplete);
+                if (logger.isDebugEnabled()) {
+                    logger.debug(String.format("[%s] Forwarding the ScaleInComplete message to child nodes. " +
+                                    "Key Prefix: %s, Child Prefix: %s", getInstanceIdentifier(),
+                            scaleInCompleteMsg.getPrefix(), participant.getKey()));
+                }
             } catch (CommunicationsException | IOException e) {
                 logger.error("Error sending out ScaleInComplete to " + participant.getValue().ctrlEndpointAddr, e);
             }
         }
         pendingScaleInRequests.remove(scaleInCompleteMsg.getPrefix());
-        mutex.unlock();
+        mutex.release();
+        if (logger.isDebugEnabled()) {
+            logger.debug(String.format("[%s] Unlocking the mutex at node.", getInstanceIdentifier()));
+        }
     }
 
     private void propagateScaleInActivationRequests(ScaleInActivateReq activationReq) {
@@ -760,12 +782,18 @@ public abstract class GeoSpatialStreamProcessor extends StreamProcessor {
                                 "Parent Prefix: %s, Child Prefix: %s, Last Processed Sent: %d",
                         getInstanceIdentifier(), prefix, localPrefix, activationReq.getLastMessageSent()));
             }
+            // FIXME: related to temp. scale in/out triggering code
             scaleInOutTrigger.set(0);
+            // get the state for the prefix in the serialized form
             byte[] state = split(localPrefix);
             StateTransferMsg stateTransMsg = new StateTransferMsg(localPrefix, prefix, state,
                     activationReq.getOriginComputationOfScalingOperation(), StateTransferMsg.SCALE_IN);
             try {
                 SendUtility.sendControlMessage(activationReq.getOriginNodeOfScalingOperation(), stateTransMsg);
+                if (logger.isDebugEnabled()) {
+                    logger.debug(String.format("[%s] StateTransfer for local prefix: %s. Key prefix: %s.",
+                            getInstanceIdentifier(), localPrefix, prefix));
+                }
             } catch (CommunicationsException | IOException e) {
                 logger.error("Error when sending out the StateTransfer message to " +
                         activationReq.getOriginNodeOfScalingOperation());
