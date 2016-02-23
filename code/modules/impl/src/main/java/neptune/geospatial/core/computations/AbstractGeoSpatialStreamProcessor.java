@@ -714,11 +714,7 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
                 logger.error("Error sending out ScaleInComplete to " + participant.getValue().ctrlEndpointAddr, e);
             }
         }
-        pendingScaleInRequests.remove(prefix);
-        mutex.release();
-        if (logger.isDebugEnabled()) {
-            logger.debug(String.format("[%s] Unlocking the mutex at node.", getInstanceIdentifier()));
-        }
+        pendingReq.receivedCount = 0;
     }
 
     public synchronized void handleScaleInCompleteMsg(ScaleInComplete scaleInCompleteMsg) {
@@ -765,14 +761,21 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
                         pendingReq.sentCount, pendingReq.receivedCount));
             }
             if (pendingReq.receivedCount == pendingReq.sentCount) {
-                ScaleInCompleteAck ackToParent = new ScaleInCompleteAck(ack.getPrefix(), pendingReq.originComputation);
-                try {
-                    SendUtility.sendControlMessage(pendingReq.originCtrlEndpoint, ackToParent);
-                } catch (CommunicationsException | IOException e) {
-                    logger.error("Error sending out a ScaleInCompleteAck to " + pendingReq.originCtrlEndpoint);
+                if (!pendingReq.initiatedLocally) {
+                    ScaleInCompleteAck ackToParent = new ScaleInCompleteAck(ack.getPrefix(), pendingReq.originComputation);
+                    try {
+                        SendUtility.sendControlMessage(pendingReq.originCtrlEndpoint, ackToParent);
+                    } catch (CommunicationsException | IOException e) {
+                        logger.error("Error sending out a ScaleInCompleteAck to " + pendingReq.originCtrlEndpoint);
+                    }
                 }
                 pendingScaleInRequests.remove(ack.getPrefix());
                 mutex.release();
+                try {
+                    ManagedResource.getInstance().scalingOperationComplete(this.getInstanceIdentifier());
+                } catch (NIException ignore) {
+
+                }
                 if (logger.isDebugEnabled()) {
                     logger.debug(String.format("[%s] Received all child ScaleInCompleteAcks. Acknowledging parent.",
                             getInstanceIdentifier()));
