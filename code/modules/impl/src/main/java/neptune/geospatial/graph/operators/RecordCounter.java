@@ -1,6 +1,6 @@
 package neptune.geospatial.graph.operators;
 
-import neptune.geospatial.core.computations.GeoSpatialStreamProcessor;
+import neptune.geospatial.core.computations.AbstractGeoSpatialStreamProcessor;
 import neptune.geospatial.graph.messages.GeoHashIndexedRecord;
 import org.apache.log4j.Logger;
 
@@ -11,7 +11,7 @@ import org.apache.log4j.Logger;
  *
  * @author Thilina Buddhika
  */
-public class RecordCounter extends GeoSpatialStreamProcessor {
+public class RecordCounter extends AbstractGeoSpatialStreamProcessor {
 
     private Logger logger = Logger.getLogger(RecordCounter.class);
     private int counter = 0;

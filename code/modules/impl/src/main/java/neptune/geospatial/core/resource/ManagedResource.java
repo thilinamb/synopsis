@@ -11,8 +11,7 @@ import ds.granules.scheduler.Resource;
 import ds.granules.util.Constants;
 import ds.granules.util.NeptuneRuntime;
 import ds.granules.util.ParamsReader;
-import neptune.geospatial.core.computations.GeoSpatialStreamProcessor;
-import neptune.geospatial.core.computations.ScalingException;
+import neptune.geospatial.core.computations.AbstractGeoSpatialStreamProcessor;
 import neptune.geospatial.core.protocol.AbstractProtocolHandler;
 import neptune.geospatial.core.protocol.msg.*;
 import org.apache.log4j.Logger;
@@ -40,12 +39,12 @@ import java.util.concurrent.atomic.AtomicReference;
 public class ManagedResource {
 
     class MonitoredComputationState {
-        private GeoSpatialStreamProcessor computation;
+        private AbstractGeoSpatialStreamProcessor computation;
         private AtomicReference<ArrayList<Long>> backLogHistory = new AtomicReference<>(
                 new ArrayList<Long>(MONITORED_BACKLOG_HISTORY_LENGTH));
         private AtomicBoolean eligibleForScaling = new AtomicBoolean(true);
 
-        private MonitoredComputationState(GeoSpatialStreamProcessor computation) {
+        private MonitoredComputationState(AbstractGeoSpatialStreamProcessor computation) {
             this.computation = computation;
         }
 
@@ -106,14 +105,8 @@ public class ManagedResource {
                             double excess = monitoredComputationState.monitor();
                             if (excess != 0) {
                                 // trigger scale up
-                                try {
-                                    boolean success = monitoredComputationState.computation.recommendScaling(excess);
-                                    monitoredComputationState.eligibleForScaling.set(!success);
-                                } catch (ScalingException e) {
-                                    logger.error("Error scaling the computation " +
-                                            monitoredComputationState.computation.getInstanceIdentifier());
-                                    monitoredComputationState.eligibleForScaling.set(true);
-                                }
+                                boolean success = monitoredComputationState.computation.recommendScaling(excess);
+                                monitoredComputationState.eligibleForScaling.set(!success);
                             }
                         }
                     }
@@ -226,7 +219,7 @@ public class ManagedResource {
         }
     }
 
-    public void registerStreamProcessor(GeoSpatialStreamProcessor processor) {
+    public void registerStreamProcessor(AbstractGeoSpatialStreamProcessor processor) {
         synchronized (monitoredProcessors) {
             monitoredProcessors.put(processor.getInstanceIdentifier(), new MonitoredComputationState(processor));
             monitoredProcessors.notifyAll();
@@ -257,16 +250,16 @@ public class ManagedResource {
         }
     }
 
-    public void handleScaleInLockResp(ScaleInLockResponse lockResponse){
+    public void handleScaleInLockResp(ScaleInLockResponse lockResponse) {
         String computationId = lockResponse.getComputation();
-        if(monitoredProcessors.containsKey(computationId)){
+        if (monitoredProcessors.containsKey(computationId)) {
             monitoredProcessors.get(computationId).computation.handleScaleInLockResponse(lockResponse);
         } else {
             logger.warn("Invalid ScaleInLockResponse for computation: " + computationId);
         }
     }
 
-    public void handleScaleInActivateReq(ScaleInActivateReq activateReq){
+    public void handleScaleInActivateReq(ScaleInActivateReq activateReq) {
         String computationId = activateReq.getTargetComputation();
         if (monitoredProcessors.containsKey(computationId)) {
             monitoredProcessors.get(computationId).computation.handleScaleInActivateReq(activateReq);
@@ -275,18 +268,18 @@ public class ManagedResource {
         }
     }
 
-    public void handleStateTransferMsg(StateTransferMsg stateTransferMsg){
+    public void handleStateTransferMsg(StateTransferMsg stateTransferMsg) {
         String computationId = stateTransferMsg.getTargetComputation();
-        if(monitoredProcessors.containsKey(computationId)){
+        if (monitoredProcessors.containsKey(computationId)) {
             monitoredProcessors.get(computationId).computation.handleStateTransferReq(stateTransferMsg);
         } else {
             logger.warn("Invalid StateTransferMsg to " + computationId);
         }
     }
 
-    public void handleScaleInCompleteMsg(ScaleInComplete completeMsg){
+    public void handleScaleInCompleteMsg(ScaleInComplete completeMsg) {
         String computationId = completeMsg.getTargetComputation();
-        if(monitoredProcessors.containsKey(computationId)){
+        if (monitoredProcessors.containsKey(computationId)) {
             monitoredProcessors.get(computationId).computation.handleScaleInCompleteMsg(completeMsg);
         } else {
             logger.warn("Invalid ScaleInComplete msg to " + computationId);

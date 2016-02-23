@@ -38,7 +38,7 @@ import java.util.concurrent.atomic.AtomicReference;
  * @author Thilina Buddhika
  */
 @SuppressWarnings("unused")
-public abstract class GeoSpatialStreamProcessor extends StreamProcessor {
+public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor {
 
     /**
      * Represents a monitored prefix.
@@ -148,7 +148,7 @@ public abstract class GeoSpatialStreamProcessor extends StreamProcessor {
         }
     }
 
-    private Logger logger = Logger.getLogger(GeoSpatialStreamProcessor.class.getName());
+    private Logger logger = Logger.getLogger(AbstractGeoSpatialStreamProcessor.class.getName());
     public static final String OUTGOING_STREAM_BASE_ID = "out-going";
     private static final String GEO_HASH_CHAR_SET = "0123456789bcdefghjkmnpqrstuvwxyz";
     public static final int GEO_HASH_LEN_IN_CHARS = 32;
@@ -621,12 +621,6 @@ public abstract class GeoSpatialStreamProcessor extends StreamProcessor {
                         completeScaleIn(prefix, pendingReq);
                     }
                 } else { // send the parent the status
-                    if (!pendingReq.lockAcquired) {
-                        if (logger.isDebugEnabled()) {
-                            logger.debug(String.format("[%s] Failed to acquire lock for prefix %s. Resetting locks.",
-                                    getInstanceIdentifier(), prefix));
-                        }
-                    }
                     List<String> leafPrefixes = new ArrayList<>();
                     leafPrefixes.addAll(pendingReq.locallyProcessedPrefixes);
                     leafPrefixes.addAll(pendingReq.childLeafPrefixes);
