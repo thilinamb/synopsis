@@ -68,6 +68,13 @@ public class ResourceProtocolHandler extends AbstractProtocolHandler {
                 }
                 managedResource.handleScaleInCompleteMsg(completeMsg);
                 break;
+            case ProtocolTypes.SCALE_IN_COMPLETE_ACK:
+                ScaleInCompleteAck ack = (ScaleInCompleteAck) ctrlMsg;
+                if (logger.isDebugEnabled()) {
+                    logger.debug("Received a ScaleInComplete for " + ack.getTargetComputation());
+                }
+                managedResource.handleScaleInCompleteAckMsg(ack);
+                break;
             default:
                 logger.warn("Unsupported message type: " + type);
         }

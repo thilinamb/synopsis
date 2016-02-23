@@ -8,40 +8,33 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 
 /**
- * Inform the completion of a Scale-In operation to
- * the rest of the participants.
- *
  * @author Thilina Buddhika
  */
-public class ScaleInComplete extends ControlMessage {
+public class ScaleInCompleteAck extends ControlMessage {
 
     private String prefix;
     private String targetComputation;
-    private String parentComputation;
 
-    public ScaleInComplete() {
-        super(ProtocolTypes.SCALE_IN_COMPLETE);
+    public ScaleInCompleteAck() {
+        super(ProtocolTypes.SCALE_IN_COMPLETE_ACK);
     }
 
-    public ScaleInComplete(String prefix, String targetComputation, String parentComputation) {
-        super(ProtocolTypes.SCALE_IN_COMPLETE);
+    public ScaleInCompleteAck(String prefix, String targetComputation) {
+        super(ProtocolTypes.SCALE_IN_COMPLETE_ACK);
         this.prefix = prefix;
         this.targetComputation = targetComputation;
-        this.parentComputation = parentComputation;
     }
 
     @Override
     public void readValues(DataInputStream dis) throws IOException {
         this.prefix = dis.readUTF();
         this.targetComputation = dis.readUTF();
-        this.parentComputation = dis.readUTF();
     }
 
     @Override
     public void writeValues(DataOutputStream dos) throws IOException {
         dos.writeUTF(this.prefix);
         dos.writeUTF(this.targetComputation);
-        dos.writeUTF(this.parentComputation);
     }
 
     public String getPrefix() {
@@ -50,9 +43,5 @@ public class ScaleInComplete extends ControlMessage {
 
     public String getTargetComputation() {
         return targetComputation;
-    }
-
-    public String getParentComputation() {
-        return parentComputation;
     }
 }

@@ -16,6 +16,7 @@ import neptune.geospatial.core.protocol.msg.*;
 import neptune.geospatial.core.resource.ManagedResource;
 import neptune.geospatial.graph.messages.GeoHashIndexedRecord;
 import neptune.geospatial.partitioner.GeoHashPartitioner;
+import neptune.geospatial.util.Mutex;
 import org.apache.log4j.Logger;
 
 import java.io.IOException;
@@ -23,7 +24,6 @@ import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.text.DecimalFormat;
 import java.util.*;
-import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -166,7 +166,7 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
     private Map<String, PendingScaleInRequest> pendingScaleInRequests = new HashMap<>();
 
     // mutex to ensure only a single scale in/out operations takes place at a given time
-    private final Semaphore mutex = new Semaphore(1);
+    private final Mutex mutex = new Mutex();
 
     // temporary counter to test scale-in and out.
     private AtomicLong scaleInOutTrigger = new AtomicLong(0);
@@ -701,7 +701,8 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
     private void completeScaleIn(String prefix, PendingScaleInRequest pendingReq) {
         // initiate the scale-in complete request.
         for (Map.Entry<String, QualifiedComputationAddr> participant : pendingReq.sentOutRequests.entrySet()) {
-            ScaleInComplete scaleInComplete = new ScaleInComplete(prefix, participant.getValue().computationId);
+            ScaleInComplete scaleInComplete = new ScaleInComplete(prefix, participant.getValue().computationId,
+                    getInstanceIdentifier());
             try {
                 SendUtility.sendControlMessage(participant.getValue().ctrlEndpointAddr, scaleInComplete);
                 if (logger.isDebugEnabled()) {
@@ -722,24 +723,61 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
 
     public synchronized void handleScaleInCompleteMsg(ScaleInComplete scaleInCompleteMsg) {
         PendingScaleInRequest pendingReq = pendingScaleInRequests.get(scaleInCompleteMsg.getPrefix());
-        for (Map.Entry<String, QualifiedComputationAddr> participant : pendingReq.sentOutRequests.entrySet()) {
+        if (pendingReq.sentOutRequests.entrySet().size() > 0) {
+            pendingReq.receivedCount = 0;
+            for (Map.Entry<String, QualifiedComputationAddr> participant : pendingReq.sentOutRequests.entrySet()) {
+                try {
+                    ScaleInComplete scaleInComplete = new ScaleInComplete(scaleInCompleteMsg.getPrefix(),
+                            participant.getValue().computationId, getInstanceIdentifier());
+                    SendUtility.sendControlMessage(participant.getValue().ctrlEndpointAddr, scaleInComplete);
+                    if (logger.isDebugEnabled()) {
+                        logger.debug(String.format("[%s] Forwarding the ScaleInComplete message to child nodes. " +
+                                        "Key Prefix: %s, Child Prefix: %s", getInstanceIdentifier(),
+                                scaleInCompleteMsg.getPrefix(), participant.getKey()));
+                    }
+                } catch (CommunicationsException | IOException e) {
+                    logger.error("Error sending out ScaleInComplete to " + participant.getValue().ctrlEndpointAddr, e);
+                }
+            }
+        } else {
             try {
-                ScaleInComplete scaleInComplete = new ScaleInComplete(scaleInCompleteMsg.getPrefix(),
-                        participant.getValue().computationId);
-                SendUtility.sendControlMessage(participant.getValue().ctrlEndpointAddr, scaleInComplete);
+                ScaleInCompleteAck ack = new ScaleInCompleteAck(scaleInCompleteMsg.getPrefix(),
+                        scaleInCompleteMsg.getParentComputation());
+                SendUtility.sendControlMessage(ack.getOriginEndpoint(), ack);
+                pendingScaleInRequests.remove(scaleInCompleteMsg.getPrefix());
+                mutex.release();
                 if (logger.isDebugEnabled()) {
-                    logger.debug(String.format("[%s] Forwarding the ScaleInComplete message to child nodes. " +
-                                    "Key Prefix: %s, Child Prefix: %s", getInstanceIdentifier(),
-                            scaleInCompleteMsg.getPrefix(), participant.getKey()));
+                    logger.debug(String.format("[%s] No Child Prefixes. Unlocking the mutex at node.", getInstanceIdentifier()));
                 }
             } catch (CommunicationsException | IOException e) {
-                logger.error("Error sending out ScaleInComplete to " + participant.getValue().ctrlEndpointAddr, e);
+                e.printStackTrace();
             }
         }
-        pendingScaleInRequests.remove(scaleInCompleteMsg.getPrefix());
-        mutex.release();
-        if (logger.isDebugEnabled()) {
-            logger.debug(String.format("[%s] Unlocking the mutex at node.", getInstanceIdentifier()));
+    }
+
+    public void handleScaleInCompleteAck(ScaleInCompleteAck ack) {
+        PendingScaleInRequest pendingReq = pendingScaleInRequests.get(ack.getPrefix());
+        if (pendingReq != null) {
+            pendingReq.receivedCount++;
+            if (logger.isDebugEnabled()) {
+                logger.debug(String.format("[%s] Received a ScaleInCompleteAck from a child. " +
+                                "Sent Ack Count: %d, Received Ack Count: %d", getInstanceIdentifier(),
+                        pendingReq.sentCount, pendingReq.receivedCount));
+            }
+            if (pendingReq.receivedCount == pendingReq.sentCount) {
+                ScaleInCompleteAck ackToParent = new ScaleInCompleteAck(ack.getPrefix(), pendingReq.originComputation);
+                try {
+                    SendUtility.sendControlMessage(pendingReq.originCtrlEndpoint, ackToParent);
+                } catch (CommunicationsException | IOException e) {
+                    logger.error("Error sending out a ScaleInCompleteAck to " + pendingReq.originCtrlEndpoint);
+                }
+                pendingScaleInRequests.remove(ack.getPrefix());
+                mutex.release();
+                if (logger.isDebugEnabled()) {
+                    logger.debug(String.format("[%s] Received all child ScaleInCompleteAcks. Acknowledging parent.",
+                            getInstanceIdentifier()));
+                }
+            }
         }
     }
 

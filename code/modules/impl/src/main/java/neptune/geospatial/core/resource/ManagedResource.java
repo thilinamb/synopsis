@@ -285,4 +285,13 @@ public class ManagedResource {
             logger.warn("Invalid ScaleInComplete msg to " + computationId);
         }
     }
+
+    public void handleScaleInCompleteAckMsg(ScaleInCompleteAck ack) {
+        String computationId = ack.getTargetComputation();
+        if (monitoredProcessors.containsKey(computationId)) {
+            monitoredProcessors.get(computationId).computation.handleScaleInCompleteAck(ack);
+        } else {
+            logger.warn("Invalid ScaleInComplete msg to " + computationId);
+        }
+    }
 }

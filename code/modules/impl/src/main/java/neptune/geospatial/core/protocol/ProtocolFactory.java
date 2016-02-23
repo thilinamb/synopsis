@@ -53,6 +53,9 @@ public class ProtocolFactory {
                 case ProtocolTypes.SCALE_IN_COMPLETE:
                     message = new ScaleInComplete();
                     break;
+                case ProtocolTypes.SCALE_IN_COMPLETE_ACK:
+                    message = new ScaleInCompleteAck();
+                    break;
                 default:
                     String errorMsg = "Unsupported message type: " + messageType;
                     throw new ProtocolException(errorMsg);
