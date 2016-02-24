@@ -194,7 +194,7 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
             // perform the business logic: do this selectively. Send through the traffic we don't process.
             process(geoHashIndexedRecord);
         }
-        long count = scaleInOutTrigger.incrementAndGet();
+        /*long count = scaleInOutTrigger.incrementAndGet();
         try {
             if (count % 20000000 != 0 && count % 5000000 == 0) {
                 logger.debug("Scaling Out!");
@@ -206,7 +206,7 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
             }
         } catch (Exception ignore) {
 
-        }
+        } */
     }
 
     /**
@@ -455,8 +455,6 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
                     pendingScaleOutRequests.remove(ack.getKey());
                     mutex.release();
                     ManagedResource.getInstance().scalingOperationComplete(this.getInstanceIdentifier());
-                    // TODO: REMOVE ME
-                    System.out.println("@@@@@@@@@@@@@@@@@@@@@@@@@@@ SCALED OUT.....! @@@@@@@@@@@@@@@@@@@@@");
                 } catch (NIException ignore) {
 
                 }
@@ -823,10 +821,6 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
                 if (logger.isDebugEnabled()) {
                     logger.debug(String.format("[%s] Received all child ScaleInCompleteAcks. Acknowledging parent.",
                             getInstanceIdentifier()));
-                }
-                // TODO: REMOVE ME
-                if (pendingReq.initiatedLocally) {
-                    System.out.println("@@@@@@@@@@@@@@@@@@@@@@@@@@@ SCALED IN.....! @@@@@@@@@@@@@@@@@@@@@");
                 }
             }
         }
