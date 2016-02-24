@@ -19,6 +19,7 @@ public class StateTransferMsg extends ControlMessage {
     private String keyPrefix;
     private byte[] serializedData;
     private String targetComputation;
+    private String originComputation;
     private boolean scaleType;
 
     public StateTransferMsg() {
@@ -26,12 +27,13 @@ public class StateTransferMsg extends ControlMessage {
     }
 
     public StateTransferMsg(String prefix, String keyPrefix, byte[] serializedData, String targetComputation,
-                            boolean type) {
+                            String originComputation, boolean type) {
         super(ProtocolTypes.STATE_TRANSFER_MSG);
         this.prefix = prefix;
         this.keyPrefix = keyPrefix;
         this.serializedData = serializedData;
         this.targetComputation = targetComputation;
+        this.originComputation = originComputation;
         this.scaleType = type;
     }
 
@@ -43,6 +45,7 @@ public class StateTransferMsg extends ControlMessage {
         this.serializedData = new byte[serializedDataSize];
         dis.readFully(this.serializedData);
         this.targetComputation = dis.readUTF();
+        this.originComputation = dis.readUTF();
         this.scaleType = dis.readBoolean();
     }
 
@@ -53,6 +56,7 @@ public class StateTransferMsg extends ControlMessage {
         dos.writeInt(this.serializedData.length);
         dos.write(this.serializedData);
         dos.writeUTF(this.targetComputation);
+        dos.writeUTF(this.originComputation);
         dos.writeBoolean(this.scaleType);
     }
 
@@ -74,5 +78,9 @@ public class StateTransferMsg extends ControlMessage {
 
     public boolean isScaleType() {
         return scaleType;
+    }
+
+    public String getOriginComputation() {
+        return originComputation;
     }
 }

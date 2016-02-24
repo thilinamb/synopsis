@@ -33,6 +33,13 @@ public class ResourceProtocolHandler extends AbstractProtocolHandler {
                 }
                 managedResource.handleTriggerScaleAck(scaleOutResponse);
                 break;
+            case ProtocolTypes.SCALE_OUT_COMPLETE_ACK:
+                ScaleOutCompleteAck scaleOutCompleteAck = (ScaleOutCompleteAck) ctrlMsg;
+                if (logger.isDebugEnabled()) {
+                    logger.debug("Received a ScaleOutCompleteAck for " + scaleOutCompleteAck.getTargetComputation());
+                }
+                managedResource.handleScaleOutCompleteAck(scaleOutCompleteAck);
+                break;
             case ProtocolTypes.SCALE_IN_LOCK_REQ:
                 ScaleInLockRequest lockReq = (ScaleInLockRequest) ctrlMsg;
                 if (logger.isDebugEnabled()) {

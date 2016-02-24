@@ -22,6 +22,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -129,6 +130,7 @@ public class ManagedResource {
     private CountDownLatch countDownLatch = new CountDownLatch(1);
     private final Map<String, MonitoredComputationState> monitoredProcessors = new HashMap<>();
     private ScheduledExecutorService monitoringService = Executors.newSingleThreadScheduledExecutor();
+    private volatile Map<String, StateTransferMsg> pendingStateTransfers = new ConcurrentHashMap<>();
 
     public ManagedResource(Properties inProps, int numOfThreads) throws CommunicationsException {
         Resource resource = new Resource(inProps, numOfThreads);
@@ -222,6 +224,12 @@ public class ManagedResource {
     public void registerStreamProcessor(AbstractGeoSpatialStreamProcessor processor) {
         synchronized (monitoredProcessors) {
             monitoredProcessors.put(processor.getInstanceIdentifier(), new MonitoredComputationState(processor));
+            if (pendingStateTransfers.containsKey(processor.getInstanceIdentifier())) {
+                StateTransferMsg stateTransferMsg = pendingStateTransfers.remove(processor.getInstanceIdentifier());
+                logger.debug(String.format("Handing over the state for prefix: %s to: %s",
+                        processor.getInstanceIdentifier(), stateTransferMsg.getPrefix()));
+                processor.handleStateTransferReq(stateTransferMsg, true);
+            }
             monitoredProcessors.notifyAll();
         }
     }
@@ -238,6 +246,16 @@ public class ManagedResource {
             monitoredProcessors.get(processorId).computation.handleTriggerScaleAck(ack);
         } else {
             logger.warn("ScaleTriggerAck for an invalid computation: " + processorId);
+        }
+    }
+
+
+    public void handleScaleOutCompleteAck(ScaleOutCompleteAck ack) {
+        String processorId = ack.getTargetComputation();
+        if (monitoredProcessors.containsKey(processorId)) {
+            monitoredProcessors.get(processorId).computation.handleScaleOutCompleteAck(ack);
+        } else {
+            logger.warn("ScaleOutCompleteAck for an invalid computation: " + processorId);
         }
     }
 
@@ -271,9 +289,21 @@ public class ManagedResource {
     public void handleStateTransferMsg(StateTransferMsg stateTransferMsg) {
         String computationId = stateTransferMsg.getTargetComputation();
         if (monitoredProcessors.containsKey(computationId)) {
-            monitoredProcessors.get(computationId).computation.handleStateTransferReq(stateTransferMsg);
+            monitoredProcessors.get(computationId).computation.handleStateTransferReq(stateTransferMsg, false);
         } else {
-            logger.warn("Invalid StateTransferMsg to " + computationId);
+            if (!stateTransferMsg.isScaleType()) {
+                try {
+                    pendingStateTransfers.put(computationId, stateTransferMsg);
+                    ScaleOutCompleteAck completeAck = new ScaleOutCompleteAck(stateTransferMsg.getKeyPrefix(),
+                            stateTransferMsg.getPrefix(), stateTransferMsg.getOriginComputation());
+                    SendUtility.sendControlMessage(stateTransferMsg.getOriginEndpoint(), completeAck);
+                    logger.debug("New Computation is not active yet. Storing the StateTransfer Request.");
+                } catch (CommunicationsException | IOException e) {
+                    logger.error("Error sending out the ScaleOutCompleteAck to " + stateTransferMsg.getOriginEndpoint());
+                }
+            } else {
+                logger.warn("Invalid StateTransferMsg to " + computationId);
+            }
         }
     }
 

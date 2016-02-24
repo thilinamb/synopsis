@@ -99,6 +99,7 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
     private class PendingScaleOutRequests {
         private List<String> prefixes;
         private String streamId;
+        private int ackCount;
 
         public PendingScaleOutRequests(List<String> prefixes, String streamId) {
             this.prefixes = prefixes;
@@ -195,11 +196,11 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
         }
         long count = scaleInOutTrigger.incrementAndGet();
         try {
-            if (count % 10000000 == 0) {
+            if (count % 20000000 != 0 && count % 5000000 == 0) {
                 logger.debug("Scaling Out!");
                 recommendScaling(10);
             }
-            if (count % 14900000 == 0) {
+            if (count % 20000000 == 0) {
                 logger.debug("Scaling In!");
                 recommendScaling(-10);
             }
@@ -310,7 +311,6 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
      *               be scaled in/out.
      * @return {@code true} if it triggered a scaling operation. {@code false} if no scaling operation is
      * triggered.
-     * @throws ScalingException Error when initiating scaling.
      */
     public synchronized boolean recommendScaling(double excess) {
         // try to get the lock first
@@ -413,30 +413,56 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
 
     public synchronized void handleTriggerScaleAck(ScaleOutResponse ack) {
         if (pendingScaleOutRequests.containsKey(ack.getInResponseTo())) {
-            PendingScaleOutRequests pendingReq = pendingScaleOutRequests.remove(ack.getInResponseTo());
+            PendingScaleOutRequests pendingReq = pendingScaleOutRequests.get(ack.getInResponseTo());
             for (String prefix : pendingReq.prefixes) {
                 MonitoredPrefix monitoredPrefix = monitoredPrefixMap.get(prefix);
                 monitoredPrefix.isPassThroughTraffic.set(true);
                 monitoredPrefix.destComputationId = ack.getNewComputationId();
                 monitoredPrefix.destResourceCtrlEndpoint = ack.getNewLocationURL();
                 monitoredPrefix.outGoingStream = pendingReq.streamId;
-                if (logger.isDebugEnabled()) {
-                    logger.debug(String.format("[%s] New Pass-Thru Prefix. Prefix: %s, Outgoing Stream: %s",
-                            getInstanceIdentifier(), prefix, pendingReq.streamId));
-                }
-                // TODO: Initiate state transfer
-            }
-            try {
-                if (logger.isDebugEnabled()) {
-                    logger.debug(String.format("[%s] Scaling out complete for now.", getInstanceIdentifier()));
-                }
-                mutex.release();
-                ManagedResource.getInstance().scalingOperationComplete(this.getInstanceIdentifier());
-            } catch (NIException ignore) {
 
+                try {
+                    byte[] state = split(prefix);
+                    StateTransferMsg stateTransferMsg = new StateTransferMsg(prefix, ack.getInResponseTo(), state,
+                            ack.getNewComputationId(), getInstanceIdentifier(), StateTransferMsg.SCALE_OUT);
+                    SendUtility.sendControlMessage(monitoredPrefix.destResourceCtrlEndpoint, stateTransferMsg);
+                    if (logger.isDebugEnabled()) {
+                        logger.debug(String.format("[%s] New Pass-Thru Prefix. Prefix: %s, Outgoing Stream: %s",
+                                getInstanceIdentifier(), prefix, pendingReq.streamId));
+                    }
+                } catch (CommunicationsException | IOException e) {
+                    logger.error("Error transferring state to " + monitoredPrefix.destResourceCtrlEndpoint);
+                }
             }
         } else {
             logger.warn("Invalid trigger ack for the prefix. Request Id: " + ack.getInResponseTo());
+        }
+    }
+
+    public void handleScaleOutCompleteAck(ScaleOutCompleteAck ack) {
+        if (pendingScaleOutRequests.containsKey(ack.getKey())) {
+            PendingScaleOutRequests pendingReq = pendingScaleOutRequests.get(ack.getKey());
+            pendingReq.ackCount++;
+            if (logger.isDebugEnabled()) {
+                logger.debug(String.format("[%s] Received a ScaleOutCompleteAck. Sent Count: %d, Received Count: %d",
+                        getInstanceIdentifier(), pendingReq.prefixes.size(), pendingReq.ackCount));
+            }
+            if (pendingReq.ackCount == pendingReq.prefixes.size()) {
+                try {
+                    if (logger.isDebugEnabled()) {
+                        logger.debug(String.format("[%s] Scaling out complete for now.", getInstanceIdentifier()));
+                    }
+                    pendingScaleOutRequests.remove(ack.getKey());
+                    mutex.release();
+                    ManagedResource.getInstance().scalingOperationComplete(this.getInstanceIdentifier());
+                    // TODO: REMOVE ME
+                    System.out.println("@@@@@@@@@@@@@@@@@@@@@@@@@@@ SCALED OUT.....! @@@@@@@@@@@@@@@@@@@@@");
+                } catch (NIException ignore) {
+
+                }
+            }
+        } else {
+            logger.warn("Invalid ScaleOutCompleteAck for " + ack.getKey());
         }
     }
 
@@ -679,7 +705,7 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
         }
     }
 
-    public synchronized void handleStateTransferReq(StateTransferMsg stateTransferMsg) {
+    public synchronized void handleStateTransferReq(StateTransferMsg stateTransferMsg, boolean acked) {
         boolean scaleType = stateTransferMsg.isScaleType();
         if (scaleType) { // scale-in
             PendingScaleInRequest pendingReq = pendingScaleInRequests.get(stateTransferMsg.getKeyPrefix());
@@ -693,8 +719,21 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
             if (pendingReq.childLeafPrefixes.isEmpty()) {
                 completeScaleIn(stateTransferMsg.getKeyPrefix(), pendingReq);
             }
-        } else {
-            // TODO: In case of scale out.
+        } else {    // scale-out
+            merge(stateTransferMsg.getPrefix(), stateTransferMsg.getSerializedData());
+            if (!acked) {
+                ScaleOutCompleteAck ack = new ScaleOutCompleteAck(
+                        stateTransferMsg.getKeyPrefix(), stateTransferMsg.getPrefix(), stateTransferMsg.getOriginComputation());
+                try {
+                    SendUtility.sendControlMessage(stateTransferMsg.getOriginEndpoint(), ack);
+                } catch (CommunicationsException | IOException e) {
+                    logger.error("Error acknowledging the parent on the state transfer.", e);
+                }
+            }
+            if (logger.isDebugEnabled()) {
+                logger.debug(String.format("[%s] Received a state transfer message for the prefix: %s during the scaling out.",
+                        getInstanceIdentifier(), stateTransferMsg.getPrefix()));
+            }
         }
     }
 
@@ -780,6 +819,10 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
                     logger.debug(String.format("[%s] Received all child ScaleInCompleteAcks. Acknowledging parent.",
                             getInstanceIdentifier()));
                 }
+                // TODO: REMOVE ME
+                if (pendingReq.initiatedLocally) {
+                    System.out.println("@@@@@@@@@@@@@@@@@@@@@@@@@@@ SCALED IN.....! @@@@@@@@@@@@@@@@@@@@@");
+                }
             }
         }
     }
@@ -822,7 +865,8 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
             // get the state for the prefix in the serialized form
             byte[] state = split(localPrefix);
             StateTransferMsg stateTransMsg = new StateTransferMsg(localPrefix, prefix, state,
-                    activationReq.getOriginComputationOfScalingOperation(), StateTransferMsg.SCALE_IN);
+                    activationReq.getOriginComputationOfScalingOperation(), getInstanceIdentifier(),
+                    StateTransferMsg.SCALE_IN);
             try {
                 SendUtility.sendControlMessage(activationReq.getOriginNodeOfScalingOperation(), stateTransMsg);
                 if (logger.isDebugEnabled()) {

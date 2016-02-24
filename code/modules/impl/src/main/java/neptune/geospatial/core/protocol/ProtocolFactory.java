@@ -38,6 +38,9 @@ public class ProtocolFactory {
                 case ProtocolTypes.SCALE_OUT_RESP:
                     message = new ScaleOutResponse();
                     break;
+                case ProtocolTypes.SCALE_OUT_COMPLETE_ACK:
+                    message = new ScaleOutCompleteAck();
+                    break;
                 case ProtocolTypes.SCALE_IN_LOCK_REQ:
                     message = new ScaleInLockRequest();
                     break;
