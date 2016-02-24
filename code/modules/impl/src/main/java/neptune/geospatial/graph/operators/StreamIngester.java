@@ -11,6 +11,7 @@ import org.apache.log4j.Logger;
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * Geo-spatial streams are ingested into the system using
@@ -24,7 +25,7 @@ public class StreamIngester extends StreamSource {
 
     private Logger logger = Logger.getLogger(StreamIngester.class);
     private BufferedReader bfr; // for the moment, let's assume we read streams from a file
-    private int c = 0;
+    private final AtomicLong seqGenerator = new AtomicLong(0);
 
     public StreamIngester() {
         try {
@@ -37,7 +38,7 @@ public class StreamIngester extends StreamSource {
     @Override
     public void emit() throws StreamingDatasetException {
         GeoHashIndexedRecord record = getNextRecord();
-        if (record != null){
+        if (record != null) {
             writeToStream(Constants.Streams.GEO_HASH_INDEXED_RECORDS, record);
         }
     }
@@ -47,16 +48,16 @@ public class StreamIngester extends StreamSource {
         declareStream(Constants.Streams.GEO_HASH_INDEXED_RECORDS, GeoHashIndexedRecord.class.getName());
     }
 
-    private GeoHashIndexedRecord getNextRecord(){
+    private GeoHashIndexedRecord getNextRecord() {
         String line;
-        GeoHashIndexedRecord record =  null;
+        GeoHashIndexedRecord record = null;
         try {
-            if (bfr != null){
-                if((line = bfr.readLine()) != null) {
+            if (bfr != null) {
+                if ((line = bfr.readLine()) != null) {
                     record = parse(line);
                 } else {
                     // continuously read the file, so that we have enough data
-                    bfr =  new BufferedReader(new FileReader("/Users/thilina/csu/research/dsg/data/noaa_nam_pts.txt"));
+                    bfr = new BufferedReader(new FileReader("/Users/thilina/csu/research/dsg/data/noaa_nam_pts.txt"));
                 }
             }
         } catch (IOException e) {
@@ -65,13 +66,13 @@ public class StreamIngester extends StreamSource {
         return record;
     }
 
-    private GeoHashIndexedRecord parse(String line){
+    private GeoHashIndexedRecord parse(String line) {
         String[] locSegments = line.split("   ");
-        GeoHashIndexedRecord record =  null;
-        if(locSegments.length == 2){
+        GeoHashIndexedRecord record = null;
+        if (locSegments.length == 2) {
             String geoHash = GeoHash.encode(Float.parseFloat(locSegments[0]), Float.parseFloat(locSegments[1]),
                     PRECISION);
-            record = new GeoHashIndexedRecord(geoHash, 2, System.currentTimeMillis());
+            record = new GeoHashIndexedRecord(geoHash, 2, seqGenerator.incrementAndGet(), System.currentTimeMillis());
         }
         return record;
     }

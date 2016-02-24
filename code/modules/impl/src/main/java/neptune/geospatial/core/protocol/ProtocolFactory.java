@@ -2,8 +2,7 @@ package neptune.geospatial.core.protocol;
 
 import ds.funnel.topic.TopicDataEvent;
 import ds.granules.communication.direct.control.ControlMessage;
-import neptune.geospatial.core.protocol.msg.TriggerScale;
-import neptune.geospatial.core.protocol.msg.TriggerScaleAck;
+import neptune.geospatial.core.protocol.msg.*;
 
 import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;
@@ -33,11 +32,32 @@ public class ProtocolFactory {
         try {
             ControlMessage message;
             switch (messageType) {
-                case ProtocolTypes.TRIGGER_SCALING:
-                    message = new TriggerScale();
+                case ProtocolTypes.SCALE_OUT_REQ:
+                    message = new ScaleOutRequest();
                     break;
-                case ProtocolTypes.TRIGGER_SCALING_ACK:
-                    message = new TriggerScaleAck();
+                case ProtocolTypes.SCALE_OUT_RESP:
+                    message = new ScaleOutResponse();
+                    break;
+                case ProtocolTypes.SCALE_OUT_COMPLETE_ACK:
+                    message = new ScaleOutCompleteAck();
+                    break;
+                case ProtocolTypes.SCALE_IN_LOCK_REQ:
+                    message = new ScaleInLockRequest();
+                    break;
+                case ProtocolTypes.SCALE_IN_LOCK_RESP:
+                    message = new ScaleInLockResponse();
+                    break;
+                case ProtocolTypes.SCALE_IN_ACTIVATION_REQ:
+                    message = new ScaleInActivateReq();
+                    break;
+                case ProtocolTypes.STATE_TRANSFER_MSG:
+                    message = new StateTransferMsg();
+                    break;
+                case ProtocolTypes.SCALE_IN_COMPLETE:
+                    message = new ScaleInComplete();
+                    break;
+                case ProtocolTypes.SCALE_IN_COMPLETE_ACK:
+                    message = new ScaleInCompleteAck();
                     break;
                 default:
                     String errorMsg = "Unsupported message type: " + messageType;

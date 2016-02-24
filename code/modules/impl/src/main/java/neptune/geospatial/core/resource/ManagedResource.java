@@ -11,18 +11,18 @@ import ds.granules.scheduler.Resource;
 import ds.granules.util.Constants;
 import ds.granules.util.NeptuneRuntime;
 import ds.granules.util.ParamsReader;
-import neptune.geospatial.core.computations.GeoSpatialStreamProcessor;
+import neptune.geospatial.core.computations.AbstractGeoSpatialStreamProcessor;
 import neptune.geospatial.core.protocol.AbstractProtocolHandler;
-import neptune.geospatial.core.protocol.msg.TriggerScaleAck;
+import neptune.geospatial.core.protocol.msg.*;
 import org.apache.log4j.Logger;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.*;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Properties;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -37,23 +37,23 @@ import java.util.concurrent.atomic.AtomicReference;
 public class ManagedResource {
 
     class MonitoredComputationState {
-        private GeoSpatialStreamProcessor computation;
+        private AbstractGeoSpatialStreamProcessor computation;
         private AtomicReference<ArrayList<Long>> backLogHistory = new AtomicReference<>(
-                new ArrayList<Long>(MONITORED_BACKLOG_HISTORY_LENGTH));
-        private AtomicBoolean eligibleForScaleOut = new AtomicBoolean(true);
+                new ArrayList<Long>(monitoredBackLogLength));
+        private AtomicBoolean eligibleForScaling = new AtomicBoolean(true);
 
-        private MonitoredComputationState(GeoSpatialStreamProcessor computation) {
+        private MonitoredComputationState(AbstractGeoSpatialStreamProcessor computation) {
             this.computation = computation;
         }
 
         private double monitor() {
             long currentBacklog = computation.getBacklogLength();
             backLogHistory.get().add(currentBacklog);
-            if(logger.isDebugEnabled()){
+            if (logger.isDebugEnabled()) {
                 logger.debug(String.format("Monitoring computation: %s. Adding a backlog: %d",
                         computation.getInstanceIdentifier(), currentBacklog));
             }
-            while (backLogHistory.get().size() > MONITORED_BACKLOG_HISTORY_LENGTH) {
+            while (backLogHistory.get().size() > monitoredBackLogLength) {
                 backLogHistory.get().remove(0);
             }
             return isBacklogDeveloping();
@@ -61,16 +61,21 @@ public class ManagedResource {
 
         private double isBacklogDeveloping() {
             double excess = 0;
-            if (backLogHistory.get().size() >= MONITORED_BACKLOG_HISTORY_LENGTH) {
-                boolean isBacklogDeveloping = true;
+            if (backLogHistory.get().size() >= monitoredBackLogLength) {
+                boolean increasing = true;
+                boolean decreasing = true;
                 for (int i = 0; i < backLogHistory.get().size(); i++) {
-                    if (backLogHistory.get().get(i) < THRESHOLD) {
-                        isBacklogDeveloping = false; // if any of the monitored entries are below the threshold
-                        break;
+                    double entry = backLogHistory.get().get(i);
+                    if (entry < scaleOutThreshold) {
+                        increasing = false;
+                    } else if (entry > scaleInThreshold) {
+                        decreasing = false;
                     }
                 }
-                if(isBacklogDeveloping) {
-                    excess = backLogHistory.get().get(backLogHistory.get().size() - 1) - THRESHOLD;
+                if (increasing) {
+                    excess = backLogHistory.get().get(backLogHistory.get().size() - 1) - scaleOutThreshold;
+                } else if (decreasing) {
+                    excess = backLogHistory.get().get(backLogHistory.get().size() - 1) - scaleInThreshold;
                 }
             }
             return excess;
@@ -83,7 +88,7 @@ public class ManagedResource {
     class ComputationMonitor implements Runnable {
         @Override
         public void run() {
-            if(logger.isDebugEnabled()){
+            if (logger.isDebugEnabled()) {
                 logger.debug("Monitoring thread is executing.");
             }
             try {
@@ -94,12 +99,12 @@ public class ManagedResource {
                     }
                     for (String identifier : monitoredProcessors.keySet()) {
                         MonitoredComputationState monitoredComputationState = monitoredProcessors.get(identifier);
-                        if (monitoredComputationState.eligibleForScaleOut.get()) {
+                        if (monitoredComputationState.eligibleForScaling.get()) {
                             double excess = monitoredComputationState.monitor();
-                            if (excess > 0) {
+                            if (excess != 0) {
                                 // trigger scale up
-                                monitoredComputationState.eligibleForScaleOut.set(false);
-                                monitoredComputationState.computation.recommendScaleOut(excess);
+                                boolean success = monitoredComputationState.computation.recommendScaling(excess);
+                                monitoredComputationState.eligibleForScaling.set(!success);
                             }
                         }
                     }
@@ -112,15 +117,25 @@ public class ManagedResource {
 
 
     private static Logger logger = Logger.getLogger(ManagedResource.class.getName());
-    public static final int MONITORED_BACKLOG_HISTORY_LENGTH = 5;
-    public static final long THRESHOLD = 100;
-    public static final int MONITORING_PERIOD = 5 * 1000;
+    // config properties
+    public static final String ENABLE_DYNAMIC_SCALING = "rivulet-enable-dynamic-scaling";
+    public static final String MONITORING_INTERVAL = "rivulet-monitor-interval";
+    public static final String SCALE_OUT_THRESHOLD = "rivulet-scale-out-threshold";
+    public static final String SCALE_IN_THRESHOLD = "rivulet-scale-in-threshold";
+    public static final String MONITORED_BACKLOG_HISTORY_LENGTH = "rivulet-monitored-backlog-history-length";
+
+    // default values
+    public int monitoredBackLogLength;
+    public long scaleOutThreshold;
+    public long scaleInThreshold;
+    public int monitoringPeriod;
 
     private static ManagedResource instance;
     private String deployerEndpoint = null;
     private CountDownLatch countDownLatch = new CountDownLatch(1);
     private final Map<String, MonitoredComputationState> monitoredProcessors = new HashMap<>();
     private ScheduledExecutorService monitoringService = Executors.newSingleThreadScheduledExecutor();
+    private volatile Map<String, StateTransferMsg> pendingStateTransfers = new ConcurrentHashMap<>();
 
     public ManagedResource(Properties inProps, int numOfThreads) throws CommunicationsException {
         Resource resource = new Resource(inProps, numOfThreads);
@@ -129,16 +144,36 @@ public class ManagedResource {
     }
 
     private void init() {
-        // register the callbacks to receive interference related control messages.
         instance = this;
+        // register the callbacks to receive interference related control messages.
         AbstractProtocolHandler protoHandler = new ResourceProtocolHandler(this);
         ControlMessageDispatcher.getInstance().registerCallback(Constants.WILD_CARD_CALLBACK, protoHandler);
         new Thread(protoHandler).start();
-        // start the computation monitor thread
-        monitoringService.scheduleWithFixedDelay(new ComputationMonitor(), 0, MONITORING_PERIOD, TimeUnit.MILLISECONDS);
         try {
-            deployerEndpoint = NeptuneRuntime.getInstance().getProperties().getProperty(
-                    Constants.DEPLOYER_ENDPOINT);
+            Properties startupProps = NeptuneRuntime.getInstance().getProperties();
+            deployerEndpoint = startupProps.getProperty(Constants.DEPLOYER_ENDPOINT);
+
+            boolean enableDynamicScaling = startupProps.containsKey(ENABLE_DYNAMIC_SCALING) &&
+                    Boolean.parseBoolean(startupProps.getProperty(ENABLE_DYNAMIC_SCALING));
+            logger.info("Dynamic Scaling is " + (enableDynamicScaling ? "Enabled." : "Disabled"));
+            // if dynamic scaling is available
+            if (enableDynamicScaling) {
+                // read dynamic scaling related configurations
+                scaleOutThreshold = startupProps.containsKey(SCALE_OUT_THRESHOLD) ?
+                        Integer.parseInt(startupProps.getProperty(SCALE_OUT_THRESHOLD)) : 100;
+                scaleInThreshold = startupProps.containsKey(SCALE_IN_THRESHOLD) ?
+                        Integer.parseInt(startupProps.getProperty(SCALE_IN_THRESHOLD)) : 10;
+                monitoringPeriod = startupProps.containsKey(MONITORING_INTERVAL) ?
+                        Integer.parseInt(startupProps.getProperty(MONITORING_INTERVAL)) : 5000;
+                monitoredBackLogLength = startupProps.containsKey(MONITORED_BACKLOG_HISTORY_LENGTH) ?
+                        Integer.parseInt(startupProps.getProperty(MONITORED_BACKLOG_HISTORY_LENGTH)) : 5;
+                // start the computation monitor thread
+                monitoringService.scheduleWithFixedDelay(new ComputationMonitor(), 0, monitoringPeriod,
+                        TimeUnit.MILLISECONDS);
+                logger.info(String.format("Scale-in Threshold: %d, Scale-out Threshold: %d, " +
+                                "Monitoring Period: %d (ms), Monitored Backlog History Length: %d", scaleInThreshold,
+                        scaleOutThreshold, monitoringPeriod, monitoredBackLogLength));
+            }
             countDownLatch.await();
         } catch (GranulesConfigurationException | InterruptedException e) {
             logger.error(e.getMessage(), e);
@@ -211,25 +246,107 @@ public class ManagedResource {
         }
     }
 
-    public void registerStreamProcessor(GeoSpatialStreamProcessor processor) {
+    public void registerStreamProcessor(AbstractGeoSpatialStreamProcessor processor) {
         synchronized (monitoredProcessors) {
             monitoredProcessors.put(processor.getInstanceIdentifier(), new MonitoredComputationState(processor));
+            if (pendingStateTransfers.containsKey(processor.getInstanceIdentifier())) {
+                StateTransferMsg stateTransferMsg = pendingStateTransfers.remove(processor.getInstanceIdentifier());
+                logger.debug(String.format("Handing over the state for prefix: %s to: %s",
+                        processor.getInstanceIdentifier(), stateTransferMsg.getPrefix()));
+                processor.handleStateTransferReq(stateTransferMsg, true);
+            }
             monitoredProcessors.notifyAll();
         }
     }
 
-    public void scaleOutComplete(String computationIdentifier) {
+    public void scalingOperationComplete(String computationIdentifier) {
         MonitoredComputationState monitoredComputationState = monitoredProcessors.get(computationIdentifier);
         monitoredComputationState.backLogHistory.get().clear();
-        monitoredComputationState.eligibleForScaleOut.set(true);
+        monitoredComputationState.eligibleForScaling.set(true);
     }
 
-    public void handleTriggerScaleAck(TriggerScaleAck ack) {
+    public void handleTriggerScaleAck(ScaleOutResponse ack) {
         String processorId = ack.getTargetComputation();
         if (monitoredProcessors.containsKey(processorId)) {
             monitoredProcessors.get(processorId).computation.handleTriggerScaleAck(ack);
         } else {
             logger.warn("ScaleTriggerAck for an invalid computation: " + processorId);
+        }
+    }
+
+
+    public void handleScaleOutCompleteAck(ScaleOutCompleteAck ack) {
+        String processorId = ack.getTargetComputation();
+        if (monitoredProcessors.containsKey(processorId)) {
+            monitoredProcessors.get(processorId).computation.handleScaleOutCompleteAck(ack);
+        } else {
+            logger.warn("ScaleOutCompleteAck for an invalid computation: " + processorId);
+        }
+    }
+
+    public void handleScaleInLockReq(ScaleInLockRequest lockReq) {
+        String computationId = lockReq.getTargetComputation();
+        if (monitoredProcessors.containsKey(computationId)) {
+            monitoredProcessors.get(computationId).computation.handleScaleInLockReq(lockReq);
+        } else {
+            logger.warn("Invalid ScaleInLockReq for computation: " + computationId);
+        }
+    }
+
+    public void handleScaleInLockResp(ScaleInLockResponse lockResponse) {
+        String computationId = lockResponse.getComputation();
+        if (monitoredProcessors.containsKey(computationId)) {
+            monitoredProcessors.get(computationId).computation.handleScaleInLockResponse(lockResponse);
+        } else {
+            logger.warn("Invalid ScaleInLockResponse for computation: " + computationId);
+        }
+    }
+
+    public void handleScaleInActivateReq(ScaleInActivateReq activateReq) {
+        String computationId = activateReq.getTargetComputation();
+        if (monitoredProcessors.containsKey(computationId)) {
+            monitoredProcessors.get(computationId).computation.handleScaleInActivateReq(activateReq);
+        } else {
+            logger.warn("Invalid ScaleInLockReq for computation: " + computationId);
+        }
+    }
+
+    public void handleStateTransferMsg(StateTransferMsg stateTransferMsg) {
+        String computationId = stateTransferMsg.getTargetComputation();
+        if (monitoredProcessors.containsKey(computationId)) {
+            monitoredProcessors.get(computationId).computation.handleStateTransferReq(stateTransferMsg, false);
+        } else {
+            if (!stateTransferMsg.isScaleType()) {
+                try {
+                    pendingStateTransfers.put(computationId, stateTransferMsg);
+                    ScaleOutCompleteAck completeAck = new ScaleOutCompleteAck(stateTransferMsg.getKeyPrefix(),
+                            stateTransferMsg.getPrefix(), stateTransferMsg.getOriginComputation());
+                    SendUtility.sendControlMessage(stateTransferMsg.getOriginEndpoint(), completeAck);
+                    logger.debug("New Computation is not active yet. Storing the StateTransfer Request.");
+                } catch (CommunicationsException | IOException e) {
+                    logger.error("Error sending out the ScaleOutCompleteAck to " + stateTransferMsg.getOriginEndpoint());
+                }
+            } else {
+                logger.warn("Invalid StateTransferMsg to " + computationId);
+            }
+        }
+    }
+
+    public void handleScaleInCompleteMsg(ScaleInComplete completeMsg) {
+        String computationId = completeMsg.getTargetComputation();
+        if (monitoredProcessors.containsKey(computationId)) {
+            monitoredProcessors.get(computationId).computation.handleScaleInCompleteMsg(completeMsg);
+        } else {
+            logger.warn("Invalid ScaleInComplete msg to " + computationId);
+        }
+    }
+
+    public void handleScaleInCompleteAckMsg(ScaleInCompleteAck ack) {
+        String computationId = ack.getTargetComputation();
+        if (monitoredProcessors.containsKey(computationId)) {
+            monitoredProcessors.get(computationId).computation.handleScaleInCompleteAck(ack);
+        } else {
+            logger.warn("Invalid ScaleInComplete msg to " + computationId);
         }
     }
 }
