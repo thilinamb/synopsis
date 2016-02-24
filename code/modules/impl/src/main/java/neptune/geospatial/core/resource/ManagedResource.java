@@ -22,10 +22,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -42,7 +39,7 @@ public class ManagedResource {
     class MonitoredComputationState {
         private AbstractGeoSpatialStreamProcessor computation;
         private AtomicReference<ArrayList<Long>> backLogHistory = new AtomicReference<>(
-                new ArrayList<Long>(MONITORED_BACKLOG_HISTORY_LENGTH));
+                new ArrayList<Long>(monitoredBackLogLength));
         private AtomicBoolean eligibleForScaling = new AtomicBoolean(true);
 
         private MonitoredComputationState(AbstractGeoSpatialStreamProcessor computation) {
@@ -56,7 +53,7 @@ public class ManagedResource {
                 logger.debug(String.format("Monitoring computation: %s. Adding a backlog: %d",
                         computation.getInstanceIdentifier(), currentBacklog));
             }
-            while (backLogHistory.get().size() > MONITORED_BACKLOG_HISTORY_LENGTH) {
+            while (backLogHistory.get().size() > monitoredBackLogLength) {
                 backLogHistory.get().remove(0);
             }
             return isBacklogDeveloping();
@@ -64,21 +61,21 @@ public class ManagedResource {
 
         private double isBacklogDeveloping() {
             double excess = 0;
-            if (backLogHistory.get().size() >= MONITORED_BACKLOG_HISTORY_LENGTH) {
+            if (backLogHistory.get().size() >= monitoredBackLogLength) {
                 boolean increasing = true;
                 boolean decreasing = true;
                 for (int i = 0; i < backLogHistory.get().size(); i++) {
                     double entry = backLogHistory.get().get(i);
-                    if (entry < HIGH_THRESHOLD) {
+                    if (entry < scaleOutThreshold) {
                         increasing = false;
-                    } else if (entry > LOW_THRESHOLD) {
+                    } else if (entry > scaleInThreshold) {
                         decreasing = false;
                     }
                 }
                 if (increasing) {
-                    excess = backLogHistory.get().get(backLogHistory.get().size() - 1) - HIGH_THRESHOLD;
+                    excess = backLogHistory.get().get(backLogHistory.get().size() - 1) - scaleOutThreshold;
                 } else if (decreasing) {
-                    excess = backLogHistory.get().get(backLogHistory.get().size() - 1) - LOW_THRESHOLD;
+                    excess = backLogHistory.get().get(backLogHistory.get().size() - 1) - scaleInThreshold;
                 }
             }
             return excess;
@@ -120,10 +117,18 @@ public class ManagedResource {
 
 
     private static Logger logger = Logger.getLogger(ManagedResource.class.getName());
-    public static final int MONITORED_BACKLOG_HISTORY_LENGTH = 5;
-    public static final long HIGH_THRESHOLD = 100;
-    public static final long LOW_THRESHOLD = 10;
-    public static final int MONITORING_PERIOD = 5 * 1000;
+    // config properties
+    public static final String ENABLE_DYNAMIC_SCALING = "rivulet-enable-dynamic-scaling";
+    public static final String MONITORING_INTERVAL = "rivulet-monitor-interval";
+    public static final String SCALE_OUT_THRESHOLD = "rivulet-scale-out-threshold";
+    public static final String SCALE_IN_THRESHOLD = "rivulet-scale-in-threshold";
+    public static final String MONITORED_BACKLOG_HISTORY_LENGTH = "rivulet-monitored-backlog-history-length";
+
+    // default values
+    public int monitoredBackLogLength;
+    public long scaleOutThreshold;
+    public long scaleInThreshold;
+    public int monitoringPeriod;
 
     private static ManagedResource instance;
     private String deployerEndpoint = null;
@@ -139,16 +144,36 @@ public class ManagedResource {
     }
 
     private void init() {
-        // register the callbacks to receive interference related control messages.
         instance = this;
+        // register the callbacks to receive interference related control messages.
         AbstractProtocolHandler protoHandler = new ResourceProtocolHandler(this);
         ControlMessageDispatcher.getInstance().registerCallback(Constants.WILD_CARD_CALLBACK, protoHandler);
         new Thread(protoHandler).start();
-        // start the computation monitor thread
-        //monitoringService.scheduleWithFixedDelay(new ComputationMonitor(), 0, MONITORING_PERIOD, TimeUnit.MILLISECONDS);
         try {
-            deployerEndpoint = NeptuneRuntime.getInstance().getProperties().getProperty(
-                    Constants.DEPLOYER_ENDPOINT);
+            Properties startupProps = NeptuneRuntime.getInstance().getProperties();
+            deployerEndpoint = startupProps.getProperty(Constants.DEPLOYER_ENDPOINT);
+
+            boolean enableDynamicScaling = startupProps.containsKey(ENABLE_DYNAMIC_SCALING) &&
+                    Boolean.parseBoolean(startupProps.getProperty(ENABLE_DYNAMIC_SCALING));
+            logger.info("Dynamic Scaling is " + (enableDynamicScaling ? "Enabled." : "Disabled"));
+            // if dynamic scaling is available
+            if (enableDynamicScaling) {
+                // read dynamic scaling related configurations
+                scaleOutThreshold = startupProps.containsKey(SCALE_OUT_THRESHOLD) ?
+                        Integer.parseInt(startupProps.getProperty(SCALE_OUT_THRESHOLD)) : 100;
+                scaleInThreshold = startupProps.containsKey(SCALE_IN_THRESHOLD) ?
+                        Integer.parseInt(startupProps.getProperty(SCALE_IN_THRESHOLD)) : 10;
+                monitoringPeriod = startupProps.containsKey(MONITORING_INTERVAL) ?
+                        Integer.parseInt(startupProps.getProperty(MONITORING_INTERVAL)) : 5000;
+                monitoredBackLogLength = startupProps.containsKey(MONITORED_BACKLOG_HISTORY_LENGTH) ?
+                        Integer.parseInt(startupProps.getProperty(MONITORED_BACKLOG_HISTORY_LENGTH)) : 5;
+                // start the computation monitor thread
+                monitoringService.scheduleWithFixedDelay(new ComputationMonitor(), 0, monitoringPeriod,
+                        TimeUnit.MILLISECONDS);
+                logger.info(String.format("Scale-in Threshold: %d, Scale-out Threshold: %d, " +
+                                "Monitoring Period: %d (ms), Monitored Backlog History Length: %d", scaleInThreshold,
+                        scaleOutThreshold, monitoringPeriod, monitoredBackLogLength));
+            }
             countDownLatch.await();
         } catch (GranulesConfigurationException | InterruptedException e) {
             logger.error(e.getMessage(), e);

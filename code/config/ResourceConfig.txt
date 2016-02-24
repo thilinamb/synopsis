@@ -43,3 +43,10 @@ deployer-endpoint=localhost:8088
 
 # Scheduler : used only with NIJobDeployer
 scheduler=ds.granules.neptune.interfere.core.schedule.NIRoundRobinScheduler
+
+# Rivulet specific properties
+rivulet-enable-dynamic-scaling=false
+rivulet-monitor-interval=5000
+rivulet-scale-out-threshold=100
+rivulet-scale-in-threshold=10
+rivulet-monitored-backlog-history-length=5
