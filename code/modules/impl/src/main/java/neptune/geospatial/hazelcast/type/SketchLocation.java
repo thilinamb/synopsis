@@ -1,4 +1,4 @@
-package neptune.geospatial.gossip.type;
+package neptune.geospatial.hazelcast.type;
 
 /**
  * Location of a sketch: The computation and the endpoint of the Granules

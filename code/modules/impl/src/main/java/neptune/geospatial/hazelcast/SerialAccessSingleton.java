@@ -1,4 +1,4 @@
-package neptune.geospatial.gossip;
+package neptune.geospatial.hazelcast;
 
 import java.util.concurrent.Semaphore;
 

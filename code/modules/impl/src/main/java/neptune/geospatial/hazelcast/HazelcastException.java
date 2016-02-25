@@ -1,4 +1,4 @@
-package neptune.geospatial.gossip;
+package neptune.geospatial.hazelcast;
 
 /**
  * @author Thilina Buddhika

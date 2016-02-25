@@ -18,8 +18,8 @@ import ds.granules.util.ParamsReader;
 import neptune.geospatial.core.computations.AbstractGeoSpatialStreamProcessor;
 import neptune.geospatial.core.protocol.AbstractProtocolHandler;
 import neptune.geospatial.core.protocol.msg.*;
-import neptune.geospatial.gossip.HazelcastClientInstanceHolder;
-import neptune.geospatial.gossip.HazelcastNodeInstanceHolder;
+import neptune.geospatial.hazelcast.HazelcastClientInstanceHolder;
+import neptune.geospatial.hazelcast.HazelcastNodeInstanceHolder;
 import org.apache.log4j.Logger;
 
 import java.io.File;

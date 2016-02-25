@@ -1,9 +1,9 @@
-package neptune.geospatial.gossip.serializer;
+package neptune.geospatial.hazelcast.serializer;
 
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.StreamSerializer;
-import neptune.geospatial.gossip.type.SketchLocation;
+import neptune.geospatial.hazelcast.type.SketchLocation;
 
 import java.io.IOException;
 

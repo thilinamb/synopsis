@@ -1,4 +1,4 @@
-package neptune.geospatial.gossip;
+package neptune.geospatial.hazelcast;
 
 import com.hazelcast.config.Config;
 import com.hazelcast.core.Hazelcast;
