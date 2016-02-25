@@ -1,5 +1,9 @@
 package neptune.geospatial.core.resource;
 
+import com.hazelcast.client.config.ClientConfig;
+import com.hazelcast.config.Config;
+import com.hazelcast.config.SerializerConfig;
+import com.hazelcast.nio.serialization.StreamSerializer;
 import ds.granules.Granules;
 import ds.granules.communication.direct.control.ControlMessage;
 import ds.granules.communication.direct.control.SendUtility;
@@ -14,6 +18,8 @@ import ds.granules.util.ParamsReader;
 import neptune.geospatial.core.computations.AbstractGeoSpatialStreamProcessor;
 import neptune.geospatial.core.protocol.AbstractProtocolHandler;
 import neptune.geospatial.core.protocol.msg.*;
+import neptune.geospatial.gossip.HazelcastClientInstanceHolder;
+import neptune.geospatial.gossip.HazelcastNodeInstanceHolder;
 import org.apache.log4j.Logger;
 
 import java.io.File;
@@ -123,6 +129,7 @@ public class ManagedResource {
     public static final String SCALE_OUT_THRESHOLD = "rivulet-scale-out-threshold";
     public static final String SCALE_IN_THRESHOLD = "rivulet-scale-in-threshold";
     public static final String MONITORED_BACKLOG_HISTORY_LENGTH = "rivulet-monitored-backlog-history-length";
+    public static final String HAZELCAST_SERIALIZER_PREFIX = "rivulet-hazelcast-serializer-";
 
     // default values
     public int monitoredBackLogLength;
@@ -174,6 +181,7 @@ public class ManagedResource {
                                 "Monitoring Period: %d (ms), Monitored Backlog History Length: %d", scaleInThreshold,
                         scaleOutThreshold, monitoringPeriod, monitoredBackLogLength));
             }
+            initializeHazelcast(startupProps);
             countDownLatch.await();
         } catch (GranulesConfigurationException | InterruptedException e) {
             logger.error(e.getMessage(), e);
@@ -185,6 +193,33 @@ public class ManagedResource {
             throw new NIException("ManagedResource is not initialized.");
         }
         return instance;
+    }
+
+    private void initializeHazelcast(Properties startupProps) {
+        Config config = new Config();
+        ClientConfig clientConfig = new ClientConfig();
+        for (String propName : startupProps.stringPropertyNames()) {
+            if (propName.startsWith(HAZELCAST_SERIALIZER_PREFIX)) {
+                String typeClazzName = propName.substring(HAZELCAST_SERIALIZER_PREFIX.length(), propName.length());
+                String serializerClazzName = startupProps.getProperty(propName);
+                try {
+                    Class typeClazz = Class.forName(typeClazzName);
+                    Class serializerClazz = Class.forName(serializerClazzName);
+                    StreamSerializer serializer = (StreamSerializer) serializerClazz.newInstance();
+                    SerializerConfig sc = new SerializerConfig().setImplementation(serializer).setTypeClass(typeClazz);
+                    config.getSerializationConfig().addSerializerConfig(sc);
+                    clientConfig.getSerializationConfig().addSerializerConfig(sc);
+                    logger.info("Successfully Added Hazelcast Serializer for type " + typeClazzName);
+                } catch (ClassNotFoundException e) {
+                    logger.error("Error instantiating Type class through reflection. Class name: " + typeClazzName, e);
+                } catch (InstantiationException | IllegalAccessException e) {
+                    logger.error("Error creating a new instance of the serializer. Class name: " + serializerClazzName,
+                            e);
+                }
+            }
+        }
+        HazelcastNodeInstanceHolder.init(config);
+        HazelcastClientInstanceHolder.init(clientConfig);
     }
 
     public static void main(String[] args) {

@@ -50,3 +50,6 @@ rivulet-monitor-interval=5000
 rivulet-scale-out-threshold=100
 rivulet-scale-in-threshold=10
 rivulet-monitored-backlog-history-length=5
+
+# Hazelcast serializer registration
+rivulet-hazelcast-serializer-neptune.geospatial.gossip.type.SketchLocation=neptune.geospatial.gossip.serializer.SketchLocationSerializer
