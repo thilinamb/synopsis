@@ -1,6 +1,9 @@
 package neptune.geospatial.gossip.type;
 
 /**
+ * Location of a sketch: The computation and the endpoint of the Granules
+ * Resource.
+ *
  * @author Thilina Buddhika
  */
 public class SketchLocation {

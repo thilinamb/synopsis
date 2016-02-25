@@ -8,6 +8,8 @@ import neptune.geospatial.gossip.type.SketchLocation;
 import java.io.IOException;
 
 /**
+ * Hazelcast Serializer for {@code SketchLocation}.
+ *
  * @author Thilina Buddhika
  */
 public class SketchLocationSerializer implements StreamSerializer<SketchLocation> {
