@@ -10,10 +10,33 @@ Dynamic reorientations of the graph
 
 Representativeness across time intervals
 
-\subsection{Coping with High Data Rates: Scaling out}
 \input{sections/geohash} % This needs to be moved as we get the paper structure finalized
 
+\subsection{Coping with High Data Rates: Scaling out}
+\begin{figure}
+    \centerline{\includegraphics[scale=0.5]{figures/rivulet-archi.png}}
+    \caption{Rivulet is implemented as a specialized layer for geo-spatial data on top of Neptune stream processing system..}
+    \label{fig:process-monitor}
+\end{figure}
+%
+\begin{figure}
+    \centerline{\includegraphics[scale=0.55]{figures/process-monitor.png}}
+    \caption{Dynamic scaling is triggered by monitoring the backlog of each computation and memory pressure incurred in each process.}
+    \label{fig:process-monitor}
+\end{figure}
+%
+\begin{figure}
+    \centerline{\includegraphics[scale=0.55]{figures/scale-out-protocol.png}}
+    \caption{Scale out protocol}
+    \label{fig:scale-out-protocol}
+\end{figure}
+%
 \subsection{Downscaling}
+\begin{figure}
+    \centerline{\includegraphics[scale=0.55]{figures/scale-in-protocol.png}}
+    \caption{Scale in protocol}
+    \label{fig:scale-in-protocol}
+\end{figure}
 
 \subsection{Query Evaluations}
 Accounting for data arrival rates, accuracy requirements, memory pressures, and the capacity of network links result in dynamic upscaling and downscaling of nodes that comprise Rivulet. The result of these scaling operations is a distributed sketch, with constituent nodes holding compact representations of observational data from different geographic locations. 
@@ -30,18 +53,31 @@ Alternatively, Rivulet nodes participating in the query evaluations will return 
 
 The prefix tree also allows query evaluations during both upscaling and downscaling operations. During query evaluations, queries are forwarded to child nodes (created during a recent upscaling operation). When the conduit forwards a query to a Rivulet node and the node is unavailable, it is either due to a failure at that node or a downscaling operation that merges the child node with its parent node. When a node is unreachable, the conduit forwards the query to the parent node. 
 
+\subsection{Types of Queries}
+Queries within Rivulet can be discrete or continuous queries. Unlike discrete queries that are evaluated once, continuous queries are evaluated periodically or when observations become available. Though observations are never stored on stable storage, queries specified by users may target spatial and chronological scopes. In the case of continuous queries, the chronological range implicitly evolves as new observations trickle in; in the case of windowing operators, the specified chronological window continually slides over the observational streams. We classify queries – discrete or continuous –   supported by Rivulet into 5 broad queries. These include:
+\begin{enumerate} 
+	\item	Filter queries that specify inequality/relational queries along one or more dimensions. 
+	\item	Statistical queries allow users to explore statistical properties of the observational space. For example, users can retrieve and contrast correlations between any two features at different geographic locations at the same time. Alternatively, queries may contrast correlations between different features at different time ranges at the same geographic location. Statistical queries also support retrieval of the mean, standard deviation, and also of feature outliers based on Chebyshev’s rule about the distribution of feature values.
+	\item	Density queries support analysis over the distribution of values associated with a feature over a particular spatiotemporal scope. These include kernel density estimations, estimating the probability of observing a particular value for an observation, and determining the deciles and quartiles for the observed feature. 
+	\item	Set Queries target identification of whether a particular combination of feature values was observed, estimating the cardinality of the dataset, and identifying the frequencies of repeated observations.
+	\item	Inferential queries are intended to support projections about how the feature is expected to evolve over a spatiotemporal scope. In this study, these projections are predicated on the registration of time-series models at the particular scope. Specifically, we rely on exponential smoothing methods to make forecasts about the estimated values of features at different time points. Besides compact representations and faster evaluations that are amenable to keeping pace with high data arrival rates, smoothing methods are able to handle trends and seasonality that often underpin observational data. We rely on the Holt-Winters model. Here, the trend and seasonality components for the forecast are computed separately and updated independently based on the error computed from the forecasted and observed values. The seasonality component in the Holt-Winters model may either be additive or multiplicative; we work with the multiplicative components that are are known to perform better with real-world applications. 
+\end{enumerate}
 
-\subsection{Correlation/statistical queries supported over Rivulet}
+\subsubsection{Filter Queries}
 
-\subsection{Kernel Density estimation queries?}
+\subsubsection{Correlation/statistical queries}
 
-\subsection{Membership (Bloom Filters)}
+\subsubsection{Kernel Density estimation queries}
 
-\subsection{HyperLogLog: probabilistic estimator for approximating the cardinality of a dataset}
+\subsubsection{Set Queries}
+\begin{itemize}
+	\item Membership (Bloom Filters)
+	\item HyperLogLog: probabilistic estimator for approximating the cardinality of a dataset
+	\item Count-Min: approximate frequencies of repeated elements within a dataset
+\end{itemize}
 
-\subsection{Count-Min: approximate frequencies of repeated elements within a dataset}
 
-\subsection{Forecasting Queries}
+\subsubsection{Forecasting Queries}
 Queries that we have discussed so far report on what has happened; a forecasting query requests information about what will happen.
 
 \subsection{Support for High throughput Query Evaluations}
