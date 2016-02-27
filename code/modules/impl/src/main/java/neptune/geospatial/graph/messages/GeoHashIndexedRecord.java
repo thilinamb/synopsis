@@ -26,6 +26,9 @@ public class GeoHashIndexedRecord extends AbstractStreamEvent {
     private long tsIngested;
     private long messageIdentifier;
 
+    /** Raw payload of this record, containing feature metadata. */
+    private byte[] payload;
+
     public GeoHashIndexedRecord() {
     }
 
@@ -71,4 +74,9 @@ public class GeoHashIndexedRecord extends AbstractStreamEvent {
     public long getMessageIdentifier() {
         return messageIdentifier;
     }
+
+    public byte[] getPayload() {
+        return this.payload;
+    }
+
 }
