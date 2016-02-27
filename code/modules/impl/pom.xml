@@ -44,9 +44,9 @@
             </exclusions>
         </dependency>
         <dependency>
-            <groupId>io.sigpipe</groupId>
-            <artifactId>sing</artifactId>
-            <version>1.0</version>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-math3</artifactId>
+            <version>3.6</version>
         </dependency>
         <dependency>
             <groupId>com.hazelcast</groupId>
