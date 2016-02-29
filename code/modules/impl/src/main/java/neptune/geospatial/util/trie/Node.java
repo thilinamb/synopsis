@@ -44,19 +44,29 @@ public class Node {
 
     public Node(String prefix, String computationId, String ctrlEndpoint) {
         this.prefix = prefix;
-        this.prefixLength = prefix.length();
+        this.prefixLength = prefix.length() - 1;
         this.computationId = computationId;
         this.ctrlEndpoint = ctrlEndpoint;
+    }
+
+    /**
+     * Constructor for Root node
+     */
+    public Node(){
+        this.prefix = "_";
+        this.prefixLength = 1; // assuming the minimum length we consider is 2 characters
+        this.computationId = "";
+        this.ctrlEndpoint = "";
     }
 
     /**
      * Registers a new prefix in an existing node.
      * @param node  A node representing the given sub-prefix
      */
-    public void add(Node node) {
-        if (prefixLength > 0) {
+    protected void add(Node node) {
+        if (prefixLength > 1) {
             String newNodePrefix = node.prefix;
-            String childQualifier = newNodePrefix.substring(prefixLength, prefixLength + CHILD_NODE_QUALIFIER_LENGTH);
+            String childQualifier = newNodePrefix.substring(0, prefixLength + CHILD_NODE_QUALIFIER_LENGTH);
             if (childNodes.containsKey(childQualifier)) { // there is a child node who can handles a longer prefix.
                 childNodes.get(childQualifier).add(node);
             } else { // it should be a prefix that the current node maintains.
@@ -80,7 +90,7 @@ public class Node {
      * Scales out a given prefix
      * @param node  A node representing the given sub-prefix
      */
-    public void expand(Node node) {
+    protected void expand(Node node) {
         expand(node, true);
     }
 
@@ -90,9 +100,9 @@ public class Node {
      * @param recursive Whether to perform a recursive expansion.
      *                  Used to handles a special case when expanding from the root.
      */
-    public void expand(Node node, boolean recursive) {
+    protected void expand(Node node, boolean recursive) {
         String newNodePrefix = node.prefix;
-        String childQualifier = newNodePrefix.substring(prefixLength, prefixLength + CHILD_NODE_QUALIFIER_LENGTH);
+        String childQualifier = newNodePrefix.substring(0, prefixLength + CHILD_NODE_QUALIFIER_LENGTH);
         if (childNodes.containsKey(childQualifier)) { // there is a child node who can handles a longer prefix.
             if (recursive) {
                 childNodes.get(childQualifier).expand(node);
@@ -112,11 +122,11 @@ public class Node {
      * Scales in the given sub-prefix.
      * @param node A node representing the given sub-prefix.
      */
-    public void shrink(Node node) {
+    protected void shrink(Node node) {
         String newNodePrefix = node.prefix;
-        String childQualifier = newNodePrefix.substring(prefixLength, prefixLength + CHILD_NODE_QUALIFIER_LENGTH);
+        String childQualifier = newNodePrefix.substring(0, prefixLength + CHILD_NODE_QUALIFIER_LENGTH);
         if (childNodes.containsKey(childQualifier)) { // there is a child node who can handles a longer prefix.
-            if (childNodes.get(childQualifier).prefixLength == newNodePrefix.length()) {
+            if (childNodes.get(childQualifier).prefix.equals(newNodePrefix)) {
                 childNodes.remove(childQualifier);
                 if (this.computationId.equals(node.computationId)) {
                     if (logger.isDebugEnabled()) {
@@ -142,7 +152,7 @@ public class Node {
      * Traverse the prefix tree in a depth first manner and return the list of prefixes.
      * @return a list of prefixes. Each node returns a sorted list of child prefixes followed by its own prefix
      */
-    private List<String> traverse() {
+    protected List<String> traverse() {
         // first sort the children
         TreeSet<String> sortedKeys = new TreeSet<>(childNodes.keySet());
         List<String> traverseResults = new ArrayList<>();
@@ -163,7 +173,7 @@ public class Node {
      * @param traverseResults List of prefixes returned by the {@code traverse} method.
      * @return A string encoded version of the prefix results.
      */
-    private String printTraverseResults(List<String> traverseResults) {
+    protected String printTraverseResults(List<String> traverseResults) {
         StringBuilder sBuilder = new StringBuilder();
         for (String prefix : traverseResults) {
             if (prefix.equals("")) {
@@ -178,35 +188,36 @@ public class Node {
     }
 
     public static void main(String[] args) {
-        Node root = new Node("", "comp_id", "localhost:9099");
+        Node root = new Node();
         System.out.println(root.printTraverseResults(root.traverse()));
-        root.add(new Node("9X", "comp_id-1", "localhost:9099"));
+        root.add(new Node("9XA", "comp_id-1", "localhost:9099"));
+        root.add(new Node("9JB", "comp_id-1", "localhost:9099"));
         System.out.println(root.printTraverseResults(root.traverse()));
-        root.add(new Node("8G", "comp_id-2", "localhost:9099"));
+        root.add(new Node("8GF", "comp_id-2", "localhost:9099"));
         System.out.println(root.printTraverseResults(root.traverse()));
-        root.add(new Node("A", "comp_id-3", "localhost:9099"));
+        root.add(new Node("ABC", "comp_id-3", "localhost:9099"));
         System.out.println(root.printTraverseResults(root.traverse()));
 
-        System.out.println("----------------------");
+        System.out.println("\nExpanding ----------------------");
         root.expand(new Node("9X1", "comp_id-4", "localhost:9099"));
         root.expand(new Node("9X2", "comp_id-5", "localhost:9099"));
         root.expand(new Node("9X1A", "comp_id-6", "localhost:9099"));
         root.expand(new Node("9X3", "comp_id-7", "localhost:9099"));
         System.out.println(root.printTraverseResults(root.traverse()));
 
-        System.out.println("----------------------");
+        System.out.println("\nShrinking 9X1 ----------------------");
         root.shrink(new Node("9X1", "comp_id-1", "localhost:9099"));
         System.out.println(root.printTraverseResults(root.traverse()));
 
-        System.out.println("----------------------");
+        System.out.println("\nAdding 9X1 ----------------------");
         root.add(new Node("9X1", "comp_id-1", "localhost:9099"));
         System.out.println(root.printTraverseResults(root.traverse()));
 
-        System.out.println("----------------------");
+        System.out.println("\nExpanding 9X1 ----------------------");
         root.expand(new Node("9X1", "comp_id-4", "localhost:9099"));
         System.out.println(root.printTraverseResults(root.traverse()));
 
-        System.out.println("----------------------");
+        System.out.println("\nAdding 9X1A2 ----------------------");
         root.add(new Node("9X1A2", "comp_id-4", "localhost:9099"));
         System.out.println(root.printTraverseResults(root.traverse()));
     }

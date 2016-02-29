@@ -3,6 +3,7 @@ package neptune.geospatial.core.resource;
 import com.hazelcast.client.config.ClientConfig;
 import com.hazelcast.config.Config;
 import com.hazelcast.config.SerializerConfig;
+import com.hazelcast.core.IMap;
 import com.hazelcast.nio.serialization.StreamSerializer;
 import ds.granules.Granules;
 import ds.granules.communication.direct.control.ControlMessage;
@@ -20,6 +21,7 @@ import neptune.geospatial.core.protocol.AbstractProtocolHandler;
 import neptune.geospatial.core.protocol.msg.*;
 import neptune.geospatial.hazelcast.HazelcastClientInstanceHolder;
 import neptune.geospatial.hazelcast.HazelcastNodeInstanceHolder;
+import neptune.geospatial.util.trie.GeoHashPrefixTree;
 import org.apache.log4j.Logger;
 
 import java.io.File;
@@ -220,13 +222,13 @@ public class ManagedResource {
         }
         HazelcastNodeInstanceHolder.init(config);
         HazelcastClientInstanceHolder.init(clientConfig);
-        /*try {
+        try {
             IMap map = HazelcastClientInstanceHolder.getInstance().getHazelcastClientInstance().getMap(
                     GeoHashPrefixTree.PREFIX_MAP);
             map.addEntryListener(new GeoHashPrefixTree(), true);
-        } catch (HazelcastException e) {
+        } catch (neptune.geospatial.hazelcast.HazelcastException e) {
             logger.error("Error getting the Hazelcast client to register the entry listener.", e);
-        }*/
+        }
     }
 
     public static void main(String[] args) {

@@ -20,7 +20,7 @@ public class GeoHashPrefixTree implements EntryAddedListener<String, SketchLocat
      * root node is a synthetic node which doesn't exist
      * in the real distributed setup.
      */
-    private Node root = new Node("", "", "");
+    private Node root = new Node();
 
     /**
      * Register a new prefix. Does not perform and expansion or shrink of the prefix tree.
@@ -44,6 +44,7 @@ public class GeoHashPrefixTree implements EntryAddedListener<String, SketchLocat
     public synchronized void recordScaleOut(String prefix, String newCompId, String newCtrlEp) {
         Node node = new Node(prefix, newCompId, newCtrlEp);
         root.expand(node);
+        System.out.println("*********************** -> " + root.printTraverseResults(root.traverse()));
     }
 
     /**
@@ -56,6 +57,7 @@ public class GeoHashPrefixTree implements EntryAddedListener<String, SketchLocat
     public synchronized void recordScaleIn(String prefix, String compId, String ctrlEp) {
         Node node = new Node(prefix, compId, ctrlEp);
         root.shrink(node);
+        System.out.println("*********************** -> " + root.printTraverseResults(root.traverse()));
     }
 
     @Override

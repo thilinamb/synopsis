@@ -206,7 +206,7 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
             // perform the business logic: do this selectively. Send through the traffic we don't process.
             process(geoHashIndexedRecord);
         }
-        /*long count = scaleInOutTrigger.incrementAndGet();
+        long count = scaleInOutTrigger.incrementAndGet();
         try {
             if (count % 20000000 != 0 && count % 5000000 == 0) {
                 logger.debug("Scaling Out!");
@@ -218,7 +218,7 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
             }
         } catch (Exception ignore) {
 
-        } */
+        }
     }
 
     /**
@@ -395,6 +395,10 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
                     return true;
                 } else {
                     mutex.release();
+                    if(logger.isDebugEnabled()){
+                        logger.debug(String.format("[%s] Releasing the acquired lock for scaling in operation. " +
+                                "Not outgoing prefixes.", getInstanceIdentifier()));
+                    }
                     return false;
                 }
             }
@@ -818,7 +822,7 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
         }
     }
 
-    public void handleScaleInCompleteAck(ScaleInCompleteAck ack) {
+    public synchronized void handleScaleInCompleteAck(ScaleInCompleteAck ack) {
         PendingScaleInRequest pendingReq = pendingScaleInRequests.get(ack.getPrefix());
         if (pendingReq != null) {
             pendingReq.receivedCount++;
@@ -836,8 +840,11 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
                     } catch (CommunicationsException | IOException e) {
                         logger.error("Error sending out a ScaleInCompleteAck to " + pendingReq.originCtrlEndpoint);
                     }
-                }
-                else { // initiated locally.
+                } else { // initiated locally.
+                    if (logger.isDebugEnabled()) {
+                        logger.debug(String.format("[%s] Completed Scaling in for prefix : %s",
+                                getInstanceIdentifier(), ack.getPrefix()));
+                    }
                     // update hazelcast
                     try {
                         IMap<String, SketchLocation> prefMap = hzInstance.getMap(GeoHashPrefixTree.PREFIX_MAP);
