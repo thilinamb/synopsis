@@ -5,6 +5,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import io.sigpipe.sing.dataset.Metadata;
+import io.sigpipe.sing.graph.FeatureTypeMismatchException;
 import io.sigpipe.sing.graph.Path;
 import io.sigpipe.sing.graph.Sketch;
 import io.sigpipe.sing.serialization.Serializer;
@@ -24,11 +25,11 @@ public class SketchProcessor extends AbstractGeoSpatialStreamProcessor {
             sketches.put(location, sketch);
         }
 
-        Metadata eventMetadata;
+        Metadata eventMetadata = null;
         try {
             byte[] payload = event.getPayload();
             eventMetadata = Serializer.deserialize(Metadata.class, payload);
-        } catch (IOException e) {
+        } catch (Exception e) {
             //TODO log this
             System.out.println("Could not deserialize event payload");
             e.printStackTrace();
@@ -38,7 +39,11 @@ public class SketchProcessor extends AbstractGeoSpatialStreamProcessor {
         // etc.
         Path path = new Path(eventMetadata.getAttributes().toArray());
 
-        sketch.addPath(path);
+        try {
+            sketch.addPath(path);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     public byte[] split(String prefix) {
