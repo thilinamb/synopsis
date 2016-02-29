@@ -220,6 +220,13 @@ public class ManagedResource {
         }
         HazelcastNodeInstanceHolder.init(config);
         HazelcastClientInstanceHolder.init(clientConfig);
+        /*try {
+            IMap map = HazelcastClientInstanceHolder.getInstance().getHazelcastClientInstance().getMap(
+                    GeoHashPrefixTree.PREFIX_MAP);
+            map.addEntryListener(new GeoHashPrefixTree(), true);
+        } catch (HazelcastException e) {
+            logger.error("Error getting the Hazelcast client to register the entry listener.", e);
+        }*/
     }
 
     public static void main(String[] args) {

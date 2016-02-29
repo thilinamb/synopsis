@@ -207,7 +207,7 @@ public class Node {
         System.out.println(root.printTraverseResults(root.traverse()));
 
         System.out.println("----------------------");
-        root.expand(new Node("9X1A", "comp_id-5", "localhost:9099"));
+        root.add(new Node("9X1A2", "comp_id-4", "localhost:9099"));
         System.out.println(root.printTraverseResults(root.traverse()));
     }
 
