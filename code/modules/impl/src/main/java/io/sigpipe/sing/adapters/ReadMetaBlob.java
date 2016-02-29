@@ -63,7 +63,11 @@ public class ReadMetaBlob {
 
         scan.nextInt();
 
-        fs.printAll();
+        //fs.printAll();
+        PerformanceTimer serpt = new PerformanceTimer("serialize");
+        serpt.start();
+        Serializer.persistCompressed(s.getRoot(), "testvertex.bin");
+        serpt.stopAndPrint();
 
         in.close();
     }

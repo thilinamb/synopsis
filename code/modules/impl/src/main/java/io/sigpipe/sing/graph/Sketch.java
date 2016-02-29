@@ -38,6 +38,20 @@ public class Sketch {
      */
     private Queue<String> features = new LinkedList<>();
 
+    /**
+     * Tracks information about each level in the graph hierarchy.
+     */
+    private class HierarchyLevel {
+
+        public HierarchyLevel(int order, FeatureType type) {
+            this.order = order;
+            this.type = type;
+        }
+
+        public int order;
+        public FeatureType type;
+
+    }
     private TreeSet<Float> ts = new TreeSet<>();
 
     public Sketch() {

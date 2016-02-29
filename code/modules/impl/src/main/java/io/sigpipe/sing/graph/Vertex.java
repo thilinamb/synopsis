@@ -25,6 +25,7 @@ software, even if advised of the possibility of such damage.
 
 package io.sigpipe.sing.graph;
 
+import java.io.IOException;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.NavigableMap;
@@ -32,6 +33,10 @@ import java.util.Set;
 import java.util.TreeMap;
 
 import io.sigpipe.sing.dataset.feature.Feature;
+import io.sigpipe.sing.serialization.ByteSerializable;
+import io.sigpipe.sing.serialization.SerializationException;
+import io.sigpipe.sing.serialization.SerializationInputStream;
+import io.sigpipe.sing.serialization.SerializationOutputStream;
 
 /**
  * Provides a lightweight generic implementation of a graph vertex backed by a
@@ -41,17 +46,18 @@ import io.sigpipe.sing.dataset.feature.Feature;
  *
  * @author malensek
  */
-public class Vertex {
+public class Vertex implements ByteSerializable {
 
     protected Feature label;
     protected DataContainer data;
     protected TreeMap<Feature, Vertex> edges = new TreeMap<>();
 
-    public Vertex() { }
+    public Vertex() {
+        label = new Feature();
+    }
 
     public Vertex(Feature label) {
         this.label = label;
-        this.data = new DataContainer();
     }
 
     public Vertex(Feature label, DataContainer data) {
@@ -172,7 +178,7 @@ public class Vertex {
         return edges.values();
     }
 
-    public long numNeighbors() {
+    public int numNeighbors() {
         return edges.size();
     }
 
@@ -190,9 +196,11 @@ public class Vertex {
             edges.put(label, v);
             return v;
         } else {
-            DataContainer container = neighbor.getData();
-            if (container != null) {
-            container.merge(v.getData());
+            if (neighbor.hasData()) {
+                DataContainer container = neighbor.getData();
+                container.merge(v.getData());
+            } else {
+                neighbor.setData(v.getData());
             }
             return neighbor;
         }
@@ -230,6 +238,10 @@ public class Vertex {
 
     public DataContainer getData() {
         return data;
+    }
+
+    public boolean hasData() {
+        return data != null;
     }
 
     public void setData(DataContainer container) {
@@ -287,4 +299,36 @@ public class Vertex {
         return "V: [" + label.toString() + "] "
             + "(" + this.getAllNeighbors().size() + ")";
     }
+
+    @Deserialize
+    public Vertex(SerializationInputStream in)
+    throws IOException {
+        try {
+            this.label = new Feature(in);
+            this.data = new DataContainer(in);
+        } catch (SerializationException e) {
+            e.printStackTrace();
+        }
+
+        int neighbors = in.readInt();
+        for (int i = 0; i < neighbors; ++i) {
+            Vertex v = new Vertex(in);
+            this.connect(v);
+        }
+    }
+
+    @Override
+    public void serialize(SerializationOutputStream out)
+    throws IOException {
+        this.label.serialize(out);
+        if (this.hasData() == false) {
+            this.data = new DataContainer();
+        }
+        this.data.serialize(out);
+        out.writeInt(this.numNeighbors());
+        for (Vertex v : this.getAllNeighbors()) {
+            v.serialize(out);
+        }
+    }
+
 }
