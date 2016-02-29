@@ -18,13 +18,15 @@ public class SketchLocationSerializer implements StreamSerializer<SketchLocation
     public void write(ObjectDataOutput objectDataOutput, SketchLocation sketchLocation) throws IOException {
         objectDataOutput.writeUTF(sketchLocation.getComputation());
         objectDataOutput.writeUTF(sketchLocation.getCtrlEndpoint());
+        objectDataOutput.writeByte(sketchLocation.getMode());
     }
 
     @Override
     public SketchLocation read(ObjectDataInput objectDataInput) throws IOException {
         String computation = objectDataInput.readUTF();
         String ctrlEndpoint = objectDataInput.readUTF();
-        return new SketchLocation(computation, ctrlEndpoint);
+        byte mode = objectDataInput.readByte();
+        return new SketchLocation(computation, ctrlEndpoint, mode);
     }
 
     @Override

@@ -64,4 +64,8 @@ public class HazelcastClientInstanceHolder extends SerialAccessSingleton {
         }
         return instance;
     }
+
+    public HazelcastInstance getHazelcastClientInstance(){
+        return hazelcastClientInstance;
+    }
 }
