@@ -4,6 +4,7 @@ import ds.granules.streaming.core.StreamSource;
 import ds.granules.streaming.core.exception.StreamingDatasetException;
 import ds.granules.streaming.core.exception.StreamingGraphConfigurationException;
 import io.sigpipe.sing.serialization.SerializationInputStream;
+import neptune.geospatial.graph.Constants;
 import neptune.geospatial.graph.messages.GeoHashIndexedRecord;
 import neptune.geospatial.util.RivuletUtil;
 import neptune.geospatial.util.geohash.GeoHash;
@@ -20,7 +21,6 @@ public class NOAADataIngester extends StreamSource {
 
     private Logger logger = Logger.getLogger(NOAADataIngester.class);
     private static final int PRECISION = 5;
-    private static final String NOAA_DATA_STREAM = "noaa-data-stream";
 
     private File[] inputFiles;
     private int indexLastReadFile = 0;
@@ -49,7 +49,7 @@ public class NOAADataIngester extends StreamSource {
     public void emit() throws StreamingDatasetException {
         GeoHashIndexedRecord record = nextRecord();
         if (record != null) {
-            writeToStream(NOAA_DATA_STREAM, record);
+            writeToStream(Constants.Streams.NOAA_DATA_STREAM, record);
             countEmitted++;
         }
     }
@@ -98,7 +98,7 @@ public class NOAADataIngester extends StreamSource {
 
     @Override
     protected void declareOutputStreams() throws StreamingGraphConfigurationException {
-        declareStream(NOAA_DATA_STREAM, GeoHashIndexedRecord.class.getName());
+        declareStream(Constants.Streams.NOAA_DATA_STREAM, GeoHashIndexedRecord.class.getName());
     }
 
 
