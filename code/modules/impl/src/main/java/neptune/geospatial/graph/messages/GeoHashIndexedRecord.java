@@ -24,6 +24,10 @@ public class GeoHashIndexedRecord extends AbstractStreamEvent {
 
     // this is a temp field until we populate the messages with real data
     private long tsIngested;
+
+    /**
+     * Uniquely identifies each message.
+     */
     private long messageIdentifier;
 
     /** Raw payload of this record, containing feature metadata. */
@@ -32,11 +36,12 @@ public class GeoHashIndexedRecord extends AbstractStreamEvent {
     public GeoHashIndexedRecord() {
     }
 
-    public GeoHashIndexedRecord(String geoHash, int prefixLength, long messageIdentifier, long tsIngested) {
+    public GeoHashIndexedRecord(String geoHash, int prefixLength, long messageIdentifier, long tsIngested, byte[] payload) {
         this.geoHash = geoHash;
         this.prefixLength = prefixLength;
         this.messageIdentifier = messageIdentifier;
         this.tsIngested = tsIngested;
+        this.payload = payload;
     }
 
     @Override
@@ -45,6 +50,8 @@ public class GeoHashIndexedRecord extends AbstractStreamEvent {
         this.prefixLength = dataInputStream.readInt();
         this.messageIdentifier = dataInputStream.readLong();
         this.tsIngested = dataInputStream.readLong();
+        this.payload = new byte[dataInputStream.readInt()];
+        dataInputStream.readFully(this.payload);
     }
 
     @Override
@@ -53,6 +60,8 @@ public class GeoHashIndexedRecord extends AbstractStreamEvent {
         dataOutputStream.writeInt(this.prefixLength);
         dataOutputStream.writeLong(this.messageIdentifier);
         dataOutputStream.writeLong(this.tsIngested);
+        dataOutputStream.writeInt(this.payload.length);
+        dataOutputStream.write(this.payload);
     }
 
     public String getGeoHash() {
