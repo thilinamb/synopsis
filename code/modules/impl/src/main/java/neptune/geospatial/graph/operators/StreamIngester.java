@@ -11,6 +11,7 @@ import org.apache.log4j.Logger;
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
+import java.util.Random;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
@@ -26,10 +27,13 @@ public class StreamIngester extends StreamSource {
     private Logger logger = Logger.getLogger(StreamIngester.class);
     private BufferedReader bfr; // for the moment, let's assume we read streams from a file
     private final AtomicLong seqGenerator = new AtomicLong(0);
+    private byte[] dummyPayload;
 
     public StreamIngester() {
         try {
             bfr = new BufferedReader(new FileReader("/Users/thilina/csu/research/dsg/data/noaa_nam_pts.txt"));
+            dummyPayload = new byte[512];
+            new Random().nextBytes(dummyPayload);
         } catch (IOException e) {
             logger.error(e.getMessage(), e);
         }
@@ -72,7 +76,8 @@ public class StreamIngester extends StreamSource {
         if (locSegments.length == 2) {
             String geoHash = GeoHash.encode(Float.parseFloat(locSegments[0]), Float.parseFloat(locSegments[1]),
                     PRECISION);
-            record = new GeoHashIndexedRecord(geoHash, 2, seqGenerator.incrementAndGet(), System.currentTimeMillis());
+            record = new GeoHashIndexedRecord(geoHash, 2, seqGenerator.incrementAndGet(), System.currentTimeMillis(),
+                    dummyPayload);
         }
         return record;
     }
