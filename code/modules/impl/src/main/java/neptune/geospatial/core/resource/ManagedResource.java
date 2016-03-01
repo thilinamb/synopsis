@@ -132,6 +132,7 @@ public class ManagedResource {
     public static final String SCALE_IN_THRESHOLD = "rivulet-scale-in-threshold";
     public static final String MONITORED_BACKLOG_HISTORY_LENGTH = "rivulet-monitored-backlog-history-length";
     public static final String HAZELCAST_SERIALIZER_PREFIX = "rivulet-hazelcast-serializer-";
+    public static final String HAZELCAST_INTERFACE = "rivulet-hazelcast-interface";
 
     // default values
     public int monitoredBackLogLength;
@@ -219,6 +220,10 @@ public class ManagedResource {
                             e);
                 }
             }
+        }
+        if (startupProps.containsKey(HAZELCAST_INTERFACE)){
+            String allowedInterface = startupProps.getProperty(HAZELCAST_INTERFACE);
+            config.getNetworkConfig().getInterfaces().addInterface(allowedInterface).setEnabled(true);
         }
         HazelcastNodeInstanceHolder.init(config);
         HazelcastClientInstanceHolder.init(clientConfig);
