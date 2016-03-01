@@ -206,7 +206,7 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
             // perform the business logic: do this selectively. Send through the traffic we don't process.
             process(geoHashIndexedRecord);
         }
-        long count = scaleInOutTrigger.incrementAndGet();
+        /*long count = scaleInOutTrigger.incrementAndGet();
         try {
             if (count % 20000000 != 0 && count % 5000000 == 0) {
                 logger.debug("Scaling Out!");
@@ -218,7 +218,7 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
             }
         } catch (Exception ignore) {
 
-        }
+        }*/
     }
 
     /**

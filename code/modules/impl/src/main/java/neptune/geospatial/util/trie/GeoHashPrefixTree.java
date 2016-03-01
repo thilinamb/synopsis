@@ -44,7 +44,6 @@ public class GeoHashPrefixTree implements EntryAddedListener<String, SketchLocat
     public synchronized void recordScaleOut(String prefix, String newCompId, String newCtrlEp) {
         Node node = new Node(prefix, newCompId, newCtrlEp);
         root.expand(node);
-        System.out.println("*********************** -> " + root.printTraverseResults(root.traverse()));
     }
 
     /**
@@ -57,7 +56,6 @@ public class GeoHashPrefixTree implements EntryAddedListener<String, SketchLocat
     public synchronized void recordScaleIn(String prefix, String compId, String ctrlEp) {
         Node node = new Node(prefix, compId, ctrlEp);
         root.shrink(node);
-        System.out.println("*********************** -> " + root.printTraverseResults(root.traverse()));
     }
 
     @Override
