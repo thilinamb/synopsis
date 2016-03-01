@@ -22,12 +22,11 @@ import neptune.geospatial.hazelcast.HazelcastException;
 import neptune.geospatial.hazelcast.type.SketchLocation;
 import neptune.geospatial.partitioner.GeoHashPartitioner;
 import neptune.geospatial.util.Mutex;
+import neptune.geospatial.util.RivuletUtil;
 import neptune.geospatial.util.trie.GeoHashPrefixTree;
 import org.apache.log4j.Logger;
 
 import java.io.IOException;
-import java.net.InetAddress;
-import java.net.UnknownHostException;
 import java.text.DecimalFormat;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -395,7 +394,7 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
                     return true;
                 } else {
                     mutex.release();
-                    if(logger.isDebugEnabled()){
+                    if (logger.isDebugEnabled()) {
                         logger.debug(String.format("[%s] Releasing the acquired lock for scaling in operation. " +
                                 "Not outgoing prefixes.", getInstanceIdentifier()));
                     }
@@ -925,24 +924,15 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
 
     private String getCtrlEndpoint() throws GranulesConfigurationException {
         try {
-            return getHostInetAddress().getHostName() + ":" + NeptuneRuntime.getInstance().getProperties().getProperty(
-                    Constants.DIRECT_COMM_CONTROL_PLANE_SERVER_PORT);
+            return RivuletUtil.getHostInetAddress().getHostName() + ":" +
+                    NeptuneRuntime.getInstance().getProperties().getProperty(
+                            Constants.DIRECT_COMM_CONTROL_PLANE_SERVER_PORT);
         } catch (GranulesConfigurationException e) {
             logger.error("Error when retrieving the hostname.", e);
             throw e;
         }
     }
-
-    private InetAddress getHostInetAddress() {
-        InetAddress inetAddr;
-        try {
-            inetAddr = InetAddress.getLocalHost();
-        } catch (UnknownHostException e) {
-            inetAddr = InetAddress.getLoopbackAddress();
-        }
-        return inetAddr;
-    }
-
+    
     public abstract byte[] split(String prefix);
 
     public abstract void merge(String prefix, byte[] serializedSketch);
