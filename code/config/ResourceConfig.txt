@@ -55,4 +55,4 @@ rivulet-monitored-backlog-history-length=5
 rivulet-hazelcast-serializer-neptune.geospatial.hazelcast.type.SketchLocation=neptune.geospatial.hazelcast.serializer.SketchLocationSerializer
 
 # Rivulet deployment
-deployer-config=/Users/thilina/csu/research/dsg/source/vldb/neptune-geospatial/code/config/deployer_config.json
+#deployer-config=/Users/thilina/csu/research/dsg/source/vldb/neptune-geospatial/code/config/deployer_config.json
