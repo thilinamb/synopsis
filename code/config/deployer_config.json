@@ -1,7 +1,7 @@
 {
   "placements": [
     {
-      "operator": "neptune.geospatial.graph.operators.StreamIngester",
+      "operator": "neptune.geospatial.graph.operators.NOAADataIngester",
       "nodes": [
         "lattice-48:7077:9099",
         "lattice-49:7077:9099",
