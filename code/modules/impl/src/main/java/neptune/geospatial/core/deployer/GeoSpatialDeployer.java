@@ -38,6 +38,7 @@ import org.apache.log4j.Logger;
 import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.KeeperException;
 
+import java.io.FileReader;
 import java.io.IOException;
 import java.io.Reader;
 import java.util.*;
@@ -90,6 +91,8 @@ public class GeoSpatialDeployer extends JobDeployer {
     }
 
     private static final Logger logger = Logger.getLogger(GeoSpatialDeployer.class);
+    public static final String DEPLOYER_CONFIG_PATH = "deployer-config";
+
     private CountDownLatch initializationLatch = new CountDownLatch(2);
     private NIScheduler scheduler = new NIRoundRobinScheduler();
     private static GeoSpatialDeployer instance;
@@ -98,16 +101,6 @@ public class GeoSpatialDeployer extends JobDeployer {
     private Map<String, String> niControlToDataEndPoints = new HashMap<>();
     private String jobId;
     private DeployerConfig deployerConfig;
-
-    public GeoSpatialDeployer(Reader configReader) {
-        Gson gson = new Gson();
-        JsonReader jsonReader = gson.newJsonReader(configReader);
-        deployerConfig = gson.fromJson(jsonReader, DeployerConfig.class);
-    }
-
-    public GeoSpatialDeployer() {
-
-    }
 
     @Override
     public ProgressTracker deployOperations(Operation[] operations) throws
@@ -123,7 +116,7 @@ public class GeoSpatialDeployer extends JobDeployer {
                 Map<Operation, String> assignments = new HashMap<>(operations.length);
                 // create the deployment plan
                 for (Operation op : operations) {
-                    ResourceEndpoint resourceEndpoint = nextResource();
+                    ResourceEndpoint resourceEndpoint = nextResource(op);
                     assignments.put(op, resourceEndpoint.getDataEndpoint());
                     String operatorId = op.getInstanceIdentifier();
                     niOpAssignments.put(operatorId, resourceEndpoint.getControlEndpoint());
@@ -149,7 +142,16 @@ public class GeoSpatialDeployer extends JobDeployer {
         return null;
     }
 
-    private ResourceEndpoint nextResource() {
+    private ResourceEndpoint nextResource(Operation op) {
+        if (deployerConfig != null) {
+            String resourceEndpointUrl = deployerConfig.getPlacementNode(op.getClass().getName());
+            if (resourceEndpointUrl != null) {
+                logger.info("Custom placement config is available for " + op.getClass().getName());
+                String[] addrSegments = resourceEndpointUrl.split(":");
+                return new ResourceEndpoint(addrSegments[0], Integer.parseInt(addrSegments[1]),
+                        Integer.parseInt(addrSegments[2]));
+            }
+        }
         ResourceEndpoint resourceEndpoint = resourceEndpoints.get(lastAssigned);
         lastAssigned = (lastAssigned + 1) % resourceEndpoints.size();
         return resourceEndpoint;
@@ -163,6 +165,15 @@ public class GeoSpatialDeployer extends JobDeployer {
         DeployerProtocolHandler protocolHandler = new DeployerProtocolHandler(this);
         new Thread(protocolHandler).start();
         ControlMessageDispatcher.getInstance().registerCallback(Constants.WILD_CARD_CALLBACK, protocolHandler);
+        // config is provided
+        if (streamingProperties.containsKey(DEPLOYER_CONFIG_PATH)) {
+            String configPath = streamingProperties.getProperty(DEPLOYER_CONFIG_PATH);
+            Reader configReader = new FileReader(configPath);
+            Gson gson = new Gson();
+            JsonReader jsonReader = gson.newJsonReader(configReader);
+            deployerConfig = gson.fromJson(jsonReader, DeployerConfig.class);
+            logger.info("Using the custom deployment configuration.");
+        }
         super.initialize(streamingProperties);
         initializationCompleted();
     }
@@ -211,7 +222,7 @@ public class GeoSpatialDeployer extends JobDeployer {
             currentComp.addStreamConsumer(new StringTopic(scaleOutReq.getTopic()), clone, scaleOutReq.getStreamId(),
                     scaleOutReq.getStreamType());
             // deploy
-            ResourceEndpoint resourceEndpoint = nextResource();
+            ResourceEndpoint resourceEndpoint = nextResource(clone);
             // write the assignments to ZooKeeper
             ZooKeeperUtils.createDirectory(zk, Constants.ZK_ZNODE_OP_ASSIGNMENTS + "/" +
                             clone.getInstanceIdentifier(),

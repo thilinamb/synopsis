@@ -1,13 +1,13 @@
 {
   "placements": [
     {
-      "operator": "stream-ingestor",
+      "operator": "neptune.geospatial.graph.operators.StreamIngester",
       "nodes": [
-        "lattice-48",
-        "lattice-49",
-        "lattice-50",
-        "lattice-51",
-        "lattice-52"
+        "lattice-48:7077:9099",
+        "lattice-49:7077:9099",
+        "lattice-50:7077:9099",
+        "lattice-51:7077:9099",
+        "lattice-52:7077:9099"
       ]
     }
   ]
