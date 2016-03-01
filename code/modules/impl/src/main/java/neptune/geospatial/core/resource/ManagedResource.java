@@ -221,10 +221,14 @@ public class ManagedResource {
                 }
             }
         }
+        // set the interfaces for Hazelcast to bind with.
         if (startupProps.containsKey(HAZELCAST_INTERFACE)){
             String allowedInterface = startupProps.getProperty(HAZELCAST_INTERFACE);
             config.getNetworkConfig().getInterfaces().addInterface(allowedInterface).setEnabled(true);
         }
+        // set the logging framework
+        config.setProperty("hazelcast.logging.type", "log4j");
+        clientConfig.setProperty("hazelcast.logging.type", "log4j");
         HazelcastNodeInstanceHolder.init(config);
         HazelcastClientInstanceHolder.init(clientConfig);
         try {
