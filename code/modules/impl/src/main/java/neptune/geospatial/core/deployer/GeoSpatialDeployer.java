@@ -1,5 +1,7 @@
 package neptune.geospatial.core.deployer;
 
+import com.google.gson.Gson;
+import com.google.gson.stream.JsonReader;
 import ds.funnel.topic.StringTopic;
 import ds.granules.communication.direct.JobDeployer;
 import ds.granules.communication.direct.control.SendUtility;
@@ -37,6 +39,7 @@ import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.KeeperException;
 
 import java.io.IOException;
+import java.io.Reader;
 import java.util.*;
 import java.util.concurrent.CountDownLatch;
 
@@ -94,6 +97,17 @@ public class GeoSpatialDeployer extends JobDeployer {
     private Map<String, Operation> computationIdToObjectMap = new HashMap<>();
     private Map<String, String> niControlToDataEndPoints = new HashMap<>();
     private String jobId;
+    private DeployerConfig deployerConfig;
+
+    public GeoSpatialDeployer(Reader configReader) {
+        Gson gson = new Gson();
+        JsonReader jsonReader = gson.newJsonReader(configReader);
+        deployerConfig = gson.fromJson(jsonReader, DeployerConfig.class);
+    }
+
+    public GeoSpatialDeployer() {
+
+    }
 
     @Override
     public ProgressTracker deployOperations(Operation[] operations) throws
@@ -139,42 +153,6 @@ public class GeoSpatialDeployer extends JobDeployer {
         ResourceEndpoint resourceEndpoint = resourceEndpoints.get(lastAssigned);
         lastAssigned = (lastAssigned + 1) % resourceEndpoints.size();
         return resourceEndpoint;
-    }
-
-    @Override
-    public ProgressTracker deployOperations(List<Operation[]> ops) throws CommunicationsException, DeploymentException, MarshallingException {
-        String jobId = uuidRetriever.getRandomBasedUUIDAsString();
-        Map<Operation, String> assignments = new HashMap<>();
-        Map<Operation, ResourceEndpoint> deploymentPlan = scheduler.schedule(ops, resourceEndpoints);
-        if (!resourceEndpoints.isEmpty()) {
-            // process each group separately
-            for (Operation op : deploymentPlan.keySet()) {
-                ResourceEndpoint resourceEndpoint = deploymentPlan.get(op);
-                assignments.put(op, resourceEndpoint.getDataEndpoint());
-                // store them for migration by the NIResource deployer
-                String operatorId = op.getInstanceIdentifier();
-                niOpAssignments.put(operatorId, resourceEndpoint.getControlEndpoint());
-                computationIdToObjectMap.put(operatorId, op);
-                niControlToDataEndPoints.put(resourceEndpoint.getControlEndpoint(), resourceEndpoint.getDataEndpoint());
-                try {
-                    // write the assignments to ZooKeeper
-                    ZooKeeperUtils.createDirectory(zk, Constants.ZK_ZNODE_OP_ASSIGNMENTS + "/" + operatorId,
-                            resourceEndpoint.getDataEndpoint().getBytes(), CreateMode.PERSISTENT);
-                } catch (KeeperException | InterruptedException e) {
-                    logger.error(e.getMessage(), e);
-                    throw new DeploymentException(e.getMessage(), e);
-                }
-            }
-
-            // send the deployment messages
-            for (Map.Entry<Operation, String> entry : assignments.entrySet()) {
-                deployOperation(jobId, entry.getValue(), entry.getKey());
-            }
-        } else {
-            logger.error("Zero Granules Resources Discovered. Terminating the deployment.");
-            System.exit(-1);
-        }
-        return null;
     }
 
     @Override

@@ -1,0 +1,17 @@
+{
+  "placements": [
+    {
+      "operator": "stream-ingestor",
+      "nodes": [
+        "lattice-48",
+        "lattice-49",
+        "lattice-50",
+        "lattice-51",
+        "lattice-52"
+      ]
+    }
+  ]
+}
+
+
+
