@@ -43,6 +43,8 @@ public class NOAADataIngester extends StreamSource {
         } else {
             inputFiles = new File[0];
         }
+        logger.info(String.format("[Stream Ingestor: %s] Number of input files: %d", getInstanceIdentifier(),
+                inputFiles.length));
     }
 
     @Override
@@ -61,7 +63,7 @@ public class NOAADataIngester extends StreamSource {
         if (indexLastReadFile == 0 && countTotal == 0) { // reading the very first record
             startNextFile();
             return parse();
-        } else if (countTotal < countEmitted) { // in the middle of a file
+        } else if (countEmitted < countTotal) { // in the middle of a file
             return parse();
         } else if (indexLastReadFile < inputFiles.length && countTotal == countEmitted) { // start next file.
             startNextFile();
