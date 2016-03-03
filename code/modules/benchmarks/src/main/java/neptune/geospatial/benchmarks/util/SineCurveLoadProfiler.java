@@ -23,6 +23,6 @@ public class SineCurveLoadProfiler {
         long timeFromStart = System.currentTimeMillis() - startTimestamp;
         cycles.set((timeFromStart / timeSlice) / 360);
         double angleInRadians = (timeFromStart / timeSlice % 360) * Math.PI / 180;
-        return (int) (1 + (9 * 0.5 * (1 - Math.sin(angleInRadians))));
+        return (int) (3 + (9 * 0.5 * (1 - Math.sin(angleInRadians))));
     }
 }

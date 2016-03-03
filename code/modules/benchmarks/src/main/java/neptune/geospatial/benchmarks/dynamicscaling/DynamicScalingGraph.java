@@ -18,6 +18,7 @@ import java.util.Properties;
 public class DynamicScalingGraph {
 
     private static final Logger logger = Logger.getLogger(DynamicScalingGraph.class);
+    public static final int INITIAL_PROCESSOR_COUNT = 1;
 
     public static void main(String[] args) {
         ParamsReader paramsReader = Granules.getParamsReader();
@@ -46,7 +47,7 @@ public class DynamicScalingGraph {
 
             Properties processorProps = new Properties();
             processorProps.put(ds.granules.util.Constants.StreamBaseProperties.BUFFER_SIZE, Integer.toString(0));
-            job.addStreamProcessor("stream-processor", StreamProcessor.class, 1, processorProps);
+            job.addStreamProcessor("stream-processor", StreamProcessor.class, INITIAL_PROCESSOR_COUNT, processorProps);
 
             // edges
             job.addLink("ingester", "stream-processor", Constants.Streams.NOAA_DATA_STREAM,

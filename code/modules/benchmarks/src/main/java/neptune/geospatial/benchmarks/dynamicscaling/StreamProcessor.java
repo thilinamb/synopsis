@@ -10,7 +10,11 @@ public class StreamProcessor extends AbstractGeoSpatialStreamProcessor {
 
     @Override
     protected void process(GeoHashIndexedRecord event) {
-        // do nothing for the moment.
+        try {
+            Thread.sleep(5);
+        } catch (InterruptedException e) {
+
+        }
     }
 
     @Override

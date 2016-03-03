@@ -1,10 +1,14 @@
 package neptune.geospatial.benchmarks.dynamicscaling;
 
+import com.hazelcast.core.IMap;
 import ds.granules.streaming.core.exception.StreamingDatasetException;
 import neptune.geospatial.benchmarks.util.SineCurveLoadProfiler;
 import neptune.geospatial.graph.Constants;
 import neptune.geospatial.graph.messages.GeoHashIndexedRecord;
 import neptune.geospatial.graph.operators.NOAADataIngester;
+import neptune.geospatial.hazelcast.HazelcastClientInstanceHolder;
+import neptune.geospatial.hazelcast.HazelcastException;
+import neptune.geospatial.util.trie.GeoHashPrefixTree;
 import org.apache.log4j.Logger;
 
 import java.io.BufferedWriter;
@@ -42,8 +46,11 @@ public class ThrottledStreamIngester extends NOAADataIngester {
             countEmitted++;
             long sentCount = counter.incrementAndGet();
             long now = System.currentTimeMillis();
+
             if(tsLastEmitted == -1){
                 tsLastEmitted = now;
+                // register a listener for scaling in and out
+                registerListener();
             } else if (now - tsLastEmitted > 1000){
                 try {
                     bufferedWriter.write(now + "," + sentCount * 1000.0/(now - tsLastEmitted) + "\n");
@@ -59,6 +66,16 @@ public class ThrottledStreamIngester extends NOAADataIngester {
             } catch (InterruptedException ignore) {
 
             }
+        }
+    }
+
+    private void registerListener(){
+        try {
+            IMap map = HazelcastClientInstanceHolder.getInstance().getHazelcastClientInstance().getMap(
+                    GeoHashPrefixTree.PREFIX_MAP);
+            map.addEntryListener(new DynamicScalingMonitor(DynamicScalingGraph.INITIAL_PROCESSOR_COUNT), true);
+        } catch (HazelcastException e) {
+            e.printStackTrace();
         }
     }
 }
