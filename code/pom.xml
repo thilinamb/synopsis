@@ -78,6 +78,7 @@
     <modules>
         <module>modules/impl</module>
         <module>modules/distribution</module>
+        <module>modules/benchmarks</module>
     </modules>
 
 </project>
