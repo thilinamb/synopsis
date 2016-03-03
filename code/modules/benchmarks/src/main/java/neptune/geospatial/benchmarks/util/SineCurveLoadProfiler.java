@@ -1,21 +1,20 @@
 package neptune.geospatial.benchmarks.util;
 
-import java.util.Random;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
+ * Generates a sequence of sleep intervals based on a sine curve
+ *
  * @author Thilina Buddhika
  */
 public class SineCurveLoadProfiler {
 
     private int timeSlice;  // How many milliseconds correspond to one degree
     private long startTimestamp;
-    private Random random;
     private AtomicLong cycles;
 
-    public SineCurveLoadProfiler(int timeSlice, int seed) {
+    public SineCurveLoadProfiler(int timeSlice) {
         this.timeSlice = timeSlice;
-        this.random = new Random(seed);
         this.startTimestamp = System.currentTimeMillis();
         this.cycles = new AtomicLong(0);
     }

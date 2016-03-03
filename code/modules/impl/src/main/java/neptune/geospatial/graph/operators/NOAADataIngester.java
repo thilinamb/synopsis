@@ -25,7 +25,7 @@ public class NOAADataIngester extends StreamSource {
     private File[] inputFiles;
     private int indexLastReadFile = 0;
     private int countTotal = 0;
-    private int countEmitted = 0;
+    protected int countEmitted = 0;
     private SerializationInputStream inStream;
     private long messageSeqId = 0;
 
@@ -56,7 +56,7 @@ public class NOAADataIngester extends StreamSource {
         }
     }
 
-    private GeoHashIndexedRecord nextRecord() {
+    protected GeoHashIndexedRecord nextRecord() {
         if (inputFiles.length == 0) { // no input files, return
             return null;
         }
