@@ -234,7 +234,8 @@ public class ManagedResource {
         try {
             IMap map = HazelcastClientInstanceHolder.getInstance().getHazelcastClientInstance().getMap(
                     GeoHashPrefixTree.PREFIX_MAP);
-            map.addEntryListener(new GeoHashPrefixTree(), true);
+            // TODO: Remove me after the micro benchmark
+            //map.addEntryListener(new GeoHashPrefixTree(), true);
         } catch (neptune.geospatial.hazelcast.HazelcastException e) {
             logger.error("Error getting the Hazelcast client to register the entry listener.", e);
         }

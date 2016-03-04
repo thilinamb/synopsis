@@ -21,6 +21,8 @@ public class StateTransferMsg extends ControlMessage {
     private String targetComputation;
     private String originComputation;
     private boolean scaleType;
+    private long lastMessageId;
+    private String lastMessagePrefix;
 
     public StateTransferMsg() {
         super(ProtocolTypes.STATE_TRANSFER_MSG);
@@ -47,6 +49,8 @@ public class StateTransferMsg extends ControlMessage {
         this.targetComputation = dis.readUTF();
         this.originComputation = dis.readUTF();
         this.scaleType = dis.readBoolean();
+        this.lastMessageId = dis.readLong();
+        this.lastMessagePrefix = dis.readUTF();
     }
 
     @Override
@@ -58,6 +62,8 @@ public class StateTransferMsg extends ControlMessage {
         dos.writeUTF(this.targetComputation);
         dos.writeUTF(this.originComputation);
         dos.writeBoolean(this.scaleType);
+        dos.writeLong(this.lastMessageId);
+        dos.writeUTF(this.lastMessagePrefix);
     }
 
     public String getPrefix() {
@@ -82,5 +88,21 @@ public class StateTransferMsg extends ControlMessage {
 
     public String getOriginComputation() {
         return originComputation;
+    }
+
+    public long getLastMessageId() {
+        return lastMessageId;
+    }
+
+    public void setLastMessageId(long lastMessageId) {
+        this.lastMessageId = lastMessageId;
+    }
+
+    public String getLastMessagePrefix() {
+        return lastMessagePrefix;
+    }
+
+    public void setLastMessagePrefix(String lastMessagePrefix) {
+        this.lastMessagePrefix = lastMessagePrefix;
     }
 }
