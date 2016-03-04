@@ -157,7 +157,6 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
     private Logger logger = Logger.getLogger(AbstractGeoSpatialStreamProcessor.class.getName());
     public static final String OUTGOING_STREAM_BASE_ID = "out-going";
     private static final String GEO_HASH_CHAR_SET = "0123456789bcdefghjkmnpqrstuvwxyz";
-    public static final int GEO_HASH_LEN_IN_CHARS = 32;
     public static final int MAX_CHARACTER_DEPTH = 4;
     private static final int INPUT_RATE_UPDATE_INTERVAL = 10 * 1000;
 
@@ -177,9 +176,6 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
 
     // Hazelcast + prefix tree
     private HazelcastInstance hzInstance;
-
-    // temporary counter to test scale-in and out.
-    private AtomicLong scaleInOutTrigger = new AtomicLong(0);
 
     @Override
     public final void onEvent(StreamEvent streamEvent) throws StreamingDatasetException {
@@ -206,19 +202,6 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
             // perform the business logic: do this selectively. Send through the traffic we don't process.
             process(geoHashIndexedRecord);
         }
-        /*long count = scaleInOutTrigger.incrementAndGet();
-        try {
-            if (count % 20000000 != 0 && count % 5000000 == 0) {
-                logger.debug("Scaling Out!");
-                recommendScaling(10);
-            }
-            if (count % 20000000 == 0) {
-                logger.debug("Scaling In!");
-                recommendScaling(-10);
-            }
-        } catch (Exception ignore) {
-
-        }*/
     }
 
     /**
@@ -504,21 +487,10 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
     }
 
     private void initiateScaleIn(MonitoredPrefix monitoredPrefix) throws ScalingException {
-        // first check if the sub-tree is locked. This is possibly due to a request from the parent.
-        //boolean locked = true;
-        /*for (String lockedPrefix : lockedSubTrees.get()) {
-            if (monitoredPrefix.prefix.startsWith(lockedPrefix)) {
-                locked = true;
-                break;
-            }
-        }*/
-        // tree is not locked. ask child nodes to lock.
-        //if (!locked) {
         ScaleInLockRequest lockReq = new ScaleInLockRequest(monitoredPrefix.prefix,
                 getInstanceIdentifier(), monitoredPrefix.destComputationId);
         try {
             SendUtility.sendControlMessage(monitoredPrefix.destResourceCtrlEndpoint, lockReq);
-            //lockedSubTrees.get().add(monitoredPrefix.prefix);
             // book keeping of the sent out requests.
             PendingScaleInRequest pendingScaleInReq = new PendingScaleInRequest(monitoredPrefix.prefix, 1);
             pendingScaleInReq.sentOutRequests.put(monitoredPrefix.prefix, new QualifiedComputationAddr(
@@ -534,37 +506,11 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
             String errorMsg = "Error sending out Lock Request to " + monitoredPrefix.destResourceCtrlEndpoint;
             throw handleError(errorMsg, e);
         }
-        /*} else {
-        if (logger.isDebugEnabled()) {
-            logger.debug(String.format("[%s] Unable to acquire lock for prefix: %s", getInstanceIdentifier(),
-                    monitoredPrefix.prefix));
-        }
-        // unable to get the lock. Already a scale-in operation is in progress.
-        try {
-            ManagedResource.getInstance().scalingOperationComplete(getInstanceIdentifier());
-        } catch (NIException e) {
-            String errMsg = "Error retrieving the ManagedResource instance.";
-            logger.error(errMsg);
-            throw new ScalingException(errMsg, e);
-        }
-        }*/
     }
 
     public synchronized void handleScaleInLockReq(ScaleInLockRequest lockReq) {
         String prefixForLock = lockReq.getPrefix();
         boolean lockAvailable = mutex.tryAcquire();
-        /*for (String lockedPrefix : lockedSubTrees.get()) {
-            if (lockedPrefix.startsWith(prefixForLock)) {
-                // we have already locked the subtree
-                lockAvailable = false;
-                if (logger.isDebugEnabled()) {
-                    logger.debug(String.format("[%s] Unable to grant lock for prefix: %s. Already locked for %s",
-                            getInstanceIdentifier(), prefixForLock, lockedPrefix));
-                }
-                break;
-            }
-        }*/
-
         if (!lockAvailable) {
             ScaleInLockResponse lockResp = new ScaleInLockResponse(false, lockReq.getPrefix(),
                     lockReq.getSourceComputation(), null);
