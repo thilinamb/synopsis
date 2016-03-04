@@ -158,6 +158,7 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
     public static final String OUTGOING_STREAM_BASE_ID = "out-going";
     private static final String GEO_HASH_CHAR_SET = "0123456789bcdefghjkmnpqrstuvwxyz";
     public static final int GEO_HASH_LEN_IN_CHARS = 32;
+    public static final int MAX_CHARACTER_DEPTH = 4;
     private static final int INPUT_RATE_UPDATE_INTERVAL = 10 * 1000;
 
     private AtomicInteger outGoingStreamIdSeqGenerator = new AtomicInteger(100);
@@ -352,7 +353,8 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
                 Iterator<MonitoredPrefix> itr = monitoredPrefixes.iterator();
                 while (itr.hasNext() && cumulSumOfPrefixes < excess) {
                     MonitoredPrefix monitoredPrefix = itr.next();
-                    if (!monitoredPrefix.isPassThroughTraffic.get() && monitoredPrefix.messageRate > 0) {
+                    if (!monitoredPrefix.isPassThroughTraffic.get() && monitoredPrefix.messageRate > 0 &&
+                            monitoredPrefix.prefix.length() < MAX_CHARACTER_DEPTH) {
                         prefixesForScalingOut.add(monitoredPrefix.prefix);
                         // let's consider the number of messages accumulated over 2s.
                         cumulSumOfPrefixes += monitoredPrefix.messageRate * 2;
