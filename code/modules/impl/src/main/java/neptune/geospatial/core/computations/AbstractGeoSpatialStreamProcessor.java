@@ -185,18 +185,19 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
                 initialized.set(true);
                 messageSize.set(getMessageSize(streamEvent));
                 ManagedResource.getInstance().registerStreamProcessor(this);
-                hzInstance = HazelcastClientInstanceHolder.getInstance().getHazelcastClientInstance();
                 if (logger.isDebugEnabled()) {
                     logger.debug(String.format("[%s] Initialized. Message Size: %d", getInstanceIdentifier(),
                             messageSize.get()));
                 }
             } catch (NIException e) {
                 logger.error("Error retrieving the resource instance.", e);
-            } catch (HazelcastException e) {
-                logger.error("Error retrieving the Hazelcast instance.", e);
             }
         }
         GeoHashIndexedRecord geoHashIndexedRecord = (GeoHashIndexedRecord) streamEvent;
+        // this a dummy message sent to activate the computation after scaling out.
+        if(geoHashIndexedRecord.getMessageIdentifier() == -1){
+            return;
+        }
         // preprocess each message
         if (preprocess(geoHashIndexedRecord)) {
             // perform the business logic: do this selectively. Send through the traffic we don't process.
@@ -238,7 +239,13 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
                     logger.trace(String.format("[%s] Forwarding Message. Prefix: %s, Outgoing Stream: %s",
                             getInstanceIdentifier(), prefix, monitoredPrefix.outGoingStream));
                 }
-                writeToStream(monitoredPrefix.outGoingStream, record);
+                try {
+                    writeToStream(monitoredPrefix.outGoingStream, record);
+                } catch (StreamingDatasetException e) {
+                    logger.error("--------------> SENDING TO: " + monitoredPrefix.destResourceCtrlEndpoint + ":" +
+                            monitoredPrefix.destComputationId);
+                    throw e;
+                }
             }
             if (monitoredPrefix.terminationPoint == monitoredPrefix.lastMessageSent.get()) {
                 propagateScaleInActivationRequests(monitoredPrefix.activateReq);
@@ -261,7 +268,7 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
             monitoredPrefixes.add(monitoredPrefix);
             monitoredPrefixMap.put(prefix, monitoredPrefix);
             try {
-                IMap<String, SketchLocation> prefMap = hzInstance.getMap(GeoHashPrefixTree.PREFIX_MAP);
+                IMap<String, SketchLocation> prefMap = getHzInstance().getMap(GeoHashPrefixTree.PREFIX_MAP);
                 prefMap.put(prefix, new SketchLocation(getInstanceIdentifier(), getCtrlEndpoint(),
                         SketchLocation.MODE_REGISTER_NEW_PREFIX));
             } catch (GranulesConfigurationException e) {
@@ -341,6 +348,7 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
                         prefixesForScalingOut.add(monitoredPrefix.prefix);
                         // let's consider the number of messages accumulated over 2s.
                         cumulSumOfPrefixes += monitoredPrefix.messageRate * 2;
+                        break;
                     }
                 }
                 if (logger.isDebugEnabled()) {
@@ -427,8 +435,11 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
                 monitoredPrefix.destComputationId = ack.getNewComputationId();
                 monitoredPrefix.destResourceCtrlEndpoint = ack.getNewLocationURL();
                 monitoredPrefix.outGoingStream = pendingReq.streamId;
-
                 try {
+                    // send a dummy message, just to ensure the new computation is activated.
+                    GeoHashIndexedRecord record = new GeoHashIndexedRecord(monitoredPrefix.lastGeoHashSent,
+                            prefix.length()+1, -1, System.currentTimeMillis(), new byte[0]);
+                    writeToStream(monitoredPrefix.outGoingStream, record);
                     byte[] state = split(prefix);
                     StateTransferMsg stateTransferMsg = new StateTransferMsg(prefix, ack.getInResponseTo(), state,
                             ack.getNewComputationId(), getInstanceIdentifier(), StateTransferMsg.SCALE_OUT);
@@ -441,6 +452,8 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
                     }
                 } catch (CommunicationsException | IOException e) {
                     logger.error("Error transferring state to " + monitoredPrefix.destResourceCtrlEndpoint);
+                } catch (StreamingDatasetException e) {
+                    logger.error("Error sending a message");
                 }
             }
         } else {
@@ -469,7 +482,7 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
                         logger.debug(String.format("[%s] Scaling out complete for now.", getInstanceIdentifier()));
                     }
                     // TODO: temporary fix to track dynamic scaling. Remove this and uncomment above after the micro-benchmark
-                    IMap<String, SketchLocation> prefMap = hzInstance.getMap(GeoHashPrefixTree.PREFIX_MAP);
+                    IMap<String, SketchLocation> prefMap = getHzInstance().getMap(GeoHashPrefixTree.PREFIX_MAP);
                     MonitoredPrefix monitoredPrefix = monitoredPrefixMap.get(ack.getPrefix());
                     prefMap.put(ack.getPrefix(), new SketchLocation(monitoredPrefix.destComputationId,
                             monitoredPrefix.destResourceCtrlEndpoint,
@@ -701,7 +714,7 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
                             monitoredPrefixMap.get(pref).lastGeoHashSent);
                 }
                 try {
-                    IMap<String, SketchLocation> prefMap = hzInstance.getMap(GeoHashPrefixTree.PREFIX_MAP);
+                    IMap<String, SketchLocation> prefMap = getHzInstance().getMap(GeoHashPrefixTree.PREFIX_MAP);
                     prefMap.put(lastMessagePrefix, new SketchLocation(getInstanceIdentifier(), getCtrlEndpoint(),
                             SketchLocation.MODE_REGISTER_NEW_PREFIX));
                 } catch (GranulesConfigurationException e) {
@@ -728,7 +741,7 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
         } else {    // scale-out
             merge(stateTransferMsg.getPrefix(), stateTransferMsg.getSerializedData());
             String childPrefix = getPrefix(stateTransferMsg.getLastMessagePrefix(),
-                    stateTransferMsg.getPrefix().length() + 1);
+                    stateTransferMsg.getPrefix().length());
             // handling the case where no messages are sent after scaling out.
             if (!monitoredPrefixMap.containsKey(childPrefix)) {
                 MonitoredPrefix monitoredPrefix = new MonitoredPrefix(childPrefix, null);
@@ -736,7 +749,7 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
                 monitoredPrefixes.add(monitoredPrefix);
                 monitoredPrefixMap.put(childPrefix, monitoredPrefix);
                 try {
-                    IMap<String, SketchLocation> prefMap = hzInstance.getMap(GeoHashPrefixTree.PREFIX_MAP);
+                    IMap<String, SketchLocation> prefMap = getHzInstance().getMap(GeoHashPrefixTree.PREFIX_MAP);
                     prefMap.put(childPrefix, new SketchLocation(getInstanceIdentifier(), getCtrlEndpoint(),
                             SketchLocation.MODE_REGISTER_NEW_PREFIX));
                 } catch (GranulesConfigurationException e) {
@@ -844,7 +857,7 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
                     }
                     // update hazelcast
                     try {
-                        IMap<String, SketchLocation> prefMap = hzInstance.getMap(GeoHashPrefixTree.PREFIX_MAP);
+                        IMap<String, SketchLocation> prefMap = getHzInstance().getMap(GeoHashPrefixTree.PREFIX_MAP);
                         prefMap.put(ack.getPrefix(), new SketchLocation(getInstanceIdentifier(), getCtrlEndpoint(),
                                 SketchLocation.MODE_SCALE_IN));
                     } catch (GranulesConfigurationException e) {
@@ -932,6 +945,21 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
     public abstract byte[] split(String prefix);
 
     public abstract void merge(String prefix, byte[] serializedSketch);
+
+    public HazelcastInstance getHzInstance() {
+        if (hzInstance == null) {
+            synchronized (this) {
+                if (hzInstance == null) {
+                    try {
+                        hzInstance = HazelcastClientInstanceHolder.getInstance().getHazelcastClientInstance();
+                    } catch (HazelcastException e) {
+                        logger.error("Error retrieving HzInstance.", e);
+                    }
+                }
+            }
+        }
+        return hzInstance;
+    }
 }
 
 
