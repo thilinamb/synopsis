@@ -8,6 +8,7 @@ import com.hazelcast.nio.serialization.StreamSerializer;
 import ds.granules.Granules;
 import ds.granules.communication.direct.control.ControlMessage;
 import ds.granules.communication.direct.control.SendUtility;
+import ds.granules.communication.direct.dispatch.ChannelToStreamDeMultiplexer;
 import ds.granules.communication.direct.dispatch.ControlMessageDispatcher;
 import ds.granules.exception.CommunicationsException;
 import ds.granules.exception.GranulesConfigurationException;
@@ -26,10 +27,7 @@ import org.apache.log4j.Logger;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Properties;
+import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
@@ -145,7 +143,7 @@ public class ManagedResource {
     private CountDownLatch countDownLatch = new CountDownLatch(1);
     private final Map<String, MonitoredComputationState> monitoredProcessors = new HashMap<>();
     private ScheduledExecutorService monitoringService = Executors.newSingleThreadScheduledExecutor();
-    private volatile Map<String, StateTransferMsg> pendingStateTransfers = new ConcurrentHashMap<>();
+    private Map<String, List<StateTransferMsg>> pendingStateTransfers = new HashMap<>();
 
     public ManagedResource(Properties inProps, int numOfThreads) throws CommunicationsException {
         Resource resource = new Resource(inProps, numOfThreads);
@@ -185,6 +183,9 @@ public class ManagedResource {
                         scaleOutThreshold, monitoringPeriod, monitoredBackLogLength));
             }
             initializeHazelcast(startupProps);
+            // register callback to receive deployment acks.
+            ChannelToStreamDeMultiplexer.getInstance().registerCallback(Constants.DEPLOYMENT_REQ,
+                    new DeployerCallback(this));
             countDownLatch.await();
         } catch (GranulesConfigurationException | InterruptedException e) {
             logger.error(e.getMessage(), e);
@@ -222,7 +223,7 @@ public class ManagedResource {
             }
         }
         // set the interfaces for Hazelcast to bind with.
-        if (startupProps.containsKey(HAZELCAST_INTERFACE)){
+        if (startupProps.containsKey(HAZELCAST_INTERFACE)) {
             String allowedInterface = startupProps.getProperty(HAZELCAST_INTERFACE);
             config.getNetworkConfig().getInterfaces().addInterface(allowedInterface).setEnabled(true);
         }
@@ -304,10 +305,12 @@ public class ManagedResource {
         synchronized (monitoredProcessors) {
             monitoredProcessors.put(processor.getInstanceIdentifier(), new MonitoredComputationState(processor));
             if (pendingStateTransfers.containsKey(processor.getInstanceIdentifier())) {
-                StateTransferMsg stateTransferMsg = pendingStateTransfers.remove(processor.getInstanceIdentifier());
-                logger.debug(String.format("Handing over the state for prefix: %s to: %s",
-                        processor.getInstanceIdentifier(), stateTransferMsg.getPrefix()));
-                processor.handleStateTransferReq(stateTransferMsg, true);
+                List<StateTransferMsg> stateTransferMsgs = pendingStateTransfers.remove(processor.getInstanceIdentifier());
+                for (StateTransferMsg stateTransferMsg : stateTransferMsgs) {
+                    logger.debug(String.format("Handing over the state for prefix: %s to: %s",
+                            processor.getInstanceIdentifier(), stateTransferMsg.getPrefix()));
+                    processor.handleStateTransferReq(stateTransferMsg, true);
+                }
             }
             monitoredProcessors.notifyAll();
         }
@@ -365,14 +368,19 @@ public class ManagedResource {
         }
     }
 
-    public void handleStateTransferMsg(StateTransferMsg stateTransferMsg) {
+    public synchronized void handleStateTransferMsg(StateTransferMsg stateTransferMsg) {
         String computationId = stateTransferMsg.getTargetComputation();
         if (monitoredProcessors.containsKey(computationId)) {
             monitoredProcessors.get(computationId).computation.handleStateTransferReq(stateTransferMsg, false);
         } else {
             if (!stateTransferMsg.isScaleType()) {
                 try {
-                    pendingStateTransfers.put(computationId, stateTransferMsg);
+                    List<StateTransferMsg> stateTransferMsgs = pendingStateTransfers.get(computationId);
+                    if (stateTransferMsgs == null) {
+                        stateTransferMsgs = new ArrayList<>();
+                        pendingStateTransfers.put(computationId, stateTransferMsgs);
+                    }
+                    stateTransferMsgs.add(stateTransferMsg);
                     ScaleOutCompleteAck completeAck = new ScaleOutCompleteAck(stateTransferMsg.getKeyPrefix(),
                             stateTransferMsg.getPrefix(), stateTransferMsg.getOriginComputation());
                     SendUtility.sendControlMessage(stateTransferMsg.getOriginEndpoint(), completeAck);
@@ -402,5 +410,12 @@ public class ManagedResource {
         } else {
             logger.warn("Invalid ScaleInComplete msg to " + computationId);
         }
+    }
+
+    public void ackDeployment(String instanceId){
+        if(logger.isDebugEnabled()){
+            logger.debug(String.format("Sending deployment ack for %s", instanceId));
+        }
+        sendToDeployer(new DeploymentAck(instanceId));
     }
 }

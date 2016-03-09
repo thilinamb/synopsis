@@ -3,6 +3,7 @@ package neptune.geospatial.core.deployer;
 import ds.granules.communication.direct.control.ControlMessage;
 import neptune.geospatial.core.protocol.AbstractProtocolHandler;
 import neptune.geospatial.core.protocol.ProtocolTypes;
+import neptune.geospatial.core.protocol.msg.DeploymentAck;
 import neptune.geospatial.core.protocol.msg.ScaleOutRequest;
 import org.apache.log4j.Logger;
 
@@ -31,6 +32,14 @@ public class DeployerProtocolHandler extends AbstractProtocolHandler {
                         logger.debug("Received a trigger scale message from " + scaleOutRequest.getCurrentComputation());
                     }
                     geoSpatialDeployer.handleScaleUpRequest(scaleOutRequest);
+                    break;
+                case ProtocolTypes.DEPLOYMENT_ACK:
+                    DeploymentAck deploymentAck = (DeploymentAck)ctrlMsg;
+                    if(logger.isDebugEnabled()){
+                        logger.debug("Received a deployment ack from " + deploymentAck.getInstanceIdentifier());
+                    }
+                    geoSpatialDeployer.handleDeploymentAck(deploymentAck);
+                    break;
             }
         } catch (GeoSpatialDeployerException e) {
             logger.error("Error handling message " + type + ". Error: " + e.getMessage(), e);

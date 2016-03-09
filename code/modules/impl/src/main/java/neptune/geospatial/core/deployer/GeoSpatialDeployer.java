@@ -32,6 +32,7 @@ import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
+import neptune.geospatial.core.protocol.msg.DeploymentAck;
 import neptune.geospatial.core.protocol.msg.ScaleOutRequest;
 import neptune.geospatial.core.protocol.msg.ScaleOutResponse;
 import org.apache.log4j.Logger;
@@ -99,6 +100,7 @@ public class GeoSpatialDeployer extends JobDeployer {
     private Map<String, String> niOpAssignments = new HashMap<>();
     private Map<String, Operation> computationIdToObjectMap = new HashMap<>();
     private Map<String, String> niControlToDataEndPoints = new HashMap<>();
+    private List<ScaleOutResponse> pendingDeployments = new ArrayList<>();
     private String jobId;
     private DeployerConfig deployerConfig;
 
@@ -231,10 +233,10 @@ public class GeoSpatialDeployer extends JobDeployer {
             deployOperation(this.jobId, resourceEndpoint.getDataEndpoint(), clone);
             computationIdToObjectMap.put(clone.getInstanceIdentifier(), clone);
             niOpAssignments.put(clone.getInstanceIdentifier(), resourceEndpoint.getControlEndpoint());
-            ack = new ScaleOutResponse(scaleOutReq.getMessageId(), computationId, true,
+            ack = new ScaleOutResponse(scaleOutReq.getMessageId(), computationId, scaleOutReq.getOriginEndpoint(), true,
                     clone.getInstanceIdentifier(), resourceEndpoint.getControlEndpoint());
             if (logger.isDebugEnabled()) {
-                logger.debug(String.format("Successfully deployed the new instance. Instance Id: %s, Location: %s",
+                logger.debug(String.format("Sent the deployment request new instance. Instance Id: %s, Location: %s",
                         clone.getInstanceIdentifier(), resourceEndpoint.getDataEndpoint()));
             }
         } catch (InstantiationException | IllegalAccessException e) {
@@ -246,12 +248,31 @@ public class GeoSpatialDeployer extends JobDeployer {
         } finally {
             if (ack == null) {
                 ack = new ScaleOutResponse(scaleOutReq.getMessageId(), computationId, false);
+                try {
+                    SendUtility.sendControlMessage(scaleOutReq.getOriginEndpoint(), ack);
+                } catch (CommunicationsException | IOException e) {
+                    logger.error("Error sending out the TriggerScaleAck to " + scaleOutReq.getOriginEndpoint());
+                }
             }
+            else {
+                pendingDeployments.add(ack);
+            }
+        }
+    }
+
+    public void handleDeploymentAck(DeploymentAck deploymentAck){
+        if(!pendingDeployments.isEmpty()){
+            ScaleOutResponse ack = pendingDeployments.remove(0);
             try {
-                SendUtility.sendControlMessage(scaleOutReq.getOriginEndpoint(), ack);
+                SendUtility.sendControlMessage(ack.getTargetEndpoint(), ack);
+                if (logger.isDebugEnabled()) {
+                    logger.debug("Sent the ScaleOutResponse after processing deployment ack for " + ack.getTargetComputation());
+                }
             } catch (CommunicationsException | IOException e) {
-                logger.error("Error sending out the TriggerScaleAck to " + scaleOutReq.getOriginEndpoint());
+                logger.error("Error sending out the TriggerScaleAck to " + ack.getTargetEndpoint());
             }
+        } else {
+            logger.warn("Invalid Deployment Ack. No pending deployments.");
         }
     }
 }
