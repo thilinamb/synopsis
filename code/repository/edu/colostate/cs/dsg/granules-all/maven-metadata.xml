@@ -6,10 +6,6 @@
     <versions>
       <version>3.0.0-SNAPSHOT</version>
     </versions>
-<<<<<<< HEAD
-    <lastUpdated>20160215200503</lastUpdated>
-=======
-    <lastUpdated>20160218021238</lastUpdated>
->>>>>>> scale-in
+    <lastUpdated>20160308173506</lastUpdated>
   </versioning>
 </metadata>
