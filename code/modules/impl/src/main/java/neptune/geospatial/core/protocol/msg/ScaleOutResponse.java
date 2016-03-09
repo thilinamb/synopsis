@@ -15,6 +15,7 @@ public class ScaleOutResponse extends ControlMessage {
     private String inResponseTo;
     private boolean status;
     private String targetComputation;
+    private String targetEndpoint;
     private String newComputationId;
     private String newLocationURL;
 
@@ -29,10 +30,12 @@ public class ScaleOutResponse extends ControlMessage {
         this.status = status;
     }
 
-    public ScaleOutResponse(String inResponseTo, String targetComputation, boolean status, String newComputationId, String newLocationURL) {
+    public ScaleOutResponse(String inResponseTo, String targetComputation, String targetEndpoint,
+                            boolean status, String newComputationId, String newLocationURL) {
         super(ProtocolTypes.SCALE_OUT_RESP);
         this.inResponseTo = inResponseTo;
         this.targetComputation = targetComputation;
+        this.targetEndpoint = targetEndpoint;
         this.status = status;
         this.newComputationId = newComputationId;
         this.newLocationURL = newLocationURL;
@@ -74,5 +77,9 @@ public class ScaleOutResponse extends ControlMessage {
 
     public String getNewLocationURL() {
         return newLocationURL;
+    }
+
+    public String getTargetEndpoint() {
+        return targetEndpoint;
     }
 }

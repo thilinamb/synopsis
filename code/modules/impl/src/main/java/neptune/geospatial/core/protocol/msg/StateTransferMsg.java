@@ -49,8 +49,10 @@ public class StateTransferMsg extends ControlMessage {
         this.targetComputation = dis.readUTF();
         this.originComputation = dis.readUTF();
         this.scaleType = dis.readBoolean();
-        this.lastMessageId = dis.readLong();
-        this.lastMessagePrefix = dis.readUTF();
+        if (!scaleType) { // appears only with scale out messages.
+            this.lastMessageId = dis.readLong();
+            this.lastMessagePrefix = dis.readUTF();
+        }
     }
 
     @Override
@@ -62,8 +64,10 @@ public class StateTransferMsg extends ControlMessage {
         dos.writeUTF(this.targetComputation);
         dos.writeUTF(this.originComputation);
         dos.writeBoolean(this.scaleType);
-        dos.writeLong(this.lastMessageId);
-        dos.writeUTF(this.lastMessagePrefix);
+        if (!scaleType) {   // appears only with scale out messages.
+            dos.writeLong(this.lastMessageId);
+            dos.writeUTF(this.lastMessagePrefix);
+        }
     }
 
     public String getPrefix() {
