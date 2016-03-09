@@ -1,6 +1,7 @@
 package neptune.geospatial.benchmarks.dynamicscaling;
 
 import com.hazelcast.core.EntryEvent;
+import com.hazelcast.map.listener.EntryAddedListener;
 import com.hazelcast.map.listener.EntryUpdatedListener;
 import neptune.geospatial.hazelcast.type.SketchLocation;
 import org.apache.log4j.Logger;
@@ -14,7 +15,7 @@ import java.io.IOException;
  *
  * @author Thilina Buddhika
  */
-public class DynamicScalingMonitor implements EntryUpdatedListener<String, SketchLocation> {
+public class DynamicScalingMonitor implements EntryUpdatedListener<String, SketchLocation>, EntryAddedListener<String, SketchLocation> {
 
     private final Logger logger = Logger.getLogger(DynamicScalingMonitor.class);
     private int activeComputationCount;
@@ -53,5 +54,25 @@ public class DynamicScalingMonitor implements EntryUpdatedListener<String, Sketc
     private void writeToBuffer() throws IOException {
         bufferedWriter.write(System.currentTimeMillis() + "," + this.activeComputationCount + "\n");
         bufferedWriter.flush();
+    }
+
+    @Override
+    public void entryAdded(EntryEvent<String, SketchLocation> entryEvent) {
+        try {
+            SketchLocation sketchLocation = entryEvent.getValue();
+            if (sketchLocation.getMode() == SketchLocation.MODE_SCALE_IN) {
+                synchronized (this) {
+                    activeComputationCount--;
+                    writeToBuffer();
+                }
+            } else if (sketchLocation.getMode() == SketchLocation.MODE_SCALE_OUT) {
+                synchronized (this) {
+                    activeComputationCount++;
+                    writeToBuffer();
+                }
+            }
+        } catch (IOException e) {
+            logger.error("Error writing to the file from instance monitor.", e);
+        }
     }
 }
