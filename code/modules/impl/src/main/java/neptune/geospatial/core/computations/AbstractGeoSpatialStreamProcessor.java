@@ -3,6 +3,7 @@ package neptune.geospatial.core.computations;
 
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.IMap;
+import com.hazelcast.core.IQueue;
 import ds.funnel.topic.Topic;
 import ds.granules.communication.direct.control.SendUtility;
 import ds.granules.dataset.StreamEvent;
@@ -482,11 +483,8 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
                         logger.debug(String.format("[%s] Scaling out complete for now.", getInstanceIdentifier()));
                     }
                     // TODO: temporary fix to track dynamic scaling. Remove this and uncomment above after the micro-benchmark
-                    IMap<String, SketchLocation> prefMap = getHzInstance().getMap(GeoHashPrefixTree.PREFIX_MAP);
-                    MonitoredPrefix monitoredPrefix = monitoredPrefixMap.get(ack.getPrefix());
-                    prefMap.put(ack.getPrefix(), new SketchLocation(monitoredPrefix.destComputationId,
-                            monitoredPrefix.destResourceCtrlEndpoint,
-                            SketchLocation.MODE_SCALE_OUT));
+                    IQueue<Integer> scalingMonitoringQueue = getHzInstance().getQueue("scaling-monitor");
+                    scalingMonitoringQueue.add(pendingReq.ackCount);
                     pendingScaleOutRequests.remove(ack.getKey());
                     mutex.release();
                     ManagedResource.getInstance().scalingOperationComplete(this.getInstanceIdentifier());
@@ -856,13 +854,17 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
                                 getInstanceIdentifier(), ack.getPrefix()));
                     }
                     // update hazelcast
-                    try {
+                    //try {
+                        /*
                         IMap<String, SketchLocation> prefMap = getHzInstance().getMap(GeoHashPrefixTree.PREFIX_MAP);
                         prefMap.put(ack.getPrefix(), new SketchLocation(getInstanceIdentifier(), getCtrlEndpoint(),
                                 SketchLocation.MODE_SCALE_IN));
-                    } catch (GranulesConfigurationException e) {
-                        logger.error("Error publishing to Hazelcast.", e);
-                    }
+                                */
+                        IQueue<Integer> scaleMonitorQueue = getHzInstance().getQueue("scaling-monitor");
+                        scaleMonitorQueue.add(-1);
+                    //} catch (GranulesConfigurationException e) {
+                    //    logger.error("Error publishing to Hazelcast.", e);
+                    //}
                 }
                 pendingScaleInRequests.remove(ack.getPrefix());
                 mutex.release();

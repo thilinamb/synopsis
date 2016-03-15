@@ -1,6 +1,6 @@
 package neptune.geospatial.benchmarks.dynamicscaling;
 
-import com.hazelcast.core.IMap;
+import com.hazelcast.core.IQueue;
 import ds.granules.streaming.core.exception.StreamingDatasetException;
 import neptune.geospatial.benchmarks.util.SineCurveLoadProfiler;
 import neptune.geospatial.graph.Constants;
@@ -8,7 +8,6 @@ import neptune.geospatial.graph.messages.GeoHashIndexedRecord;
 import neptune.geospatial.graph.operators.NOAADataIngester;
 import neptune.geospatial.hazelcast.HazelcastClientInstanceHolder;
 import neptune.geospatial.hazelcast.HazelcastException;
-import neptune.geospatial.util.trie.GeoHashPrefixTree;
 import org.apache.log4j.Logger;
 
 import java.io.BufferedWriter;
@@ -30,7 +29,7 @@ public class ThrottledStreamIngester extends NOAADataIngester {
 
     public ThrottledStreamIngester() {
         super();
-        loadProfiler = new SineCurveLoadProfiler(2000);
+        loadProfiler = new SineCurveLoadProfiler(5000);
         try {
             bufferedWriter = new BufferedWriter(new FileWriter("/tmp/throughput-profile.stat"));
         } catch (IOException e) {
@@ -40,6 +39,14 @@ public class ThrottledStreamIngester extends NOAADataIngester {
 
     @Override
     public void emit() throws StreamingDatasetException {
+        if(tsLastEmitted == -1){
+            try {
+                Thread.sleep(20*1000);
+                logger.debug("Initial sleep period is over. Starting to emit messages.");
+            } catch (InterruptedException ignore) {
+
+            }
+        }
         GeoHashIndexedRecord record = nextRecord();
         if (record != null) {
             writeToStream(Constants.Streams.NOAA_DATA_STREAM, record);
@@ -71,9 +78,10 @@ public class ThrottledStreamIngester extends NOAADataIngester {
 
     private void registerListener(){
         try {
-            IMap map = HazelcastClientInstanceHolder.getInstance().getHazelcastClientInstance().getMap(
-                    GeoHashPrefixTree.PREFIX_MAP);
-            map.addEntryListener(new DynamicScalingMonitor(DynamicScalingGraph.INITIAL_PROCESSOR_COUNT), true);
+            IQueue<Integer> scalingMonitorQueue = HazelcastClientInstanceHolder.getInstance().
+                    getHazelcastClientInstance().getQueue("scaling-monitor");
+            scalingMonitorQueue.addItemListener(new DynamicScalingMonitor(DynamicScalingGraph.INITIAL_PROCESSOR_COUNT),
+                    true);
         } catch (HazelcastException e) {
             e.printStackTrace();
         }

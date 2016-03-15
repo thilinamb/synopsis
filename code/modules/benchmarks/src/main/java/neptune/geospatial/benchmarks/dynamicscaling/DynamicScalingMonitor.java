@@ -1,9 +1,7 @@
 package neptune.geospatial.benchmarks.dynamicscaling;
 
-import com.hazelcast.core.EntryEvent;
-import com.hazelcast.map.listener.EntryAddedListener;
-import com.hazelcast.map.listener.EntryUpdatedListener;
-import neptune.geospatial.hazelcast.type.SketchLocation;
+import com.hazelcast.core.ItemEvent;
+import com.hazelcast.core.ItemListener;
 import org.apache.log4j.Logger;
 
 import java.io.BufferedWriter;
@@ -15,7 +13,7 @@ import java.io.IOException;
  *
  * @author Thilina Buddhika
  */
-public class DynamicScalingMonitor implements EntryUpdatedListener<String, SketchLocation>, EntryAddedListener<String, SketchLocation> {
+public class DynamicScalingMonitor implements ItemListener<Integer> {
 
     private final Logger logger = Logger.getLogger(DynamicScalingMonitor.class);
     private int activeComputationCount;
@@ -31,48 +29,26 @@ public class DynamicScalingMonitor implements EntryUpdatedListener<String, Sketc
         }
     }
 
-    @Override
-    public void entryUpdated(EntryEvent<String, SketchLocation> entryEvent) {
-        try {
-            SketchLocation sketchLocation = entryEvent.getValue();
-            if (sketchLocation.getMode() == SketchLocation.MODE_SCALE_IN) {
-                synchronized (this) {
-                    activeComputationCount--;
-                    writeToBuffer();
-                }
-            } else if (sketchLocation.getMode() == SketchLocation.MODE_SCALE_OUT) {
-                synchronized (this) {
-                    activeComputationCount++;
-                    writeToBuffer();
-                }
-            }
-        } catch (IOException e) {
-            logger.error("Error writing to the file from instance monitor.", e);
-        }
-    }
-
     private void writeToBuffer() throws IOException {
         bufferedWriter.write(System.currentTimeMillis() + "," + this.activeComputationCount + "\n");
         bufferedWriter.flush();
     }
 
+
     @Override
-    public void entryAdded(EntryEvent<String, SketchLocation> entryEvent) {
-        try {
-            SketchLocation sketchLocation = entryEvent.getValue();
-            if (sketchLocation.getMode() == SketchLocation.MODE_SCALE_IN) {
-                synchronized (this) {
-                    activeComputationCount--;
-                    writeToBuffer();
-                }
-            } else if (sketchLocation.getMode() == SketchLocation.MODE_SCALE_OUT) {
-                synchronized (this) {
-                    activeComputationCount++;
-                    writeToBuffer();
-                }
+    public void itemAdded(ItemEvent<Integer> itemEvent) {
+        synchronized (this) {
+            activeComputationCount += itemEvent.getItem();
+            try {
+                writeToBuffer();
+            } catch (IOException e) {
+                logger.error("Error writing the scaling data into the buffer.", e);
             }
-        } catch (IOException e) {
-            logger.error("Error writing to the file from instance monitor.", e);
         }
+    }
+
+    @Override
+    public void itemRemoved(ItemEvent<Integer> itemEvent) {
+        throw new UnsupportedOperationException("The method itemRemoved is not supported in DynamicScalingMonitor class");
     }
 }
