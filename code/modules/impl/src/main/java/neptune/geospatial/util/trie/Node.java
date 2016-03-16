@@ -71,8 +71,8 @@ public class Node {
                 childNodes.get(childQualifier).add(node);
             } else { // it should be a prefix that the current node maintains.
                 if (this.computationId.equals(node.computationId)) {
-                    if (logger.isDebugEnabled()) {
-                        logger.debug(String.format("[Trie: %s] New prefix %s added to %s", prefix, newNodePrefix,
+                    if (logger.isTraceEnabled()) {
+                        logger.trace(String.format("[Trie: %s] New prefix %s added to %s", prefix, newNodePrefix,
                                 computationId));
                     }
                 } else {

@@ -8,3 +8,4 @@ dependency-reduced-pom.xml
 buildNumber.properties
 .mvn/timing.properties
 code/config_localhost
+.pdf
