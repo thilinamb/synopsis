@@ -38,6 +38,31 @@ public class PendingScaleInRequest {
         return prefix;
     }
 
+    public void addSentOutRequest(String prefix, FullQualifiedComputationAddr targetCompAddr){
+        sentOutRequests.put(prefix, targetCompAddr);
+    }
+
+    public void setLocallyProcessedPrefix(List<String> localPrefix){
+        locallyProcessedPrefixes = localPrefix;
+    }
+
+    public void setSentOutRequests(Map<String, FullQualifiedComputationAddr> sentOutRequests) {
+        this.sentOutRequests = sentOutRequests;
+    }
+
+    public int incrementAndGetReceivedCount(){
+        return ++receivedCount;
+    }
+
+    public boolean updateAndGetLockStatus(boolean lockStatus){
+        lockAcquired = lockAcquired & lockStatus;
+        return lockAcquired;
+    }
+
+    public void addChildPrefixes(List<String> childPrefixes){
+        childLeafPrefixes.addAll(childPrefixes);
+    }
+
     public int getSentCount() {
         return sentCount;
     }

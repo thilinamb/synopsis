@@ -52,6 +52,16 @@ public class ScalingContext {
     }
 
     /**
+     * Register a new monitored prefix
+     * @param prefix Prefix string
+     * @param monitoredPrefix {@code MonitoredPrefix} object
+     */
+    public void addMonitoredPrefix(String prefix, MonitoredPrefix monitoredPrefix){
+        monitoredPrefixMap.put(prefix, monitoredPrefix);
+        monitoredPrefixes.add(monitoredPrefix);
+    }
+
+    /**
      * increments the message counts for a monitored prefix
      *
      * @param prefix    prefix
@@ -114,7 +124,7 @@ public class ScalingContext {
         return prefixesForScalingOut;
     }
 
-    public List<String> getPrefixesForScalingIn(Double excess){
+    public List<String> getPrefixesForScalingIn(Double excess) {
         // find the prefixes with the lowest input rates that are pass-through traffic
         Iterator<MonitoredPrefix> itr = monitoredPrefixes.iterator();
         List<String> chosenPrefixes = new ArrayList<>();
@@ -129,16 +139,40 @@ public class ScalingContext {
         return chosenPrefixes;
     }
 
-    public void addPendingScaleOutRequest(String key, PendingScaleOutRequest pendingScaleOutRequest){
+    /**
+     * Returns the set of child prefixes for propagating a scale in request
+     *
+     * @param prefix Parent prefix
+     * @return List of child prefixes
+     */
+    public List<MonitoredPrefix> getChildPrefixesForScalingIn(String prefix) {
+        List<MonitoredPrefix> childPrefixes = new ArrayList<>();
+        for (String monitoredPrefix : monitoredPrefixMap.keySet()) {
+            if (monitoredPrefix.startsWith(prefix)) {
+                childPrefixes.add(monitoredPrefixMap.get(monitoredPrefix));
+            }
+        }
+        return childPrefixes;
+    }
+
+    public void addPendingScaleOutRequest(String key, PendingScaleOutRequest pendingScaleOutRequest) {
         pendingScaleOutRequests.put(key, pendingScaleOutRequest);
     }
 
-    public PendingScaleOutRequest getPendingScaleOutRequest(String key){
+    public PendingScaleOutRequest getPendingScaleOutRequest(String key) {
         return pendingScaleOutRequests.get(key);
     }
 
-    public void completeScalingOut(String key){
+    public void completeScalingOut(String key) {
         pendingScaleOutRequests.remove(key);
+    }
+
+    public void addPendingScalingInRequest(String key, PendingScaleInRequest scaleInRequest) {
+        pendingScaleInRequests.put(key, scaleInRequest);
+    }
+
+    public PendingScaleInRequest getPendingScalingInRequest(String key){
+        return pendingScaleInRequests.get(key);
     }
 
     private HazelcastInstance getHzInstance() throws HazelcastException {
