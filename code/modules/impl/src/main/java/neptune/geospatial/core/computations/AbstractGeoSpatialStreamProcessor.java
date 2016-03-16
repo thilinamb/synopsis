@@ -33,7 +33,6 @@ import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * Stream processor specialized for geo-spatial data processing.
@@ -169,7 +168,6 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
     private Set<MonitoredPrefix> monitoredPrefixes = new TreeSet<>();
     private Map<String, MonitoredPrefix> monitoredPrefixMap = new HashMap<>();
     private Map<String, PendingScaleOutRequest> pendingScaleOutRequests = new HashMap<>();
-    private AtomicReference<ArrayList<String>> lockedSubTrees = new AtomicReference<>(new ArrayList<String>());
     private Map<String, PendingScaleInRequest> pendingScaleInRequests = new HashMap<>();
 
     // mutex to ensure only a single scale in/out operations takes place at a given time

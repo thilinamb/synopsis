@@ -1,0 +1,76 @@
+package neptune.geospatial.core.computations.scalingctxt;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+/**
+ * @author Thilina Buddhika
+ */
+public class PendingScaleInRequest {
+    private String prefix;
+    private int sentCount;
+    private int receivedCount;
+    private String originCtrlEndpoint;
+    private String originComputation;
+    private boolean initiatedLocally;
+    private boolean lockAcquired = true;
+    private Map<String, FullQualifiedComputationAddr> sentOutRequests = new HashMap<>();
+    private List<String> locallyProcessedPrefixes = new ArrayList<>();
+    private List<String> childLeafPrefixes = new ArrayList<>();
+
+    public PendingScaleInRequest(String prefix, int sentCount, String originCtrlEndpoint, String originComputation) {
+        this.prefix = prefix;
+        this.sentCount = sentCount;
+        this.originCtrlEndpoint = originCtrlEndpoint;
+        this.originComputation = originComputation;
+        this.initiatedLocally = false;
+    }
+
+    public PendingScaleInRequest(String prefix, int sentCount) {
+        this.prefix = prefix;
+        this.sentCount = sentCount;
+        this.initiatedLocally = true;
+    }
+
+    public String getPrefix() {
+        return prefix;
+    }
+
+    public int getSentCount() {
+        return sentCount;
+    }
+
+    public int getReceivedCount() {
+        return receivedCount;
+    }
+
+    public String getOriginCtrlEndpoint() {
+        return originCtrlEndpoint;
+    }
+
+    public String getOriginComputation() {
+        return originComputation;
+    }
+
+    public boolean isInitiatedLocally() {
+        return initiatedLocally;
+    }
+
+    public boolean isLockAcquired() {
+        return lockAcquired;
+    }
+
+    public Map<String, FullQualifiedComputationAddr> getSentOutRequests() {
+        return sentOutRequests;
+    }
+
+    public List<String> getLocallyProcessedPrefixes() {
+        return locallyProcessedPrefixes;
+    }
+
+    public List<String> getChildLeafPrefixes() {
+        return childLeafPrefixes;
+    }
+}
