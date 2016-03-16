@@ -13,8 +13,9 @@ import ds.granules.neptune.interfere.core.NIException;
 import ds.granules.streaming.core.StreamProcessor;
 import ds.granules.streaming.core.exception.StreamingDatasetException;
 import ds.granules.streaming.core.exception.StreamingGraphConfigurationException;
-import ds.granules.util.Constants;
-import ds.granules.util.NeptuneRuntime;
+import neptune.geospatial.core.computations.scalingctxt.MonitoredPrefix;
+import neptune.geospatial.core.computations.scalingctxt.PendingScaleOutRequest;
+import neptune.geospatial.core.computations.scalingctxt.ScalingContext;
 import neptune.geospatial.core.protocol.msg.*;
 import neptune.geospatial.core.resource.ManagedResource;
 import neptune.geospatial.graph.messages.GeoHashIndexedRecord;
@@ -23,13 +24,14 @@ import neptune.geospatial.hazelcast.HazelcastException;
 import neptune.geospatial.hazelcast.type.SketchLocation;
 import neptune.geospatial.partitioner.GeoHashPartitioner;
 import neptune.geospatial.util.Mutex;
-import neptune.geospatial.util.RivuletUtil;
 import neptune.geospatial.util.trie.GeoHashPrefixTree;
 import org.apache.log4j.Logger;
 
 import java.io.IOException;
-import java.text.DecimalFormat;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -44,73 +46,6 @@ import java.util.concurrent.atomic.AtomicLong;
  */
 @SuppressWarnings("unused")
 public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor {
-
-    /**
-     * Represents a monitored prefix.
-     * Used to keep track of the message rates for each prefix under the
-     * purview of the current computation.
-     */
-    private class MonitoredPrefix implements Comparable<MonitoredPrefix> {
-        private String prefix;
-        private String streamType;
-        private long messageCount;
-        private double messageRate;
-        private AtomicBoolean isPassThroughTraffic = new AtomicBoolean(false);
-        private String outGoingStream;
-        private String destComputationId;
-        private String destResourceCtrlEndpoint;
-        private AtomicLong lastMessageSent = new AtomicLong(0);
-        private String lastGeoHashSent;
-        private long terminationPoint = -1;
-        private ScaleInActivateReq activateReq;
-
-        public MonitoredPrefix(String prefix, String streamType) {
-            this.prefix = prefix;
-            this.streamType = streamType;
-        }
-
-        @Override
-        public int compareTo(MonitoredPrefix o) {
-            // ascending sort based on input rates
-            if (this.messageRate == o.messageRate) {
-                return this.prefix.compareTo(o.prefix);
-            } else {
-                return (int) (this.messageRate - o.messageRate);
-            }
-        }
-
-        @Override
-        public boolean equals(Object o) {
-            if (this == o) return true;
-            if (o == null || getClass() != o.getClass()) return false;
-
-            MonitoredPrefix that = (MonitoredPrefix) o;
-            return prefix.equals(that.prefix) && streamType.equals(that.streamType);
-        }
-
-        @Override
-        public int hashCode() {
-            int result = prefix.hashCode();
-            result = 31 * result + streamType.hashCode();
-            return result;
-        }
-    }
-
-    /**
-     * Pending Scale Out Requests.
-     * A scale out request message is sent to the deployer and we are waiting
-     * for a response.
-     */
-    private class PendingScaleOutRequest {
-        private List<String> prefixes;
-        private String streamId;
-        private int ackCount;
-
-        public PendingScaleOutRequest(List<String> prefixes, String streamId) {
-            this.prefixes = prefixes;
-            this.streamId = streamId;
-        }
-    }
 
     /**
      * Uniquely identifies each computation in the cluster
@@ -165,10 +100,7 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
     private AtomicInteger messageSize = new AtomicInteger(-1);
     private AtomicLong tsLastUpdated = new AtomicLong(0);
 
-    private Set<MonitoredPrefix> monitoredPrefixes = new TreeSet<>();
-    private Map<String, MonitoredPrefix> monitoredPrefixMap = new HashMap<>();
-    private Map<String, PendingScaleOutRequest> pendingScaleOutRequests = new HashMap<>();
-    private Map<String, PendingScaleInRequest> pendingScaleInRequests = new HashMap<>();
+    private ScalingContext scalingContext = new ScalingContext(getInstanceIdentifier());
 
     // mutex to ensure only a single scale in/out operations takes place at a given time
     private final Mutex mutex = new Mutex();
@@ -194,7 +126,7 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
         }
         GeoHashIndexedRecord geoHashIndexedRecord = (GeoHashIndexedRecord) streamEvent;
         // this a dummy message sent to activate the computation after scaling out.
-        if(geoHashIndexedRecord.getMessageIdentifier() == -1){
+        if (geoHashIndexedRecord.getMessageIdentifier() == -1) {
             return;
         }
         // preprocess each message
@@ -226,28 +158,28 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
         boolean processLocally;
         synchronized (this) {
             updateIncomingRatesForSubPrefixes(prefix, record);
-            MonitoredPrefix monitoredPrefix = monitoredPrefixMap.get(prefix);
+            MonitoredPrefix monitoredPrefix = scalingContext.getMonitoredPrefix(prefix);
             // if there is an outgoing stream, then this should be sent to a child node.
-            processLocally = !monitoredPrefix.isPassThroughTraffic.get();
-            monitoredPrefix.lastMessageSent.set(record.getMessageIdentifier());
-            monitoredPrefix.lastGeoHashSent = record.getGeoHash();
+            processLocally = !monitoredPrefix.getIsPassThroughTraffic();
+            monitoredPrefix.setLastMessageSent(record.getMessageIdentifier());
+            monitoredPrefix.setLastGeoHashSent(record.getGeoHash());
             if (!processLocally) {
                 record.setPrefixLength(record.getPrefixLength() + 1);
                 // send to the child node
                 if (logger.isTraceEnabled()) {
                     logger.trace(String.format("[%s] Forwarding Message. Prefix: %s, Outgoing Stream: %s",
-                            getInstanceIdentifier(), prefix, monitoredPrefix.outGoingStream));
+                            getInstanceIdentifier(), prefix, monitoredPrefix.getOutGoingStream()));
                 }
                 try {
-                    writeToStream(monitoredPrefix.outGoingStream, record);
+                    writeToStream(monitoredPrefix.getOutGoingStream(), record);
                 } catch (StreamingDatasetException e) {
-                    logger.error("--------------> SENDING TO: " + monitoredPrefix.destResourceCtrlEndpoint + ":" +
-                            monitoredPrefix.destComputationId);
+                    logger.error("Error writing to stream to " + monitoredPrefix.getDestResourceCtrlEndpoint() + ":" +
+                            monitoredPrefix.getDestComputationId());
                     throw e;
                 }
             }
-            if (monitoredPrefix.terminationPoint == monitoredPrefix.lastMessageSent.get()) {
-                propagateScaleInActivationRequests(monitoredPrefix.activateReq);
+            if (monitoredPrefix.getTerminationPoint() == monitoredPrefix.getLastMessageSent()) {
+                propagateScaleInActivationRequests(monitoredPrefix.getActivateReq());
             }
         }
         return processLocally;
@@ -255,43 +187,17 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
 
     @Override
     protected void declareOutputStreams() throws StreamingGraphConfigurationException {
-        // leaf node of the graph. no outgoing edges.
+        // leaf node of the graph. no outgoing edges at the beginning
     }
 
     private synchronized void updateIncomingRatesForSubPrefixes(String prefix, GeoHashIndexedRecord record) {
-        MonitoredPrefix monitoredPrefix;
-        if (monitoredPrefixMap.containsKey(prefix)) {
-            monitoredPrefix = monitoredPrefixMap.get(prefix);
-        } else {
-            monitoredPrefix = new MonitoredPrefix(prefix, record.getClass().getName());
-            monitoredPrefixes.add(monitoredPrefix);
-            monitoredPrefixMap.put(prefix, monitoredPrefix);
-            try {
-                IMap<String, SketchLocation> prefMap = getHzInstance().getMap(GeoHashPrefixTree.PREFIX_MAP);
-                prefMap.put(prefix, new SketchLocation(getInstanceIdentifier(), getCtrlEndpoint(),
-                        SketchLocation.MODE_REGISTER_NEW_PREFIX));
-            } catch (GranulesConfigurationException e) {
-                logger.error("Error publishing to Hazelcast.", e);
-            }
-        }
-
-        monitoredPrefix.messageCount++;
-
+        scalingContext.updateMessageCount(prefix, record.getClass().getName());
         long timeNow = System.currentTimeMillis();
         if (tsLastUpdated.get() == 0) {
             tsLastUpdated.set(timeNow);
         } else if ((timeNow - tsLastUpdated.get()) > INPUT_RATE_UPDATE_INTERVAL) {
-            for (String monitoredPrefStr : monitoredPrefixMap.keySet()) {
-                monitoredPrefix = monitoredPrefixMap.get(monitoredPrefStr);
-                double timeElapsed = (timeNow - tsLastUpdated.get()) * 1.0;
-                DecimalFormat dFormat = new DecimalFormat();
-                monitoredPrefix.messageRate = monitoredPrefix.messageCount * 1000.0 / timeElapsed;
-                monitoredPrefix.messageCount = 0;
-                if (logger.isTraceEnabled()) {
-                    logger.trace(String.format("[%s] Prefix: %s, Message Rate: %.3f", getInstanceIdentifier(),
-                            prefix, monitoredPrefix.messageRate));
-                }
-            }
+            double timeElapsed = (timeNow - tsLastUpdated.get()) * 1.0;
+            scalingContext.updateMessageRates(timeElapsed);
             tsLastUpdated.set(timeNow);
         }
     }
@@ -337,31 +243,10 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
         try {
             // in the case of scaling out
             if (excess > 0) {
-                List<String> prefixesForScalingOut = new ArrayList<>();
-                double cumulSumOfPrefixes = 0;
-                Iterator<MonitoredPrefix> itr = monitoredPrefixes.iterator();
-                while (itr.hasNext() && cumulSumOfPrefixes < excess) {
-                    MonitoredPrefix monitoredPrefix = itr.next();
-                    if (!monitoredPrefix.isPassThroughTraffic.get() && monitoredPrefix.messageRate > 0 &&
-                            monitoredPrefix.prefix.length() < MAX_CHARACTER_DEPTH) {
-                        prefixesForScalingOut.add(monitoredPrefix.prefix);
-                        // let's consider the number of messages accumulated over 2s.
-                        cumulSumOfPrefixes += monitoredPrefix.messageRate * 2;
-                        break;
-                    }
-                }
-                if (logger.isDebugEnabled()) {
-                    StringBuilder stringBuilder = new StringBuilder();
-                    for (String prefix : prefixesForScalingOut) {
-                        stringBuilder.append(prefix).append("(").append(monitoredPrefixMap.get(prefix).messageRate).
-                                append("), ");
-                    }
-                    logger.debug(String.format("[%s] Scale Out recommendation. Excess: %.3f, Chosen Prefixes: %s",
-                            getInstanceIdentifier(), excess, stringBuilder.toString()));
-                }
+                List<String> prefixesForScalingOut = scalingContext.getPrefixesForScalingOut(excess);
                 if (!prefixesForScalingOut.isEmpty()) {
                     // We assume we use the same message type throughout the graph.
-                    String streamType = monitoredPrefixMap.get(prefixesForScalingOut.get(0)).streamType;
+                    String streamType = scalingContext.getMonitoredPrefix(prefixesForScalingOut.get(0)).getStreamType();
                     initiateScaleOut(prefixesForScalingOut, streamType);
                     return true;
                 } else {
@@ -370,19 +255,11 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
                     return false;
                 }
             } else {    // in the case of scaling down
-                // find the prefixes with the lowest input rates that are pass-through traffic
-                Iterator<MonitoredPrefix> itr = monitoredPrefixes.iterator();
-                MonitoredPrefix chosenToScaleIn = null;
-                while (itr.hasNext()) {
-                    MonitoredPrefix monitoredPrefix = itr.next();
-                    if (monitoredPrefix.isPassThroughTraffic.get()) {
-                        // FIXME: Scale in just one computation, just to make sure protocol works
-                        chosenToScaleIn = monitoredPrefix;
-                        break;
+                List<String> chosenToScaleIn = scalingContext.getPrefixesForScalingIn(excess);
+                if (chosenToScaleIn.size() > 0) {
+                    for (String chosenPrefix : chosenToScaleIn) {
+                        initiateScaleIn(scalingContext.getMonitoredPrefix(chosenPrefix));
                     }
-                }
-                if (chosenToScaleIn != null) {
-                    initiateScaleIn(chosenToScaleIn);
                     return true;
                 } else {
                     mutex.release();
@@ -410,7 +287,8 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
 
             ScaleOutRequest triggerMessage = new ScaleOutRequest(getInstanceIdentifier(), outGoingStreamId,
                     topics[0].toString(), streamType);
-            pendingScaleOutRequests.put(triggerMessage.getMessageId(), new PendingScaleOutRequest(prefix, outGoingStreamId));
+            scalingContext.addPendingScaleOutRequest(triggerMessage.getMessageId(), new PendingScaleOutRequest(
+                    prefix, outGoingStreamId));
             ManagedResource.getInstance().sendToDeployer(triggerMessage);
             if (logger.isDebugEnabled()) {
                 logger.debug(String.format("[%s] Sent a trigger scale message to deployer for the prefix: %s.",
@@ -426,31 +304,31 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
     }
 
     public synchronized void handleTriggerScaleAck(ScaleOutResponse ack) {
-        if (pendingScaleOutRequests.containsKey(ack.getInResponseTo())) {
-            PendingScaleOutRequest pendingReq = pendingScaleOutRequests.get(ack.getInResponseTo());
-            for (String prefix : pendingReq.prefixes) {
-                MonitoredPrefix monitoredPrefix = monitoredPrefixMap.get(prefix);
-                monitoredPrefix.isPassThroughTraffic.set(true);
-                monitoredPrefix.destComputationId = ack.getNewComputationId();
-                monitoredPrefix.destResourceCtrlEndpoint = ack.getNewLocationURL();
-                monitoredPrefix.outGoingStream = pendingReq.streamId;
+        PendingScaleOutRequest pendingReq = scalingContext.getPendingScaleOutRequest(ack.getInResponseTo());
+        if (pendingReq != null) {
+            for (String prefix : pendingReq.getPrefixes()) {
+                MonitoredPrefix monitoredPrefix = scalingContext.getMonitoredPrefix(prefix);
+                monitoredPrefix.setIsPassThroughTraffic(true);
+                monitoredPrefix.setDestComputationId(ack.getNewComputationId());
+                monitoredPrefix.setDestResourceCtrlEndpoint(ack.getNewLocationURL());
+                monitoredPrefix.setOutGoingStream(pendingReq.getStreamId());
                 try {
                     // send a dummy message, just to ensure the new computation is activated.
-                    GeoHashIndexedRecord record = new GeoHashIndexedRecord(monitoredPrefix.lastGeoHashSent,
-                            prefix.length()+1, -1, System.currentTimeMillis(), new byte[0]);
-                    writeToStream(monitoredPrefix.outGoingStream, record);
+                    GeoHashIndexedRecord record = new GeoHashIndexedRecord(monitoredPrefix.getLastGeoHashSent(),
+                            prefix.length() + 1, -1, System.currentTimeMillis(), new byte[0]);
+                    writeToStream(monitoredPrefix.getOutGoingStream(), record);
                     byte[] state = split(prefix);
                     StateTransferMsg stateTransferMsg = new StateTransferMsg(prefix, ack.getInResponseTo(), state,
                             ack.getNewComputationId(), getInstanceIdentifier(), StateTransferMsg.SCALE_OUT);
-                    stateTransferMsg.setLastMessageId(monitoredPrefix.lastMessageSent.get());
-                    stateTransferMsg.setLastMessagePrefix(monitoredPrefix.lastGeoHashSent);
-                    SendUtility.sendControlMessage(monitoredPrefix.destResourceCtrlEndpoint, stateTransferMsg);
+                    stateTransferMsg.setLastMessageId(monitoredPrefix.getLastMessageSent());
+                    stateTransferMsg.setLastMessagePrefix(monitoredPrefix.getLastGeoHashSent());
+                    SendUtility.sendControlMessage(monitoredPrefix.getDestResourceCtrlEndpoint(), stateTransferMsg);
                     if (logger.isDebugEnabled()) {
                         logger.debug(String.format("[%s] New Pass-Thru Prefix. Prefix: %s, Outgoing Stream: %s",
-                                getInstanceIdentifier(), prefix, pendingReq.streamId));
+                                getInstanceIdentifier(), prefix, pendingReq.getStreamId()));
                     }
                 } catch (CommunicationsException | IOException e) {
-                    logger.error("Error transferring state to " + monitoredPrefix.destResourceCtrlEndpoint);
+                    logger.error("Error transferring state to " + monitoredPrefix.getDestResourceCtrlEndpoint());
                 } catch (StreamingDatasetException e) {
                     logger.error("Error sending a message");
                 }
@@ -461,12 +339,12 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
     }
 
     public synchronized void handleScaleOutCompleteAck(ScaleOutCompleteAck ack) {
-        if (pendingScaleOutRequests.containsKey(ack.getKey())) {
-            PendingScaleOutRequest pendingReq = pendingScaleOutRequests.get(ack.getKey());
-            pendingReq.ackCount++;
+        PendingScaleOutRequest pendingReq = scalingContext.getPendingScaleOutRequest(ack.getKey());
+        if (pendingReq != null) {
+            int ackCount = pendingReq.incrementAndGetAckCount();
             if (logger.isDebugEnabled()) {
                 logger.debug(String.format("[%s] Received a ScaleOutCompleteAck. Sent Count: %d, Received Count: %d",
-                        getInstanceIdentifier(), pendingReq.prefixes.size(), pendingReq.ackCount));
+                        getInstanceIdentifier(), pendingReq.getPrefixes().size(), ackCount));
             }
             // update prefix tree
             /*IMap<String, SketchLocation> prefMap = hzInstance.getMap(GeoHashPrefixTree.PREFIX_MAP);
@@ -475,15 +353,15 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
                     monitoredPrefix.destResourceCtrlEndpoint,
                     SketchLocation.MODE_SCALE_OUT));
             */
-            if (pendingReq.ackCount == pendingReq.prefixes.size()) {
+            if (ackCount == pendingReq.getPrefixes().size()) {
                 try {
                     if (logger.isDebugEnabled()) {
                         logger.debug(String.format("[%s] Scaling out complete for now.", getInstanceIdentifier()));
                     }
                     // TODO: temporary fix to track dynamic scaling. Remove this and uncomment above after the micro-benchmark
                     IQueue<Integer> scalingMonitoringQueue = getHzInstance().getQueue("scaling-monitor");
-                    scalingMonitoringQueue.add(pendingReq.ackCount);
-                    pendingScaleOutRequests.remove(ack.getKey());
+                    scalingMonitoringQueue.add(ackCount);
+                    scalingContext.completeScalingOut(ack.getKey());
                     mutex.release();
                     ManagedResource.getInstance().scalingOperationComplete(this.getInstanceIdentifier());
                 } catch (NIException ignore) {
@@ -858,8 +736,8 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
                         prefMap.put(ack.getPrefix(), new SketchLocation(getInstanceIdentifier(), getCtrlEndpoint(),
                                 SketchLocation.MODE_SCALE_IN));
                                 */
-                        IQueue<Integer> scaleMonitorQueue = getHzInstance().getQueue("scaling-monitor");
-                        scaleMonitorQueue.add(-1);
+                    IQueue<Integer> scaleMonitorQueue = getHzInstance().getQueue("scaling-monitor");
+                    scaleMonitorQueue.add(-1);
                     //} catch (GranulesConfigurationException e) {
                     //    logger.error("Error publishing to Hazelcast.", e);
                     //}
@@ -928,17 +806,6 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
                 logger.error("Error when sending out the StateTransfer message to " +
                         activationReq.getOriginNodeOfScalingOperation());
             }
-        }
-    }
-
-    private String getCtrlEndpoint() throws GranulesConfigurationException {
-        try {
-            return RivuletUtil.getHostInetAddress().getHostName() + ":" +
-                    NeptuneRuntime.getInstance().getProperties().getProperty(
-                            Constants.DIRECT_COMM_CONTROL_PLANE_SERVER_PORT);
-        } catch (GranulesConfigurationException e) {
-            logger.error("Error when retrieving the hostname.", e);
-            throw e;
         }
     }
 

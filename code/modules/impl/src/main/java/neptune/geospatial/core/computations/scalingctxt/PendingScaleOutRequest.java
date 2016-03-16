@@ -27,7 +27,7 @@ public class PendingScaleOutRequest {
         return streamId;
     }
 
-    public int getAckCount() {
-        return ackCount;
+    public int incrementAndGetAckCount() {
+        return ++ackCount;
     }
 }

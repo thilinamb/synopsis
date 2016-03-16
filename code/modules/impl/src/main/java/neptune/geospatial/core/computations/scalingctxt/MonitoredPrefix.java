@@ -2,9 +2,6 @@ package neptune.geospatial.core.computations.scalingctxt;
 
 import neptune.geospatial.core.protocol.msg.ScaleInActivateReq;
 
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicLong;
-
 /**
  * Represents a monitored prefix.
  * Used to keep track of the message rates for each prefix under the
@@ -17,11 +14,11 @@ public class MonitoredPrefix implements Comparable<MonitoredPrefix> {
     private String streamType;
     private long messageCount;
     private double messageRate;
-    private AtomicBoolean isPassThroughTraffic = new AtomicBoolean(false);
+    private boolean isPassThroughTraffic = false;
     private String outGoingStream;
     private String destComputationId;
     private String destResourceCtrlEndpoint;
-    private AtomicLong lastMessageSent = new AtomicLong(0);
+    private long lastMessageSent = 0;
     private String lastGeoHashSent;
     private long terminationPoint = -1;
     private ScaleInActivateReq activateReq;
@@ -57,27 +54,32 @@ public class MonitoredPrefix implements Comparable<MonitoredPrefix> {
         return result;
     }
 
-    public long getMessageCount() {
-        return messageCount;
+    public String getPrefix() {
+        return prefix;
     }
 
-    public void setMessageCount(long messageCount) {
-        this.messageCount = messageCount;
+    public String getStreamType() {
+        return streamType;
+    }
+
+    public void incrementMessageCount() {
+        this.messageCount++;
+    }
+
+    public void updateMessageRate(double timeElapsed) {
+        this.messageRate = this.messageCount * 1000.0 / timeElapsed;
+        this.messageCount = 0;
+    }
+
+    public boolean getIsPassThroughTraffic() {
+        return isPassThroughTraffic;
     }
 
     public double getMessageRate() {
         return messageRate;
     }
 
-    public void setMessageRate(double messageRate) {
-        this.messageRate = messageRate;
-    }
-
-    public AtomicBoolean getIsPassThroughTraffic() {
-        return isPassThroughTraffic;
-    }
-
-    public void setIsPassThroughTraffic(AtomicBoolean isPassThroughTraffic) {
+    public void setIsPassThroughTraffic(boolean isPassThroughTraffic) {
         this.isPassThroughTraffic = isPassThroughTraffic;
     }
 
@@ -105,11 +107,11 @@ public class MonitoredPrefix implements Comparable<MonitoredPrefix> {
         this.destResourceCtrlEndpoint = destResourceCtrlEndpoint;
     }
 
-    public AtomicLong getLastMessageSent() {
+    public long getLastMessageSent() {
         return lastMessageSent;
     }
 
-    public void setLastMessageSent(AtomicLong lastMessageSent) {
+    public void setLastMessageSent(long lastMessageSent) {
         this.lastMessageSent = lastMessageSent;
     }
 
