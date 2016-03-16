@@ -53,6 +53,7 @@ public class ScalingContext {
 
     /**
      * Register a new monitored prefix
+     *
      * @param prefix Prefix string
      * @param monitoredPrefix {@code MonitoredPrefix} object
      */
@@ -88,6 +89,11 @@ public class ScalingContext {
         monitoredPrefix.incrementMessageCount();
     }
 
+    /**
+     * Update message rates for each monitored prefix
+     *
+     * @param timeElapsed time elapsed since last message rate calculation
+     */
     public void updateMessageRates(double timeElapsed) {
         for (String monitoredPrefStr : monitoredPrefixMap.keySet()) {
             MonitoredPrefix monitoredPrefix = monitoredPrefixMap.get(monitoredPrefStr);
@@ -99,6 +105,12 @@ public class ScalingContext {
         }
     }
 
+    /**
+     * Get a list of prefixes for scaling out
+     *
+     * @param excess A measure of the excess load
+     * @return List of prefixes chosen for scaling out
+     */
     public List<String> getPrefixesForScalingOut(Double excess) {
         List<String> prefixesForScalingOut = new ArrayList<>();
         double cumulSumOfPrefixes = 0;
@@ -124,6 +136,12 @@ public class ScalingContext {
         return prefixesForScalingOut;
     }
 
+    /**
+     * Returns a list of prefixes for scaling in
+     *
+     * @param excess Extra load the current computation can take in
+     * @return List of chosen prefixes
+     */
     public List<String> getPrefixesForScalingIn(Double excess) {
         // find the prefixes with the lowest input rates that are pass-through traffic
         Iterator<MonitoredPrefix> itr = monitoredPrefixes.iterator();
@@ -140,7 +158,7 @@ public class ScalingContext {
     }
 
     /**
-     * Returns the set of child prefixes for propagating a scale in request
+     * Returns the set of child prefixes for corresponding to a given parent prefix
      *
      * @param prefix Parent prefix
      * @return List of child prefixes

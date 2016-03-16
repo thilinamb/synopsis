@@ -15,6 +15,10 @@ public class RivuletUtil {
 
     private static final Logger logger = Logger.getLogger(RivuletUtil.class);
 
+    /**
+     * Get the {@code InetAddress} of the current host
+     * @return @code InetAddress} of the current host
+     */
     public static InetAddress getHostInetAddress() {
         InetAddress inetAddr;
         try {
@@ -25,9 +29,14 @@ public class RivuletUtil {
         return inetAddr;
     }
 
+    /**
+     * Returns the control plain address of the current process
+     * @return Control plain address
+     * @throws GranulesConfigurationException Error reading the configuration file
+     */
     public static String getCtrlEndpoint() throws GranulesConfigurationException {
         try {
-            return RivuletUtil.getHostInetAddress().getHostName() + ":" +
+            return getHostInetAddress().getHostName() + ":" +
                     NeptuneRuntime.getInstance().getProperties().getProperty(
                             Constants.DIRECT_COMM_CONTROL_PLANE_SERVER_PORT);
         } catch (GranulesConfigurationException e) {
