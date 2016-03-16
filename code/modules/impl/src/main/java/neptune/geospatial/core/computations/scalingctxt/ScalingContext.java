@@ -175,6 +175,10 @@ public class ScalingContext {
         return pendingScaleInRequests.get(key);
     }
 
+    public void removePendingScaleInRequest(String key){
+        pendingScaleInRequests.remove(key);
+    }
+
     private HazelcastInstance getHzInstance() throws HazelcastException {
         if (hzInstance == null) {
             synchronized (this) {

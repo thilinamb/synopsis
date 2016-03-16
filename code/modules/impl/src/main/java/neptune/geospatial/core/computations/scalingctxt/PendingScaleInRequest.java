@@ -98,4 +98,8 @@ public class PendingScaleInRequest {
     public List<String> getChildLeafPrefixes() {
         return childLeafPrefixes;
     }
+
+    public void setReceivedCount(int receivedCount) {
+        this.receivedCount = receivedCount;
+    }
 }
