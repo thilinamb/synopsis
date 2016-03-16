@@ -1,6 +1,8 @@
 package neptune.geospatial.core.computations.scalingctxt;
 
 /**
+ * Full qualified address of a computation in the cluster.
+ *
  * @author Thilina Buddhika
  */
 public class FullQualifiedComputationAddr {

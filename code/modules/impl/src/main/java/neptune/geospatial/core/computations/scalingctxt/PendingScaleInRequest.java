@@ -6,6 +6,8 @@ import java.util.List;
 import java.util.Map;
 
 /**
+ * Represents an on-going Scaling in task.
+ *
  * @author Thilina Buddhika
  */
 public class PendingScaleInRequest {
@@ -67,10 +69,6 @@ public class PendingScaleInRequest {
         return sentCount;
     }
 
-    public int getReceivedCount() {
-        return receivedCount;
-    }
-
     public String getOriginCtrlEndpoint() {
         return originCtrlEndpoint;
     }
@@ -81,10 +79,6 @@ public class PendingScaleInRequest {
 
     public boolean isInitiatedLocally() {
         return initiatedLocally;
-    }
-
-    public boolean isLockAcquired() {
-        return lockAcquired;
     }
 
     public Map<String, FullQualifiedComputationAddr> getSentOutRequests() {

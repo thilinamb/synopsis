@@ -3,7 +3,7 @@ package neptune.geospatial.core.computations.scalingctxt;
 import java.util.List;
 
 /**
- * Pending Scale Out Requests.
+ * Represents an on-going scale out activity.
  * A scale out request message is sent to the deployer and we are waiting
  * for a response.
  *
