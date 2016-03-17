@@ -260,14 +260,14 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
         }
     }
 
-    public synchronized void handleTriggerScaleAck(ScaleOutResponse ack) {
-        PendingScaleOutRequest pendingReq = scalingContext.getPendingScaleOutRequest(ack.getInResponseTo());
+    public synchronized void handleTriggerScaleAck(ScaleOutResponse scaleOutResp) {
+        PendingScaleOutRequest pendingReq = scalingContext.getPendingScaleOutRequest(scaleOutResp.getInResponseTo());
         if (pendingReq != null) {
             for (String prefix : pendingReq.getPrefixes()) {
                 MonitoredPrefix monitoredPrefix = scalingContext.getMonitoredPrefix(prefix);
                 monitoredPrefix.setIsPassThroughTraffic(true);
-                monitoredPrefix.setDestComputationId(ack.getNewComputationId());
-                monitoredPrefix.setDestResourceCtrlEndpoint(ack.getNewLocationURL());
+                monitoredPrefix.setDestComputationId(scaleOutResp.getNewComputationId());
+                monitoredPrefix.setDestResourceCtrlEndpoint(scaleOutResp.getNewLocationURL());
                 monitoredPrefix.setOutGoingStream(pendingReq.getStreamId());
                 try {
                     // send a dummy message, just to ensure the new computation is activated.
@@ -275,8 +275,8 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
                             prefix.length() + 1, -1, System.currentTimeMillis(), new byte[0]);
                     writeToStream(monitoredPrefix.getOutGoingStream(), record);
                     byte[] state = split(prefix);
-                    StateTransferMsg stateTransferMsg = new StateTransferMsg(prefix, ack.getInResponseTo(), state,
-                            ack.getNewComputationId(), getInstanceIdentifier(), StateTransferMsg.SCALE_OUT);
+                    StateTransferMsg stateTransferMsg = new StateTransferMsg(prefix, scaleOutResp.getInResponseTo(), state,
+                            scaleOutResp.getNewComputationId(), getInstanceIdentifier(), StateTransferMsg.SCALE_OUT);
                     stateTransferMsg.setLastMessageId(monitoredPrefix.getLastMessageSent());
                     stateTransferMsg.setLastMessagePrefix(monitoredPrefix.getLastGeoHashSent());
                     SendUtility.sendControlMessage(monitoredPrefix.getDestResourceCtrlEndpoint(), stateTransferMsg);
@@ -291,7 +291,7 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
                 }
             }
         } else {
-            logger.warn("Invalid trigger ack for the prefix. Request Id: " + ack.getInResponseTo());
+            logger.warn("Invalid trigger scaleOutResp for the prefix. Request Id: " + scaleOutResp.getInResponseTo());
         }
     }
 
@@ -763,6 +763,18 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
     public abstract byte[] split(String prefix);
 
     public abstract void merge(String prefix, byte[] serializedSketch);
+
+    public void emit(String streamId, GeoHashIndexedRecord message) throws StreamingDatasetException {
+        writeToStream(streamId, message);
+    }
+
+    public void releaseMutex(){
+        mutex.release();
+    }
+
+    public boolean tryAcquireMutex(){
+        return mutex.tryAcquire();
+    }
 
     public HazelcastInstance getHzInstance() {
         if (hzInstance == null) {
