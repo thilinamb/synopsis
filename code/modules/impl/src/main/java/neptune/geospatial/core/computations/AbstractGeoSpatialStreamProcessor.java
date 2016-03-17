@@ -46,7 +46,6 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
 
     private Logger logger = Logger.getLogger(AbstractGeoSpatialStreamProcessor.class.getName());
     public static final String OUTGOING_STREAM_BASE_ID = "out-going";
-    private static final String GEO_HASH_CHAR_SET = "0123456789bcdefghjkmnpqrstuvwxyz";
     public static final int MAX_CHARACTER_DEPTH = 4;
     private static final int INPUT_RATE_UPDATE_INTERVAL = 10 * 1000;
 
@@ -168,10 +167,6 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
 
     public String getPrefix(String geohash, int prefixLength) {
         return geohash.substring(0, prefixLength + 1);
-    }
-
-    private int getIndexForSubPrefix(String geohash, int prefixLength) {
-        return GEO_HASH_CHAR_SET.indexOf(geohash.charAt(prefixLength));
     }
 
     public long getBacklogLength() {
