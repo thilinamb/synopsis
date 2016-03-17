@@ -66,6 +66,28 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
     private Map<Integer, ProtocolProcessor> protocolProcessors = new HashMap<>();
 
 
+    /**
+     * Implement the specific business logic to process each
+     * <code>GeohashIndexedRecord</code> message.
+     *
+     * @param event <code>GeoHashIndexedRecord</code> element
+     */
+    protected abstract void process(GeoHashIndexedRecord event);
+
+    /**
+     * Return the state for the given prefix
+     * @param prefix Geohash Prefix
+     * @return serialized state of the prefix
+     */
+    public abstract byte[] split(String prefix);
+
+    /**
+     * Merge the state of the provided prefix with the current prefix
+     * @param prefix Prefix
+     * @param serializedSketch Serialized state corresponding to the prefix
+     */
+    public abstract void merge(String prefix, byte[] serializedSketch);
+
     @Override
     public final void onEvent(StreamEvent streamEvent) throws StreamingDatasetException {
         if (!initialized.get()) {
@@ -94,15 +116,6 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
             process(geoHashIndexedRecord);
         }
     }
-
-    /**
-     * Implement the specific business logic to process each
-     * <code>GeohashIndexedRecord</code> message.
-     *
-     * @param event <code>GeoHashIndexedRecord</code> element
-     */
-    protected abstract void process(GeoHashIndexedRecord event);
-
 
     /**
      * Preprocess every record to extract meta-data such as triggering
@@ -149,39 +162,12 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
         // leaf node of the graph. no outgoing edges at the beginning
     }
 
-    private synchronized void updateIncomingRatesForSubPrefixes(String prefix, GeoHashIndexedRecord record) {
-        scalingContext.updateMessageCount(prefix, record.getClass().getName());
-        long timeNow = System.currentTimeMillis();
-        if (tsLastUpdated.get() == 0) {
-            tsLastUpdated.set(timeNow);
-        } else if ((timeNow - tsLastUpdated.get()) > INPUT_RATE_UPDATE_INTERVAL) {
-            double timeElapsed = (timeNow - tsLastUpdated.get()) * 1.0;
-            scalingContext.updateMessageRates(timeElapsed);
-            tsLastUpdated.set(timeNow);
-        }
-    }
-
-    private String getPrefix(GeoHashIndexedRecord record) {
-        return getPrefix(record.getGeoHash(), record.getPrefixLength());
-    }
-
     public String getPrefix(String geohash, int prefixLength) {
         return geohash.substring(0, prefixLength + 1);
     }
 
     public long getBacklogLength() {
         return streamDataset.getQueueLengthInBytes() / messageSize.get();
-    }
-
-    private void initializeProtocolProcessors() {
-        protocolProcessors.put(ProtocolTypes.SCALE_OUT_RESP, new ScaleOutResponseProcessor());
-        protocolProcessors.put(ProtocolTypes.SCALE_OUT_COMPLETE_ACK, new ScaleOutCompleteProcessor());
-        protocolProcessors.put(ProtocolTypes.SCALE_IN_LOCK_REQ, new ScaleInLockReqProcessor());
-        protocolProcessors.put(ProtocolTypes.SCALE_IN_LOCK_RESP, new ScaleInLockResponseProcessor());
-        protocolProcessors.put(ProtocolTypes.SCALE_IN_ACTIVATION_REQ, new ScaleInActivateReqProcessor());
-        protocolProcessors.put(ProtocolTypes.STATE_TRANSFER_MSG, new StateTransferMsgProcessor());
-        protocolProcessors.put(ProtocolTypes.SCALE_IN_COMPLETE, new ScaleInCompleteMsgProcessor());
-        protocolProcessors.put(ProtocolTypes.SCALE_IN_COMPLETE_ACK, new ScaleInCompleteAckProcessor());
     }
 
     /**
@@ -243,6 +229,17 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
         }
     }
 
+    public synchronized void processCtrlMessage(ControlMessage ctrlMsg) {
+        int type = ctrlMsg.getMessageType();
+        ProtocolProcessor protocolProcessor = protocolProcessors.get(type);
+        if (protocolProcessor != null) {
+            protocolProcessor.process(ctrlMsg, scalingContext, this);
+        } else {
+            logger.error(String.format("[%s] Unsupported protocol message. Type: %d, Class: %s",
+                    getInstanceIdentifier(), type, ctrlMsg.getClass().getName()));
+        }
+    }
+
     private void initiateScaleOut(List<String> prefix, String streamType) throws ScalingException {
         try {
             GeoHashPartitioner partitioner = new GeoHashPartitioner();
@@ -266,17 +263,6 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
             throw handleError("Error deploying the new stream.", e);
         } catch (NIException e) {
             throw handleError("Error retrieving an instance of the ManagedResource.", e);
-        }
-    }
-
-    public synchronized void processCtrlMessage(ControlMessage ctrlMsg) {
-        int type = ctrlMsg.getMessageType();
-        ProtocolProcessor protocolProcessor = protocolProcessors.get(type);
-        if (protocolProcessor != null) {
-            protocolProcessor.process(ctrlMsg, scalingContext, this);
-        } else {
-            logger.error(String.format("[%s] Unsupported protocol message. Type: %d, Class: %s",
-                    getInstanceIdentifier(), type, ctrlMsg.getClass().getName()));
         }
     }
 
@@ -377,10 +363,6 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
         }
     }
 
-    public abstract byte[] split(String prefix);
-
-    public abstract void merge(String prefix, byte[] serializedSketch);
-
     public void emit(String streamId, GeoHashIndexedRecord message) throws StreamingDatasetException {
         writeToStream(streamId, message);
     }
@@ -407,8 +389,31 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
         }
         return hzInstance;
     }
+
+    private synchronized void updateIncomingRatesForSubPrefixes(String prefix, GeoHashIndexedRecord record) {
+        scalingContext.updateMessageCount(prefix, record.getClass().getName());
+        long timeNow = System.currentTimeMillis();
+        if (tsLastUpdated.get() == 0) {
+            tsLastUpdated.set(timeNow);
+        } else if ((timeNow - tsLastUpdated.get()) > INPUT_RATE_UPDATE_INTERVAL) {
+            double timeElapsed = (timeNow - tsLastUpdated.get()) * 1.0;
+            scalingContext.updateMessageRates(timeElapsed);
+            tsLastUpdated.set(timeNow);
+        }
+    }
+
+    private String getPrefix(GeoHashIndexedRecord record) {
+        return getPrefix(record.getGeoHash(), record.getPrefixLength());
+    }
+
+    private void initializeProtocolProcessors() {
+        protocolProcessors.put(ProtocolTypes.SCALE_OUT_RESP, new ScaleOutResponseProcessor());
+        protocolProcessors.put(ProtocolTypes.SCALE_OUT_COMPLETE_ACK, new ScaleOutCompleteProcessor());
+        protocolProcessors.put(ProtocolTypes.SCALE_IN_LOCK_REQ, new ScaleInLockReqProcessor());
+        protocolProcessors.put(ProtocolTypes.SCALE_IN_LOCK_RESP, new ScaleInLockResponseProcessor());
+        protocolProcessors.put(ProtocolTypes.SCALE_IN_ACTIVATION_REQ, new ScaleInActivateReqProcessor());
+        protocolProcessors.put(ProtocolTypes.STATE_TRANSFER_MSG, new StateTransferMsgProcessor());
+        protocolProcessors.put(ProtocolTypes.SCALE_IN_COMPLETE, new ScaleInCompleteMsgProcessor());
+        protocolProcessors.put(ProtocolTypes.SCALE_IN_COMPLETE_ACK, new ScaleInCompleteAckProcessor());
+    }
 }
-
-
-
-
