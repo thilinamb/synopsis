@@ -5,6 +5,7 @@ import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.IMap;
 import com.hazelcast.core.IQueue;
 import ds.funnel.topic.Topic;
+import ds.granules.communication.direct.control.ControlMessage;
 import ds.granules.communication.direct.control.SendUtility;
 import ds.granules.dataset.StreamEvent;
 import ds.granules.exception.CommunicationsException;
@@ -14,7 +15,9 @@ import ds.granules.streaming.core.StreamProcessor;
 import ds.granules.streaming.core.exception.StreamingDatasetException;
 import ds.granules.streaming.core.exception.StreamingGraphConfigurationException;
 import neptune.geospatial.core.computations.scalingctxt.*;
+import neptune.geospatial.core.protocol.ProtocolTypes;
 import neptune.geospatial.core.protocol.msg.*;
+import neptune.geospatial.core.protocol.processors.*;
 import neptune.geospatial.core.resource.ManagedResource;
 import neptune.geospatial.graph.messages.GeoHashIndexedRecord;
 import neptune.geospatial.hazelcast.HazelcastClientInstanceHolder;
@@ -65,14 +68,19 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
     // Hazelcast + prefix tree
     private HazelcastInstance hzInstance;
 
+    // protocol processors
+    private Map<Integer, ProtocolProcessor> protocolProcessors = new HashMap<>();
+
+
     @Override
     public final void onEvent(StreamEvent streamEvent) throws StreamingDatasetException {
         if (!initialized.get()) {
             try {
                 // register with the resource to enable monitoring
-                initialized.set(true);
+                initializeProtocolProcessors();
                 messageSize.set(getMessageSize(streamEvent));
                 ManagedResource.getInstance().registerStreamProcessor(this);
+                initialized.set(true);
                 if (logger.isDebugEnabled()) {
                     logger.debug(String.format("[%s] Initialized. Message Size: %d", getInstanceIdentifier(),
                             messageSize.get()));
@@ -175,6 +183,17 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
         return streamDataset.getQueueLengthInBytes() / messageSize.get();
     }
 
+    private void initializeProtocolProcessors() {
+        protocolProcessors.put(ProtocolTypes.SCALE_OUT_RESP, new ScaleOutResponseProcessor());
+        protocolProcessors.put(ProtocolTypes.SCALE_OUT_COMPLETE_ACK, new ScaleOutCompleteProcessor());
+        protocolProcessors.put(ProtocolTypes.SCALE_IN_LOCK_REQ, new ScaleInLockReqProcessor());
+        protocolProcessors.put(ProtocolTypes.SCALE_IN_LOCK_RESP, new ScaleInLockResponseProcessor());
+        protocolProcessors.put(ProtocolTypes.SCALE_IN_ACTIVATION_REQ, new ScaleInActivateReqProcessor());
+        protocolProcessors.put(ProtocolTypes.STATE_TRANSFER_MSG, new StateTransferMsgProcessor());
+        protocolProcessors.put(ProtocolTypes.SCALE_IN_COMPLETE, new ScaleInCompleteMsgProcessor());
+        protocolProcessors.put(ProtocolTypes.SCALE_IN_COMPLETE_ACK, new ScaleInCompleteAckProcessor());
+    }
+
     /**
      * Resource recommends scaling out for one or more prefixes.
      *
@@ -257,6 +276,17 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
             throw handleError("Error deploying the new stream.", e);
         } catch (NIException e) {
             throw handleError("Error retrieving an instance of the ManagedResource.", e);
+        }
+    }
+
+    public synchronized void processCtrlMessage(ControlMessage ctrlMsg) {
+        int type = ctrlMsg.getMessageType();
+        ProtocolProcessor protocolProcessor = protocolProcessors.get(type);
+        if (protocolProcessor != null) {
+            protocolProcessor.process(ctrlMsg, scalingContext, this);
+        } else {
+            logger.error(String.format("[%s] Unsupported protocol message. Type: %d, Class: %s",
+                    getInstanceIdentifier(), type, ctrlMsg.getClass().getName()));
         }
     }
 
@@ -768,11 +798,11 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
         writeToStream(streamId, message);
     }
 
-    public void releaseMutex(){
+    public void releaseMutex() {
         mutex.release();
     }
 
-    public boolean tryAcquireMutex(){
+    public boolean tryAcquireMutex() {
         return mutex.tryAcquire();
     }
 

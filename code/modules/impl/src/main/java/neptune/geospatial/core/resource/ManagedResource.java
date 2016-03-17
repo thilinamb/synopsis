@@ -322,6 +322,35 @@ public class ManagedResource {
         monitoredComputationState.eligibleForScaling.set(true);
     }
 
+    public void dispatchControlMessage(String computationId, ControlMessage ctrlMessage) {
+        if (monitoredProcessors.containsKey(computationId)) {
+            monitoredProcessors.get(computationId).computation.processCtrlMessage(ctrlMessage);
+        } else if (ctrlMessage instanceof StateTransferMsg) {
+            StateTransferMsg stateTransferMsg = (StateTransferMsg) ctrlMessage;
+            if (!stateTransferMsg.isScaleType()) {
+                try {
+                    List<StateTransferMsg> stateTransferMsgs = pendingStateTransfers.get(computationId);
+                    if (stateTransferMsgs == null) {
+                        stateTransferMsgs = new ArrayList<>();
+                        pendingStateTransfers.put(computationId, stateTransferMsgs);
+                    }
+                    stateTransferMsgs.add(stateTransferMsg);
+                    ScaleOutCompleteAck completeAck = new ScaleOutCompleteAck(stateTransferMsg.getKeyPrefix(),
+                            stateTransferMsg.getPrefix(), stateTransferMsg.getOriginComputation());
+                    SendUtility.sendControlMessage(stateTransferMsg.getOriginEndpoint(), completeAck);
+                    logger.debug("New Computation is not active yet. Storing the StateTransfer Request.");
+                } catch (CommunicationsException | IOException e) {
+                    logger.error("Error sending out the ScaleOutCompleteAck to " + stateTransferMsg.getOriginEndpoint());
+                }
+            } else {
+                logger.warn("Invalid StateTransferMsg to " + computationId);
+            }
+        } else {
+            logger.warn(String.format("Invalid control message to computation : %s, type: %d", computationId,
+                    ctrlMessage.getMessageType()));
+        }
+    }
+
     public void handleTriggerScaleAck(ScaleOutResponse ack) {
         String processorId = ack.getTargetComputation();
         if (monitoredProcessors.containsKey(processorId)) {
@@ -412,8 +441,8 @@ public class ManagedResource {
         }
     }
 
-    public void ackDeployment(String instanceId){
-        if(logger.isDebugEnabled()){
+    public void ackDeployment(String instanceId) {
+        if (logger.isDebugEnabled()) {
             logger.debug(String.format("Sending deployment ack for %s", instanceId));
         }
         sendToDeployer(new DeploymentAck(instanceId));

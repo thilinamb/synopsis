@@ -31,56 +31,56 @@ public class ResourceProtocolHandler extends AbstractProtocolHandler {
                 if (logger.isDebugEnabled()) {
                     logger.debug("Received a trigger scale ack message for " + scaleOutResponse.getTargetComputation());
                 }
-                managedResource.handleTriggerScaleAck(scaleOutResponse);
+                managedResource.dispatchControlMessage(scaleOutResponse.getTargetComputation(), scaleOutResponse);
                 break;
             case ProtocolTypes.SCALE_OUT_COMPLETE_ACK:
                 ScaleOutCompleteAck scaleOutCompleteAck = (ScaleOutCompleteAck) ctrlMsg;
                 if (logger.isDebugEnabled()) {
                     logger.debug("Received a ScaleOutCompleteAck for " + scaleOutCompleteAck.getTargetComputation());
                 }
-                managedResource.handleScaleOutCompleteAck(scaleOutCompleteAck);
+                managedResource.dispatchControlMessage(scaleOutCompleteAck.getTargetComputation(), scaleOutCompleteAck);
                 break;
             case ProtocolTypes.SCALE_IN_LOCK_REQ:
                 ScaleInLockRequest lockReq = (ScaleInLockRequest) ctrlMsg;
                 if (logger.isDebugEnabled()) {
                     logger.debug("Received a ScaleInLockRequest for " + lockReq.getTargetComputation());
                 }
-                managedResource.handleScaleInLockReq(lockReq);
+                managedResource.dispatchControlMessage(lockReq.getTargetComputation(), lockReq);
                 break;
             case ProtocolTypes.SCALE_IN_LOCK_RESP:
                 ScaleInLockResponse lockResponse = (ScaleInLockResponse) ctrlMsg;
                 if (logger.isDebugEnabled()) {
                     logger.debug("Received a ScaleInLockResponse for " + lockResponse.getComputation());
                 }
-                managedResource.handleScaleInLockResp(lockResponse);
+                managedResource.dispatchControlMessage(lockResponse.getComputation(), lockResponse);
                 break;
             case ProtocolTypes.SCALE_IN_ACTIVATION_REQ:
                 ScaleInActivateReq activateReq = (ScaleInActivateReq) ctrlMsg;
                 if (logger.isDebugEnabled()) {
                     logger.debug("Received a ScaleInActivateReq for " + activateReq.getTargetComputation());
                 }
-                managedResource.handleScaleInActivateReq(activateReq);
+                managedResource.dispatchControlMessage(activateReq.getTargetComputation(), activateReq);
                 break;
             case ProtocolTypes.STATE_TRANSFER_MSG:
                 StateTransferMsg stateTransferMsg = (StateTransferMsg) ctrlMsg;
                 if (logger.isDebugEnabled()) {
                     logger.debug("Received a StateTransferMessage for " + stateTransferMsg.getTargetComputation());
                 }
-                managedResource.handleStateTransferMsg(stateTransferMsg);
+                managedResource.dispatchControlMessage(stateTransferMsg.getTargetComputation(), stateTransferMsg);
                 break;
             case ProtocolTypes.SCALE_IN_COMPLETE:
                 ScaleInComplete completeMsg = (ScaleInComplete) ctrlMsg;
                 if (logger.isDebugEnabled()) {
                     logger.debug("Received a ScaleInComplete for " + completeMsg.getTargetComputation());
                 }
-                managedResource.handleScaleInCompleteMsg(completeMsg);
+                managedResource.dispatchControlMessage(completeMsg.getTargetComputation(), completeMsg);
                 break;
             case ProtocolTypes.SCALE_IN_COMPLETE_ACK:
                 ScaleInCompleteAck ack = (ScaleInCompleteAck) ctrlMsg;
                 if (logger.isDebugEnabled()) {
                     logger.debug("Received a ScaleInComplete for " + ack.getTargetComputation());
                 }
-                managedResource.handleScaleInCompleteAckMsg(ack);
+                managedResource.dispatchControlMessage(ack.getTargetComputation(), ack);
                 break;
             default:
                 logger.warn("Unsupported message type: " + type);
