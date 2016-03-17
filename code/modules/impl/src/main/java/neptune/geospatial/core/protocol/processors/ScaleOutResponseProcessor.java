@@ -27,9 +27,11 @@ public class ScaleOutResponseProcessor implements ProtocolProcessor{
     @Override
     public void process(ControlMessage ctrlMessage, ScalingContext scalingContext,
                         AbstractGeoSpatialStreamProcessor streamProcessor) {
+
         ScaleOutResponse scaleOutResp = (ScaleOutResponse)ctrlMessage;
         PendingScaleOutRequest pendingReq = scalingContext.getPendingScaleOutRequest(scaleOutResp.getInResponseTo());
         String instanceIdentifier = streamProcessor.getInstanceIdentifier();
+
         if (pendingReq != null) {
             for (String prefix : pendingReq.getPrefixes()) {
                 MonitoredPrefix monitoredPrefix = scalingContext.getMonitoredPrefix(prefix);

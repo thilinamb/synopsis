@@ -23,6 +23,7 @@ public class StateTransferMsg extends ControlMessage {
     private boolean scaleType;
     private long lastMessageId;
     private String lastMessagePrefix;
+    private boolean acked;
 
     public StateTransferMsg() {
         super(ProtocolTypes.STATE_TRANSFER_MSG);
@@ -108,5 +109,13 @@ public class StateTransferMsg extends ControlMessage {
 
     public void setLastMessagePrefix(String lastMessagePrefix) {
         this.lastMessagePrefix = lastMessagePrefix;
+    }
+
+    public boolean isAcked() {
+        return acked;
+    }
+
+    public void setAcked(boolean acked) {
+        this.acked = acked;
     }
 }

@@ -13,7 +13,7 @@ public interface ProtocolProcessor {
 
     /**
      * Processes a control message
-     * 
+     *
      * @param ctrlMsg {@link ds.granules.communication.direct.control.ControlMessage} itself
      * @param scalingContext Instance of the {@link neptune.geospatial.core.computations.scalingctxt.ScalingContext} corresponding to the computation
      * @param streamProcessor {@link neptune.geospatial.core.computations.AbstractGeoSpatialStreamProcessor} object

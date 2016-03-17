@@ -28,10 +28,12 @@ public class ScaleInLockReqProcessor implements ProtocolProcessor {
     @Override
     public void process(ControlMessage ctrlMsg, ScalingContext scalingContext,
                         AbstractGeoSpatialStreamProcessor streamProcessor) {
+
         ScaleInLockRequest lockReq = (ScaleInLockRequest) ctrlMsg;
         String prefixForLock = lockReq.getPrefix();
         String instanceIdentifier = streamProcessor.getInstanceIdentifier();
         boolean lockAvailable = streamProcessor.tryAcquireMutex();
+
         if (!lockAvailable) {
             ScaleInLockResponse lockResp = new ScaleInLockResponse(false, lockReq.getPrefix(),
                     lockReq.getSourceComputation(), null);

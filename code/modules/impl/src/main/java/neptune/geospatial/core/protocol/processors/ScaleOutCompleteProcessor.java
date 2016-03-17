@@ -20,9 +20,11 @@ public class ScaleOutCompleteProcessor implements ProtocolProcessor {
     @Override
     public void process(ControlMessage ctrlMsg, ScalingContext scalingContext,
                         AbstractGeoSpatialStreamProcessor streamProcessor) {
+
         ScaleOutCompleteAck ack = (ScaleOutCompleteAck) ctrlMsg;
         PendingScaleOutRequest pendingReq = scalingContext.getPendingScaleOutRequest(ack.getKey());
         String instanceIdentifier = streamProcessor.getInstanceIdentifier();
+
         if (pendingReq != null) {
             int ackCount = pendingReq.incrementAndGetAckCount();
             if (logger.isDebugEnabled()) {
