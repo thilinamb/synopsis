@@ -163,7 +163,7 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
         return getPrefix(record.getGeoHash(), record.getPrefixLength());
     }
 
-    private String getPrefix(String geohash, int prefixLength) {
+    public String getPrefix(String geohash, int prefixLength) {
         return geohash.substring(0, prefixLength + 1);
     }
 
