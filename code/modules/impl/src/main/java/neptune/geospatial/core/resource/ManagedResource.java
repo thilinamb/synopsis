@@ -309,7 +309,8 @@ public class ManagedResource {
                 for (StateTransferMsg stateTransferMsg : stateTransferMsgs) {
                     logger.debug(String.format("Handing over the state for prefix: %s to: %s",
                             processor.getInstanceIdentifier(), stateTransferMsg.getPrefix()));
-                    processor.handleStateTransferReq(stateTransferMsg, true);
+                    stateTransferMsg.setAcked(true);
+                    processor.processCtrlMessage(stateTransferMsg);
                 }
             }
             monitoredProcessors.notifyAll();
@@ -348,96 +349,6 @@ public class ManagedResource {
         } else {
             logger.warn(String.format("Invalid control message to computation : %s, type: %d", computationId,
                     ctrlMessage.getMessageType()));
-        }
-    }
-
-    public void handleTriggerScaleAck(ScaleOutResponse ack) {
-        String processorId = ack.getTargetComputation();
-        if (monitoredProcessors.containsKey(processorId)) {
-            monitoredProcessors.get(processorId).computation.handleTriggerScaleAck(ack);
-        } else {
-            logger.warn("ScaleTriggerAck for an invalid computation: " + processorId);
-        }
-    }
-
-
-    public void handleScaleOutCompleteAck(ScaleOutCompleteAck ack) {
-        String processorId = ack.getTargetComputation();
-        if (monitoredProcessors.containsKey(processorId)) {
-            monitoredProcessors.get(processorId).computation.handleScaleOutCompleteAck(ack);
-        } else {
-            logger.warn("ScaleOutCompleteAck for an invalid computation: " + processorId);
-        }
-    }
-
-    public void handleScaleInLockReq(ScaleInLockRequest lockReq) {
-        String computationId = lockReq.getTargetComputation();
-        if (monitoredProcessors.containsKey(computationId)) {
-            monitoredProcessors.get(computationId).computation.handleScaleInLockReq(lockReq);
-        } else {
-            logger.warn("Invalid ScaleInLockReq for computation: " + computationId);
-        }
-    }
-
-    public void handleScaleInLockResp(ScaleInLockResponse lockResponse) {
-        String computationId = lockResponse.getComputation();
-        if (monitoredProcessors.containsKey(computationId)) {
-            monitoredProcessors.get(computationId).computation.handleScaleInLockResponse(lockResponse);
-        } else {
-            logger.warn("Invalid ScaleInLockResponse for computation: " + computationId);
-        }
-    }
-
-    public void handleScaleInActivateReq(ScaleInActivateReq activateReq) {
-        String computationId = activateReq.getTargetComputation();
-        if (monitoredProcessors.containsKey(computationId)) {
-            monitoredProcessors.get(computationId).computation.handleScaleInActivateReq(activateReq);
-        } else {
-            logger.warn("Invalid ScaleInLockReq for computation: " + computationId);
-        }
-    }
-
-    public synchronized void handleStateTransferMsg(StateTransferMsg stateTransferMsg) {
-        String computationId = stateTransferMsg.getTargetComputation();
-        if (monitoredProcessors.containsKey(computationId)) {
-            monitoredProcessors.get(computationId).computation.handleStateTransferReq(stateTransferMsg, false);
-        } else {
-            if (!stateTransferMsg.isScaleType()) {
-                try {
-                    List<StateTransferMsg> stateTransferMsgs = pendingStateTransfers.get(computationId);
-                    if (stateTransferMsgs == null) {
-                        stateTransferMsgs = new ArrayList<>();
-                        pendingStateTransfers.put(computationId, stateTransferMsgs);
-                    }
-                    stateTransferMsgs.add(stateTransferMsg);
-                    ScaleOutCompleteAck completeAck = new ScaleOutCompleteAck(stateTransferMsg.getKeyPrefix(),
-                            stateTransferMsg.getPrefix(), stateTransferMsg.getOriginComputation());
-                    SendUtility.sendControlMessage(stateTransferMsg.getOriginEndpoint(), completeAck);
-                    logger.debug("New Computation is not active yet. Storing the StateTransfer Request.");
-                } catch (CommunicationsException | IOException e) {
-                    logger.error("Error sending out the ScaleOutCompleteAck to " + stateTransferMsg.getOriginEndpoint());
-                }
-            } else {
-                logger.warn("Invalid StateTransferMsg to " + computationId);
-            }
-        }
-    }
-
-    public void handleScaleInCompleteMsg(ScaleInComplete completeMsg) {
-        String computationId = completeMsg.getTargetComputation();
-        if (monitoredProcessors.containsKey(computationId)) {
-            monitoredProcessors.get(computationId).computation.handleScaleInCompleteMsg(completeMsg);
-        } else {
-            logger.warn("Invalid ScaleInComplete msg to " + computationId);
-        }
-    }
-
-    public void handleScaleInCompleteAckMsg(ScaleInCompleteAck ack) {
-        String computationId = ack.getTargetComputation();
-        if (monitoredProcessors.containsKey(computationId)) {
-            monitoredProcessors.get(computationId).computation.handleScaleInCompleteAck(ack);
-        } else {
-            logger.warn("Invalid ScaleInComplete msg to " + computationId);
         }
     }
 
