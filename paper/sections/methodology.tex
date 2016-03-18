@@ -19,18 +19,6 @@ In targeted load migration, during heavy traffic the original node spawns a new 
 
 Replication-based scaling introduces a challenge during query evaluations in that the query must be forwarded to all nodes responsible for a particular scope and the results merged; depending on the nature of these queries (for e.g., correlation analysis and inferential queries) merging of results may be difficult to accomplish without extensive state synchronizations.
 %TODO: lines about how downscaling can be difficult in replication settings
-
-\begin{figure}
-    \centerline{\includegraphics[scale=0.5]{figures/rivulet-archi.png}}
-    \caption{Rivulet is implemented as a specialized layer for geo-spatial data on top of Neptune stream processing system..}
-    \label{fig:process-monitor}
-\end{figure}
-%
-\begin{figure}
-    \centerline{\includegraphics[scale=0.55]{figures/process-monitor.png}}
-    \caption{Dynamic scaling is triggered by monitoring the backlog of each computation and memory pressure incurred in each process.}
-    \label{fig:process-monitor}
-\end{figure}
 %
 \begin{figure}
     \centerline{\includegraphics[scale=0.55]{figures/scale-out-protocol.png}}
