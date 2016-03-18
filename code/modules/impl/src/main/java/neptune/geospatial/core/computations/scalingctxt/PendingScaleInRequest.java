@@ -21,6 +21,7 @@ public class PendingScaleInRequest {
     private Map<String, FullQualifiedComputationAddr> sentOutRequests = new HashMap<>();
     private List<String> locallyProcessedPrefixes = new ArrayList<>();
     private List<String> childLeafPrefixes = new ArrayList<>();
+    private List<String> completedStateTransfers = new ArrayList<>();
 
     public PendingScaleInRequest(String prefix, int sentCount, String originCtrlEndpoint, String originComputation) {
         this.prefix = prefix;
@@ -40,11 +41,11 @@ public class PendingScaleInRequest {
         return prefix;
     }
 
-    public void addSentOutRequest(String prefix, FullQualifiedComputationAddr targetCompAddr){
+    public void addSentOutRequest(String prefix, FullQualifiedComputationAddr targetCompAddr) {
         sentOutRequests.put(prefix, targetCompAddr);
     }
 
-    public void setLocallyProcessedPrefix(List<String> localPrefix){
+    public void setLocallyProcessedPrefix(List<String> localPrefix) {
         locallyProcessedPrefixes = localPrefix;
     }
 
@@ -52,16 +53,16 @@ public class PendingScaleInRequest {
         this.sentOutRequests = sentOutRequests;
     }
 
-    public int incrementAndGetReceivedCount(){
+    public int incrementAndGetReceivedCount() {
         return ++receivedCount;
     }
 
-    public boolean updateAndGetLockStatus(boolean lockStatus){
+    public boolean updateAndGetLockStatus(boolean lockStatus) {
         lockAcquired = lockAcquired & lockStatus;
         return lockAcquired;
     }
 
-    public void addChildPrefixes(List<String> childPrefixes){
+    public void addChildPrefixes(List<String> childPrefixes) {
         childLeafPrefixes.addAll(childPrefixes);
     }
 
@@ -95,5 +96,17 @@ public class PendingScaleInRequest {
 
     public void setReceivedCount(int receivedCount) {
         this.receivedCount = receivedCount;
+    }
+
+    /**
+     * track the state transfers received
+     * @param prefix Prefix for the state transfer
+     * @return {@code true} if all states are received, {@code false} otherwise
+     */
+    public boolean trackStateTransfer(String prefix) {
+        if (childLeafPrefixes.contains(prefix) && !completedStateTransfers.contains(prefix)) {
+            completedStateTransfers.add(prefix);
+        }
+        return completedStateTransfers.size() == childLeafPrefixes.size();
     }
 }

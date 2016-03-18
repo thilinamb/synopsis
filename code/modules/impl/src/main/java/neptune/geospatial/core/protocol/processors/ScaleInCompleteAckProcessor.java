@@ -1,6 +1,5 @@
 package neptune.geospatial.core.protocol.processors;
 
-import com.hazelcast.core.IQueue;
 import ds.granules.communication.direct.control.ControlMessage;
 import ds.granules.communication.direct.control.SendUtility;
 import ds.granules.exception.CommunicationsException;
@@ -51,17 +50,10 @@ public class ScaleInCompleteAckProcessor implements ProtocolProcessor {
                                 instanceIdentifier, ack.getPrefix()));
                     }
                     // update hazelcast
-                    //try {
-                        /*
-                        IMap<String, SketchLocation> prefMap = getHzInstance().getMap(GeoHashPrefixTree.PREFIX_MAP);
+                    /*IMap<String, SketchLocation> prefMap = getHzInstance().getMap(GeoHashPrefixTree.PREFIX_MAP);
                         prefMap.put(ack.getPrefix(), new SketchLocation(getInstanceIdentifier(), getCtrlEndpoint(),
-                                SketchLocation.MODE_SCALE_IN));
-                                */
-                    IQueue<Integer> scaleMonitorQueue = streamProcessor.getHzInstance().getQueue("scaling-monitor");
-                    scaleMonitorQueue.add(-1);
-                    //} catch (GranulesConfigurationException e) {
-                    //    logger.error("Error publishing to Hazelcast.", e);
-                    //}
+                                SketchLocation.MODE_SCALE_IN)); */
+                    streamProcessor.onSuccessfulScaleIn(pendingReq.getChildLeafPrefixes());
                 }
                 scalingContext.removePendingScaleInRequest(ack.getPrefix());
                 streamProcessor.releaseMutex();

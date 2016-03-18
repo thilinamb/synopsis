@@ -38,14 +38,14 @@ public class StateTransferMsgProcessor implements ProtocolProcessor {
 
         if (scaleType) { // scale-in
             PendingScaleInRequest pendingReq = scalingContext.getPendingScalingInRequest(stateTransferMsg.getKeyPrefix());
-            pendingReq.getChildLeafPrefixes().remove(stateTransferMsg.getPrefix());
+            boolean completedStateTransfers = pendingReq.trackStateTransfer(stateTransferMsg.getPrefix());
             streamProcessor.merge(stateTransferMsg.getPrefix(), stateTransferMsg.getSerializedData());
             if (logger.isDebugEnabled()) {
                 logger.debug(String.format("[%s]Received a StateTransferMsg. Prefix: %s, Key Prefix: %s, Remaining: %d",
                         instanceIdentifier, stateTransferMsg.getPrefix(), stateTransferMsg.getKeyPrefix(),
                         pendingReq.getChildLeafPrefixes().size()));
             }
-            if (pendingReq.getChildLeafPrefixes().isEmpty()) {
+            if (completedStateTransfers) {
                 completeScaleIn(stateTransferMsg.getKeyPrefix(), instanceIdentifier, pendingReq);
             }
         } else {    // scale-out

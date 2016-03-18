@@ -1,6 +1,5 @@
 package neptune.geospatial.core.protocol.processors;
 
-import com.hazelcast.core.IQueue;
 import ds.granules.communication.direct.control.ControlMessage;
 import ds.granules.neptune.interfere.core.NIException;
 import neptune.geospatial.core.computations.AbstractGeoSpatialStreamProcessor;
@@ -43,10 +42,8 @@ public class ScaleOutCompleteProcessor implements ProtocolProcessor {
                     if (logger.isDebugEnabled()) {
                         logger.debug(String.format("[%s] Scaling out complete for now.", instanceIdentifier));
                     }
-                    // TODO: temporary fix to track dynamic scaling. Remove this and uncomment above after the micro-benchmark
-                    IQueue<Integer> scalingMonitoringQueue = streamProcessor.getHzInstance().getQueue("scaling-monitor");
-                    scalingMonitoringQueue.add(ackCount);
                     scalingContext.completeScalingOut(ack.getKey());
+                    streamProcessor.onSuccessfulScaleOut(pendingReq.getPrefixes());
                     streamProcessor.releaseMutex();
                     ManagedResource.getInstance().scalingOperationComplete(instanceIdentifier);
                 } catch (NIException ignore) {
