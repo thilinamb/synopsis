@@ -88,6 +88,23 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
      */
     public abstract void merge(String prefix, byte[] serializedSketch);
 
+    /**
+     * Invoked after a successful completion of a scale out operation.
+     * Can be used to track dynamic scaling activity.
+     * Overriding this method is optional.
+     * @param prefixes List of prefixes that were scaled out.
+     */
+    public void onSuccessfulScaleOut(List<String> prefixes){}
+
+    /**
+     * Invoked after a successful completion of a scale in operation.
+     * Similar to {@code onSuccessfulScaleOut}, this method can also be used to track
+     * dynamic scaling activity.
+     * Overriding this method is optional.
+     * @param prefixes List of prefixes that were scaled in.
+     */
+    public void onSuccessfulScaleIn(List<String> prefixes){}
+
     @Override
     public final void onEvent(StreamEvent streamEvent) throws StreamingDatasetException {
         if (!initialized.get()) {
