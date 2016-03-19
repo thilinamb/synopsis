@@ -16,7 +16,7 @@ To provide each job with a initial load-balanced deployment plan to start with, 
 
 \subsection{Rivulet}
 Rivulet is a stream processing graph deployed on top of Neptune.
-It is comprised of several stream ingestion operators and a dynamic set of stream processors.
+It is comprised of several stream ingestion operators and a dynamic set of stateful stream processors.
 These stream processors collectively maintain the distributed sketch while the number of processors are dynamically adjusted by the Rivulet runtime to suit the changing operating conditions.
 We use a stream partitioning scheme based on Geohash of stream packets to route stream packets to the appropriate stream processor which holds the corresponding section of the distributed sketch.
 
@@ -38,8 +38,14 @@ These services are control plane, gossip subsystem and querying subsystem as dep
 	In order to establish and maintain this global view of the entire system, Rivulet nodes gossip about their state periodically as well as when there is a change in the state which other nodes in the system are interested in.
 	Given that there is a propagation and convergence delay inherent with the gossip protocols, at any given time, a Rivulet node will only have an eventually consistent view of the entire system.
 
-	\item[Querying Subsystem:] Querying subsystem is responsible for...
+	\item[Querying subsystem:] Querying subsystem is responsible for...
 \end{description} 
+
+Each Neptune process in the system host one or more Rivulet nodes.
+A Rivulet node is essentially a task triggered to on the availability of data in any of its incoming streams.
+Each Rivulet node is responsible for one of more sections of the distributed sketch as illustrated in Figure~\ref{fig:process-monitor}.
+All Rivulet nodes running in a particular Neptune process is constantly probed by a monitoring task to gather their performance metrics: backlog information and memory utilization by individual sketches.
+This information is used for dynamic scaling recommendations as explained in section~\ref{subsec:scaling-out}.
 
 \begin{figure}
     \centerline{\includegraphics[scale=0.55]{figures/process-monitor.png}}
