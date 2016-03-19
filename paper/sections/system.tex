@@ -11,15 +11,36 @@ Neptune takes a holistic approach that considers CPU, memory, network and kernel
 This is achieved through employing a set of optimizations such as application level buffering, batched scheduling, object re-use, built-in support for backpressure and selective compression to ensure a better utilization of system resources.
 
 Users can deploy stream processing jobs as directed acyclic graphs in Neptune.
-A stream processing graph consists of a set of stream ingestion points and stream processors (vertices) and streams connecting these operators (edges).
-To provide each job with a initial load-balanced deployment plan to start with, each operator in a stream processing graph can be annoated with a parallelism level while each stream can be associated with a partitioning scheme.
+A stream processing graph consists of a set of stream ingestion points and stream processors (vertice) and streams connecting these operators (edges).
+To provide each job with a initial load-balanced deployment plan to start with, each operator in a stream processing graph can be annotated with a parallelism level while each stream can be associated with a partitioning scheme.
 
+\subsection{Rivulet}
+Rivulet is a stream processing graph deployed on top of Neptune.
+It is comprised of several stream ingestion operators and a dynamic set of stream processors.
+These stream processors collectively maintain the distributed sketch while the number of processors are dynamically adjusted by the Rivulet runtime to suit the changing operating conditions.
+We use a stream partitioning scheme based on Geohash of stream packets to route stream packets to the appropriate stream processor which holds the corresponding section of the distributed sketch.
+
+Rivulet extends the Neptune's generic stream processor to provide a set of auxiliary services required by its runtime.
+These services are control plane, gossip subsystem and querying subsystem as depicted in Figure~\ref{fig:rivulet-archi}.
+%
 \begin{figure}
     \centerline{\includegraphics[scale=0.5]{figures/rivulet-archi.png}}
     \caption{Rivulet is implemented as a specialized layer for geo-spatial data on top of Neptune stream processing system..}
-    \label{fig:process-monitor}
+    \label{fig:rivulet-archi}
 \end{figure}
 %
+\begin{description}[leftmargin=*]
+	\item[Control plane:] Control plane is responsible for orchestrating control messages exchanged between Rivulet nodes as part of various distributed protocols such dynamic scaling.
+	Control plane is decoupled from the data plane to ensure high priority and low latent processing without being affected by buffering delays and backpressure.
+
+	\item[Gossip subsystem:] Majority of the Rivulet functionality is assumed to work with the local knowledge of a particular node, certain functionalities require an approximate global knowledge. 
+	For instance, each Rivulet node maintains a prefix tree, to help the querying subsystem to know which nodes are holding the sections of the sketch responsible for the geohash locations corresponding to a query it evaluates. 
+	In order to establish and maintain this global view of the entire system, Rivulet nodes gossip about their state periodically as well as when there is a change in the state which other nodes in the system are interested in.
+	Given that there is a propagation and convergence delay inherent with the gossip protocols, at any given time, a Rivulet node will only have an eventually consistent view of the entire system.
+
+	\item[Querying Subsystem:] Querying subsystem is responsible for...
+\end{description} 
+
 \begin{figure}
     \centerline{\includegraphics[scale=0.55]{figures/process-monitor.png}}
     \caption{Dynamic scaling is triggered by monitoring the backlog of each computation and memory pressure incurred in each process.}
