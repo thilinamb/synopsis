@@ -34,7 +34,7 @@ These services are control plane, gossip subsystem and querying subsystem as dep
 	Control plane is decoupled from the data plane to ensure high priority and low latent processing without being affected by buffering delays and backpressure.
 
 	\item[Gossip subsystem:] Majority of the Rivulet functionality is assumed to work with the local knowledge of a particular node, certain functionalities require an approximate global knowledge. 
-	For instance, each Rivulet node maintains a prefix tree, to help the querying subsystem to know which nodes are holding the sections of the sketch responsible for the geohash locations corresponding to a query it evaluates. 
+	For instance, each Rivulet node maintains a prefix tree, to help the querying subsystem to know which nodes are holding the sections of the sketch responsible for the geohash locations corresponding to a query it evaluates (This is further explained in section~\ref{subsec:query-eval}). 
 	In order to establish and maintain this global view of the entire system, Rivulet nodes gossip about their state periodically as well as when there is a change in the state which other nodes in the system are interested in.
 	Given that there is a propagation and convergence delay inherent with the gossip protocols, at any given time, a Rivulet node will only have an eventually consistent view of the entire system.
 
