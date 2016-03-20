@@ -1,0 +1,201 @@
+--- temperature_surface ---
+Number of Samples: 262792
+Mean: 278.958813892199
+Variance: 291.37820515298193
+Std Dev: 17.0698038990781
+Min: 0.0
+Max: 309.3348693847656
+
+--- temperature_tropopause ---
+Number of Samples: 262792
+Mean: 212.03943080868103
+Variance: 81.0217066199813
+Std Dev: 9.001205842551391
+Min: 0.0
+Max: 251.95501708984375
+
+--- relative_humidity_zerodegc_isotherm ---
+Number of Samples: 262792
+Mean: 60.502016804164825
+Variance: 913.3061441643625
+Std Dev: 30.220955381396575
+Min: 0.0
+Max: 100.0
+
+--- total_precipitation_surface_3_hour_accumulation ---
+Number of Samples: 262792
+Mean: 0.2583735425735985
+Variance: 1.0621277184894595
+Std Dev: 1.0305958075256563
+Min: 0.0
+Max: 40.875
+
+--- snow_depth_surface ---
+Number of Samples: 262792
+Mean: 0.1340484850851157
+Variance: 0.08485777674645802
+Std Dev: 0.29130358176043425
+Min: 0.0
+Max: 16.827199935913086
+
+--- snow_cover_surface ---
+Number of Samples: 262792
+Mean: 38.55575131662977
+Variance: 2357.5477439769834
+Std Dev: 48.55458520033905
+Min: 0.0
+Max: 100.0
+
+--- pressure_tropopause ---
+Number of Samples: 262792
+Mean: 21753.807072732063
+Variance: 7.632253314973792E7
+Std Dev: 8736.276847132189
+Min: 0.0
+Max: 49922.203125
+
+--- precipitable_water_entire_atmosphere ---
+Number of Samples: 262792
+Mean: 15.096546214565793
+Variance: 160.16444899288797
+Std Dev: 12.655609388444635
+Min: 0.0
+Max: 53.039920806884766
+
+--- visibility_surface ---
+Number of Samples: 262792
+Mean: 20812.428655354066
+Variance: 4.686110548717712E7
+Std Dev: 6845.517181862677
+Min: 0.0
+Max: 24224.896484375
+
+--- upward_short_wave_rad_flux_surface ---
+Number of Samples: 262792
+Mean: 15.773843001309325
+Variance: 395.8919309193049
+Std Dev: 19.897033219033055
+Min: 0.0
+Max: 188.375
+
+--- categorical_snow_yes1_no0_surface ---
+Number of Samples: 262792
+Mean: 0.055941581174465495
+Variance: 0.052812321636411426
+Std Dev: 0.22980931581729105
+Min: 0.0
+Max: 1.0
+
+--- surface_wind_gust_surface ---
+Number of Samples: 262792
+Mean: 7.790956194206062
+Variance: 17.676576486123622
+Std Dev: 4.204352088743713
+Min: 0.0
+Max: 28.485456466674805
+
+--- total_cloud_cover_entire_atmosphere ---
+Number of Samples: 262792
+Mean: 66.47639958598502
+Variance: 1842.9501833405022
+Std Dev: 42.92959565778022
+Min: 0.0
+Max: 100.0
+
+--- upward_long_wave_rad_flux_surface ---
+Number of Samples: 262792
+Mean: 344.64598854076814
+Variance: 5794.0896070593335
+Std Dev: 76.11891753735948
+Min: 0.0
+Max: 519.1058959960938
+
+--- vegitation_type_as_in_sib_surface ---
+Number of Samples: 262792
+Mean: 3.47805488751555
+Variance: 26.118852786192825
+Std Dev: 5.110660699576213
+Min: 0.0
+Max: 19.0
+
+--- albedo_surface ---
+Number of Samples: 262792
+Mean: 22.91974261012516
+Variance: 452.88572778896855
+Std Dev: 21.281111996062812
+Min: 0.0
+Max: 78.5
+
+--- lightning_surface ---
+Number of Samples: 262792
+Mean: 0.016339919023410254
+Variance: 0.016072987232109995
+Std Dev: 0.12677928550086562
+Min: 0.0
+Max: 1.0
+
+--- ice_cover_ice1_no_ice0_surface ---
+Number of Samples: 262792
+Mean: 0.05204115802611864
+Variance: 0.049333063624077925
+Std Dev: 0.22211047616913057
+Min: 0.0
+Max: 1.0
+
+--- convective_inhibition_surface ---
+Number of Samples: 262792
+Mean: -6.229595339125127
+Variance: 758.4764844394934
+Std Dev: 27.540451783503723
+Min: -415.981201171875
+Max: 0.018798828125
+
+--- pressure_surface ---
+Number of Samples: 262792
+Mean: 98013.26038083354
+Variance: 3.8216535771518394E7
+Std Dev: 6181.952423912561
+Min: 0.0
+Max: 103421.0
+
+--- transpiration_stress-onset_soil_moisture_surface ---
+Number of Samples: 262792
+Mean: 0.15496598628837688
+Variance: 0.027801468507488204
+Std Dev: 0.16673772370848836
+Min: 0.0
+Max: 0.4050000011920929
+
+--- soil_porosity_surface ---
+Number of Samples: 262792
+Mean: 0.23402919419159787
+Variance: 0.06224517022280853
+Std Dev: 0.2494898198781035
+Min: 0.0
+Max: 0.5
+
+--- vegetation_surface ---
+Number of Samples: 262792
+Mean: 6.529904829675202
+Variance: 178.45585388357847
+Std Dev: 13.358736986840428
+Min: 0.0
+Max: 91.5
+
+--- downward_long_wave_rad_flux_surface ---
+Number of Samples: 262792
+Mean: 299.7944116520125
+Variance: 6498.0135259932695
+Std Dev: 80.61025695278033
+Min: 0.0
+Max: 454.59417724609375
+
+--- planetary_boundary_layer_height_surface ---
+Number of Samples: 262792
+Mean: 1339.0344017321627
+Variance: 951038.4661536694
+Std Dev: 975.212010874389
+Min: 0.0
+Max: 14893.25
+
+
