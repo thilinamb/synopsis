@@ -27,14 +27,14 @@ In Rivulet, we use targeted load migration for scaling out.
 Our implementation closely follows the MAPE loop~\cite{maurer2011revealing} which is comprised of four phases: monitor (M), analyze (A), planning (P) and execution (E).
 The monitoring task as shown in Figure~\ref{fig:process-monitor} periodically probes every Rivulet task to gather two performance metrics as part of monitoring phase.
 \begin{enumerate}[leftmargin=*]
-	\item Length of the backlog : This represents the number of unprocessed messages in the queue. If the Rivulet task cannot keep up with the incoming data rate, then the backlog will grow over time.
+	\item Length of the backlog: This represents the number of unprocessed messages in the queue. If the Rivulet task cannot keep up with the incoming data rate, then the backlog will grow over time.
 	\item Memory pressure: Each Neptune resource is a JVM process which is being allocated a fixed amount of memory. 
 	Exceeding these memory limits create memory pressure which may cause extended garbage collection cycles and increased paging activity. 
 	This will eventually lead to reduced performance in every Rivulet task running in the Neptune resource.
 	Monitoring task will continuously record the memory utilization by the entire JVM process as well as the memory utilization by individual Rivulet tasks.
 \end{enumerate} 
 
-During the analysis phase, we use threshold based rules\cite{lorido2012auto} to provide scale out recommendations to Rivulet nodes if necessary.
+During the analysis phase, we use threshold based rules~\cite{lorido2012auto} to provide scale out recommendations to Rivulet nodes if necessary.
 Currently we rely on a reactive scheme where we evaluate the threshold based rules based on the current observations.
 Scaling out recommendations are provided if either of following rules are consistently satisfied for certain number of observations.
 \begin{itemize}[leftmargin=*]  
@@ -44,16 +44,34 @@ Scaling out recommendations are provided if either of following rules are consis
 
 Upon receiving a scaling out recommendation from the monitoring task, a Rivulet node executes planning and execution phases.
 During the planning phase, it will choose the portion(s) of the region within its current purview to be handed over to another node.
-For this task, it relies on meta-data it maintains for each sub region (region corresponding to a longer Geohash string).
+For this task, it relies on meta-data it maintains for each sub region (region corresponding to a longer Geohash string) and a numeric value provided along with the scale out recommendation which is a measure of how much load should be migrated.
 This meta data includes the data rate and the timestamp of the last processed message for each sub region.
 A Rivulet node updates these meta data with each message it processes.
-Once it decides on the sub regions, it initiates the scale out protocol by contacting the deployer.
+Often a Rivulet node migrates several prefixes during a single scale out operation.
 
 Only a single scale out operation takes place at a given time in a Neptune process.
-Further every scaling operation is followed by a stabilization period where no scaling operation takes place and system does not enter the monitoring phase for the next MAPE cycle.
-The objective of the above constraints is to avoid oscillations in scaling activities.
-For instance, if system aggressively scales out in the presence of a memory pressure without allowing a stabilization period, it is possible that the system ends up in a state where it is under provisioned. As a result of this, it will start aggressively scaling in and run into a over provisioned state.
+This is controlled using a mutual exclusive lock (mutex) located in each Neptune process.
+Further, every scaling operation is followed by a stabilization period where no scaling operation takes place and system does not enter the monitoring phase for the next MAPE cycle.
+The objective of above constraints is to avoid oscillations in scaling activities.
+For instance, if system aggressively scales out in the presence of a memory pressure without allowing a stabilization period, it is possible that the system ends up in a state where it is under provisioned. As a result of this, it will start aggressively scaling in and run again into an over provisioned state.
 
+Figure~\ref{fig:scale-out-protocol} depicts the phases of the scale out protocol.
+Once a Rivulet node decides on the sub regions, it initiates the scale out protocol by contacting the deployer.
+In this message, it includes a list of preferred Rivulet nodes for the load migration as well as memory requirements and expected message rate for the load.
+The preferred node set includes the Rivulet nodes that already holds its sub regions.
+The objective is to minimize the number of Rivulet nodes responsible for holding sketches for a given geographical region, because it reduces the number of Rivulet nodes to contact during a query evaluation for that region.
+Deployer has an approximate view of the entire system gathered through gossip messages which includes the memory pressure and cumulative backlog information of each node.
+Based on this view and the information present in the request, deployer replies back with a set of target Rivulet nodes.
+If it cannot find a suitable node out of the existing set, the deployer will launch a new Rivulet node and include its location in the new request.
+Upon receiving the response from the deployer, Rivulet node contacts the target node and try to acquire the mutex.
+Lock will be granted if no other scaling operations takes place in the Neptune process which holds the Rivulet node and it can accommodate the migrated load.
+The second condition is checked again because the deployer may not have most upto-date metrics regarding the target Rivulet node due to the eventual consistent nature of its system view.
+If the lock acquisition is failed, another node from the list of attempted.
+Else the original Rivulet node will create a pass-through channel and direct traffic towards the target node.
+In the same time, it will initiate a state transfer using a different channel in the background.
+This will ensure that the state transfer doesn't affect the stream data flow and it happens asynchronously and the protocol ends without waiting for state transfer to complete.
+Even if the state transfer is not complete, the target Rivulet node updates its memory utilization metric to account for the pending state transfer. 
+Ending protocol within a short period of time is important because it can release mutual exclusive locks in both origin and target Rivulet nodes quickly and participate in other scaling activities soon after the stabilization period.
 %
 \begin{figure}
     \centerline{\includegraphics[scale=0.55]{figures/scale-out-protocol.png}}
