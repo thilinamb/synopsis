@@ -80,6 +80,34 @@ Ending protocol within a short period of time is important because it can releas
 \end{figure}
 %
 \subsection{Downscaling}
+During Scaling in, Rivulet nodes attempt to take back some of the sub-regions it scaled out previously to other Rivulet nodes.
+This ensures better resource utilization in the system in addition to efficient query evaluations by having to contact less number of nodes.
+Scaling in operations are also guarded by the same mutual exclusive lock used for scale out (only one scale out or scale in operation takes place at a given time) and followed by a stabilization period.
+
+Monitoring and analysis phases are similar to scaling out scenario except for the obvious change to the threshold based rules.
+Now both memory pressure and backlog length metrics should consistently record values below a predefined lower threshold.
+When scaling in, we use a less aggressive scheme than scaling out; a single sub region is acquired during a single scale in operation.
+Scaling in is more complex than scaling out because it deals with more than one Rivulet node in most cases.
+Because at this point, it is possible that further scale out operations have taken place in the scaled out sub region after the initial scale out.
+For instance, if node A in Figure~\ref{fig:stream-partitioning} decides to scale in the sub region \emph{DJK}, then it has to work with both nodes C and E.
+Scale in protocol starts with a lock acquisition protocol similar to scale out protocol as illustrated in Figure~\ref{fig:scale-in-protocol}.
+But it is required to lock the entire subtree where the sketch for the given sub region is distributed across.
+As per our example, node A will have to acquire locks for nodes C and E.
+Locks are acquired in a top-to-bottom fashion where parent locks itself and then attempts to lock the child.
+If lock acquisition is failed in any part of the sub tree, then the scale in operation is aborted and the monitoring process will start the next iteration of the MAPE loop immediately.
+If the sub tree is successfully locked, then data flow to the child nodes corresponding to this sub region is immediately terminated.
+If there was a short circuit set up before, it will be removed and the data will start flow to the parent node.
+The state acquisition phase begins next.
+To ensure that Rivulet does not lose any messages, the initiator node sends a termination point control message to the child node.
+Termination point is the sequence number of the last message sent to the child node either by the parent itself or by the short circuit channel.
+It may be possible that the child has already processed this message and updated its sketch by the time it receives the termination point control message.
+But in extreme cases, the termination point control message may get processed before the actual stream packet with the same sequence number.
+This is because control plane and data plane use separate channels and also due to the possibility of data plane messages are being queued before processing.
+Once the child node has processed every message up to the termination point, it sends out termination point messages to all relevant child nodes (In our example, node C sends a termination point control message to node E upon processing the stream packet corresponding to the termination point sent by node A).
+After the entire sub tree has seen all messages up to the termination point, they acknowledge the initiator node and starts transferring their states asynchronously as similar to scale out protocol.
+Once the parent node receives acknowledgments from the entire subtree, it starts propagating the protocol end messages to initiate lock releasing.
+Locks are released from the bottom to top in the sub tree where parent releases its lock after noticing that every child participated in the scale in protocol has released its lock.
+
 \begin{figure}
     \centerline{\includegraphics[scale=0.55]{figures/scale-in-protocol.png}}
     \caption{Scale in protocol}
