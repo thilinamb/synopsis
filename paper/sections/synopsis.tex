@@ -3,7 +3,13 @@
 Our \emph{Synopsis} data structure is a multidimensional, graph-based model of incoming data streams. Each resource in the system maintains an in-memory Synopsis instance that can be queried to retrieve statistical properties about the underlying data or discover how features interact. Due to the magnitude of inbound data volumes, storing each individual record in main memory is not practical. Therefore, the queries supported by our framework are facilitated by compact, online metadata collection and quantization methods. These techniques ensure high accuracy while also maintaining the memory requirements of the system. To further improve accuracy, we bias our algorithms toward the most recent data points while reducing the resolution of the oldest.
 
 \subsection{Graph Structure}
-Synopsis instances are maintained as hierarchical graphs with feature values stored in the vertices. Each \emph{plane} in the graph represents a particular \emph{feature type}, and traversing through vertices in this feature hierarchy reduces the search space of a query. Paths taken through the graph during a lookup operation are influenced by the specificity of the query, with additional feature expressions constraining the \emph{query scope}. Figure~\ref{fig:graph} demonstrates the structure of a Synopsis and highlights a query and its scope. Note that vertices on the same plane are connected to allow range queries, and that any subset of the graph can be retrieved and manipulated in the same fashion as the overall Synopsis.
+Synopsis instances are maintained as hierarchical graphs with feature values stored in the vertices. Each \emph{plane} in the graph represents a particular \emph{feature type}, and traversing through vertices in this feature hierarchy reduces the search space of a query. Paths taken through the graph during a lookup operation are influenced by the specificity of the query, with additional feature expressions constraining the \emph{query scope}. Figure~\ref{fig:synopsis} demonstrates the structure of a Synopsis and highlights a query and its scope. Note that vertices on the same plane are connected to allow range queries, and that any subset of the graph can be retrieved and manipulated in the same fashion as the overall Synopsis.
+
+\begin{figure}
+    \centerline{\includegraphics[width=2.5in]{figures/synopsis.pdf}}
+    \caption{synopsis}
+    \label{fig:synopsis}
+\end{figure}
 
 Metadata records for paths through the feature hierarchy are stored at leaf nodes. Each record contains a variety of statistics that are updated in an online fashion using Welford's~Algorithm~\cite{welford1962note}. This includes cross-feature relationships, such as the correlation between temperature values and humidity or the reflectivity of the earth and cloud cover. Leaf nodes may be \emph{merged} to combine their respective summary statistics into a single aggregate summary. This allows queries to be evaluated across multiple Synopses on disparate resources and then merged into a single, coherent result Synopsis.
 
@@ -22,5 +28,47 @@ Figure~\ref{fig:quantization} illustrates the quantization process for the \emph
     \label{fig:quantization}
 \end{figure}
 
+\begin{table}[h!]
+    \renewcommand{\arraystretch}{1.3}
+    \caption{Graph statistics (before/after quant)}
+    \label{tbl:graph-stats}
+    \begin{center}
+        \begin{tabular}{|l|c|c|c|}
+            \hline
+            Configuration & Vertices & Edges & Leaves \\
+            \hline
+            A & & & \\
+            \hline
+            B & & & \\
+            \hline
+            C & & & \\
+            \hline
+        \end{tabular}
+    \end{center}
+\end{table}
+
 \subsection{Temporal Dimensionality Reduction}
-Discuss how over time vertices are merged more aggressively to reduce memory usage for ``old'' observations.
+While our quantization approach enables Synopsis to retain large volumes of data in main memory, we also offer a temporal \emph{accuracy gradient} to ensure the most relevant data points are prioritized for high accuracy. This is achieved by iteratively removing features from the Synopsis hierarchy in the oldest subgraphs, eventually phasing out old records. A user-defined ``length of study'' (for instance, 12 months) informs the system when dimensionality reduction can begin. As data ages, this process results in the creation of temporal accuracy bands.
+
+Selective temporal dimensionality reduction proceeds in a bottom-up fashion, starting from the leaf nodes. Given a set of relevant vertices, neighboring bins are merged uniformly across the feature space. As the bins are merged, their respective metadata is also merged, reducing memory consumption. Given two metadata instances, merging results in half the memory footprint. However, it is worth noting that this process is irreversible -- once metadata has been merged, it cannot be split at a later point in time. As time passes, entire feature planes are removed from the graph until a single metadata record is left for a particular temporal range. This allows users to still query the summary statistics and models for historical data, but at a lower level of accuracy.
+
+\begin{table}[h!]
+    \renewcommand{\arraystretch}{1.3}
+    \caption{Graph statistics (after temp. reduction)}
+    \label{tbl:graph-stats}
+    \begin{center}
+        \begin{tabular}{|l|c|c|c|}
+            \hline
+            Synopsis Age & Vertices & Edges & Leaves \\
+            \hline
+            1 month & & & \\
+            \hline
+            6 months & & & \\
+            \hline
+            12 months & & & \\
+            \hline
+        \end{tabular}
+    \end{center}
+\end{table}
+
+
