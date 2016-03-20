@@ -22,6 +22,38 @@ In targeted load migration, during heavy traffic the original node spawns a new 
 
 Replication-based scaling introduces a challenge during query evaluations in that the query must be forwarded to all nodes responsible for a particular scope and the results merged; depending on the nature of these queries (for e.g., correlation analysis and inferential queries) merging of results may be difficult to accomplish without extensive state synchronizations.
 %TODO: lines about how downscaling can be difficult in replication settings
+
+In Rivulet, we use targeted load migration for scaling out.
+Our implementation closely follows the MAPE loop~\cite{maurer2011revealing} which is comprised of four phases: monitor (M), analyze (A), planning (P) and execution (E).
+The monitoring task as shown in Figure~\ref{fig:process-monitor} periodically probes every Rivulet task to gather two performance metrics as part of monitoring phase.
+\begin{enumerate}[leftmargin=*]
+	\item Length of the backlog : This represents the number of unprocessed messages in the queue. If the Rivulet task cannot keep up with the incoming data rate, then the backlog will grow over time.
+	\item Memory pressure: Each Neptune resource is a JVM process which is being allocated a fixed amount of memory. 
+	Exceeding these memory limits create memory pressure which may cause extended garbage collection cycles and increased paging activity. 
+	This will eventually lead to reduced performance in every Rivulet task running in the Neptune resource.
+	Monitoring task will continuously record the memory utilization by the entire JVM process as well as the memory utilization by individual Rivulet tasks.
+\end{enumerate} 
+
+During the analysis phase, we use threshold based rules\cite{lorido2012auto} to provide scale out recommendations to Rivulet nodes if necessary.
+Currently we rely on a reactive scheme where we evaluate the threshold based rules based on the current observations.
+Scaling out recommendations are provided if either of following rules are consistently satisfied for certain number of observations.
+\begin{itemize}[leftmargin=*]  
+\item Growing backlog - This is an indication that a portion of the load needs to be migrated to a different Rivulet node.
+\item High overall memory utilization above a certain threshold (threshold is usually set below the memory limits allowing a capacity buffer for the process to avoid oscillation)
+\end{itemize}
+
+Upon receiving a scaling out recommendation from the monitoring task, a Rivulet node executes planning and execution phases.
+During the planning phase, it will choose the portion(s) of the region within its current purview to be handed over to another node.
+For this task, it relies on meta-data it maintains for each sub region (region corresponding to a longer Geohash string).
+This meta data includes the data rate and the timestamp of the last processed message for each sub region.
+A Rivulet node updates these meta data with each message it processes.
+Once it decides on the sub regions, it initiates the scale out protocol by contacting the deployer.
+
+Only a single scale out operation takes place at a given time in a Neptune process.
+Further every scaling operation is followed by a stabilization period where no scaling operation takes place and system does not enter the monitoring phase for the next MAPE cycle.
+The objective of the above constraints is to avoid oscillations in scaling activities.
+For instance, if system aggressively scales out in the presence of a memory pressure without allowing a stabilization period, it is possible that the system ends up in a state where it is under provisioned. As a result of this, it will start aggressively scaling in and run into a over provisioned state.
+
 %
 \begin{figure}
     \centerline{\includegraphics[scale=0.55]{figures/scale-out-protocol.png}}
