@@ -1,4 +1,3 @@
-\pagebreak
 \section{Synopsis Construction}
 \label{sec:synopsis}
 Our \emph{Synopsis} data structure is a multidimensional, graph-based model of incoming data streams. Each resource in the system maintains an in-memory Synopsis instance that can be queried to retrieve statistical properties about the underlying data or discover how features interact. Due to the magnitude of inbound data volumes, storing each individual record in main memory is not practical. Therefore, the queries supported by our framework are facilitated by compact, online metadata collection and quantization methods. These techniques ensure high accuracy while also maintaining the memory requirements of the system. To further improve accuracy, we bias our algorithms toward the most recent data points while reducing the resolution of the oldest.
