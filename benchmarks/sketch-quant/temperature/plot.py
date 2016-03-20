@@ -44,7 +44,6 @@ ax0.plot(x, kernel(x), color='#5aaae2', lw=4)
 r = np.array(range(280, 310))
 z = integrate.simps(kernel(r), r)
 print(z)
-#TODO: error plot below main PDF
 
 t = []
 for temp in x:
@@ -55,6 +54,7 @@ for temp in x:
     print(found)
     t.append(ticks[found, 2] * 100.0)
 
-ax1.plot(x, t)
+ax1.plot(x, t, lw=2, color='#da2b17')
+ax1.grid()
 
 plt.savefig('../../../paper/figures/quantization.pdf', bbox_inches='tight')
