@@ -6,7 +6,7 @@ Our \emph{Synopsis} data structure is a multidimensional, graph-based model of i
 Synopsis instances are maintained as hierarchical graphs with feature values stored in the vertices. Each \emph{plane} in the graph represents a particular \emph{feature type}, and traversing through vertices in this feature hierarchy reduces the search space of a query. Paths taken through the graph during a lookup operation are influenced by the specificity of the query, with additional feature expressions constraining the \emph{query scope}. Figure~\ref{fig:synopsis} demonstrates the structure of a Synopsis and highlights a query and its scope. Note that vertices on the same plane are connected to allow range queries, and that any subset of the graph can be retrieved and manipulated in the same fashion as the overall Synopsis.
 
 \begin{figure}
-    \centerline{\includegraphics[width=2.5in]{figures/synopsis.pdf}}
+    \centerline{\includegraphics[width=3.5in]{figures/synopsis.pdf}}
     \caption{synopsis}
     \label{fig:synopsis}
 \end{figure}
