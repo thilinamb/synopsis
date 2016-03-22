@@ -2,3 +2,9 @@
 \label{sec:related}
 
 Galileo \cite{} is a distributed hash table that supports the storage and retrieval of multidimensional data. Given the overlap in problem domain, Galileo is faced with several of the same challenges as Synopsis. However, the avenues for overcoming these issues diverge significantly due to differences in storage philosophy: Synopsis maintains its dataset completely in main memory, avoiding the orders-of-magnitude disparity in I/O throughput associated with secondary storage systems. This makes Synopsis highly agile, allowing on-demand scaling to rapidly respond to changes in incoming load. Additionally, this constraint influenced the trade-off space involved when designing our algorithms, making careful and efficient memory management a priority while striving for high accuracy.
+
+Dynamic scaling and elasticity in stream processing systems are studied before~\cite{heinze2014auto, gulisano2012streamcloud, castro2013integrating, loesing2012stormy, heinze2013elastic}.
+Heinze et al.~\cite{heinze2014auto} have explored using different dynamic scaling schemes including threshold based rules and reinforcement learning using the FUGU~\cite{heinze2013elastic} stream processing engine.
+Based on these schemes, the operators are continuously migrated between hosts in a FUGU cluster in order to optimize the resource utilization and to maintain a low latency.
+Their approach is quite different from ours, because in Synopsis we perform a targeted load migration where the workload of a computation is dynamically adjusted instead of entirely moving it to a host with a higher or lower capacity than the current host.
+Further we do not interrupt the data flow through Synopsis when dynamic scaling activities are in progress whereas in FUGU predecessor operator is temporarily paused until the operator migration is complete.
