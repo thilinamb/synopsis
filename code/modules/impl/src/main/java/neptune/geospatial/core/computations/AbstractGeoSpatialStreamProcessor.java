@@ -88,6 +88,10 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
      */
     public abstract void merge(String prefix, byte[] serializedSketch);
 
+    public void onStartOfScaleOut(){}
+
+    public void onStartOfScaleIn(){}
+
     /**
      * Invoked after a successful completion of a scale out operation.
      * Can be used to track dynamic scaling activity.
@@ -270,6 +274,7 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
             scalingContext.addPendingScaleOutRequest(triggerMessage.getMessageId(), new PendingScaleOutRequest(
                     prefix, outGoingStreamId));
             ManagedResource.getInstance().sendToDeployer(triggerMessage);
+            onStartOfScaleOut();
             if (logger.isDebugEnabled()) {
                 logger.debug(String.format("[%s] Sent a trigger scale message to deployer for the prefix: %s.",
                         getInstanceIdentifier(), prefix));
@@ -294,7 +299,7 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
             pendingScaleInReq.addSentOutRequest(prefix, new FullQualifiedComputationAddr(
                     monitoredPrefix.getDestResourceCtrlEndpoint(), monitoredPrefix.getDestComputationId()));
             scalingContext.addPendingScalingInRequest(prefix, pendingScaleInReq);
-
+            onStartOfScaleIn();
             if (logger.isDebugEnabled()) {
                 logger.debug(String.format("[%s] Sent a lock request. Prefix: %s, Destination Node: %s, " +
                                 "Destination Computation: %s", getInstanceIdentifier(), prefix,
