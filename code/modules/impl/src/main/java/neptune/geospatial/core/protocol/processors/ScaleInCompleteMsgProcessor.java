@@ -50,6 +50,12 @@ public class ScaleInCompleteMsgProcessor implements ProtocolProcessor {
                 ScaleInCompleteAck ack = new ScaleInCompleteAck(scaleInCompleteMsg.getPrefix(),
                         scaleInCompleteMsg.getParentComputation());
                 SendUtility.sendControlMessage(scaleInCompleteMsg.getOriginEndpoint(), ack);
+                PendingScaleInRequest pendingScaleInRequest = scalingContext.getPendingScalingInRequest(
+                        scaleInCompleteMsg.getPrefix());
+                // stop monitoring the prefixes that are scaled in
+                for (String locallyProcessedPrefix : pendingScaleInRequest.getLocallyProcessedPrefixes()){
+                    scalingContext.removeMonitoredPrefix(locallyProcessedPrefix);
+                }
                 scalingContext.removePendingScaleInRequest(scaleInCompleteMsg.getPrefix());
                 streamProcessor.releaseMutex();
                 if (logger.isDebugEnabled()) {

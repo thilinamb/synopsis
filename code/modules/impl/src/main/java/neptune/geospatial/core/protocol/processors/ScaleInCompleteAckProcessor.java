@@ -39,6 +39,10 @@ public class ScaleInCompleteAckProcessor implements ProtocolProcessor {
                 if (!pendingReq.isInitiatedLocally()) {
                     ScaleInCompleteAck ackToParent = new ScaleInCompleteAck(ack.getPrefix(),
                             pendingReq.getOriginComputation());
+                    // stop monitoring the prefixes that are scaled in
+                    for (String locallyProcessedPrefix : pendingReq.getLocallyProcessedPrefixes()){
+                        scalingContext.removeMonitoredPrefix(locallyProcessedPrefix);
+                    }
                     try {
                         SendUtility.sendControlMessage(pendingReq.getOriginCtrlEndpoint(), ackToParent);
                     } catch (CommunicationsException | IOException e) {

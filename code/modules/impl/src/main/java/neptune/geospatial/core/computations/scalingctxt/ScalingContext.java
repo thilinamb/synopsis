@@ -63,6 +63,14 @@ public class ScalingContext {
     }
 
     /**
+     * Remove a monitored prefix
+     * @param prefix Prefix String
+     */
+    public void removeMonitoredPrefix(String prefix){
+        monitoredPrefixes.remove(monitoredPrefixMap.remove(prefix));
+    }
+
+    /**
      * increments the message counts for a monitored prefix
      *
      * @param prefix    prefix
