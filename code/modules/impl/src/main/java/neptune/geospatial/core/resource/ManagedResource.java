@@ -74,17 +74,26 @@ public class ManagedResource {
                     double entry = backLogHistory.get().get(i);
                     if (entry < scaleOutThreshold) {
                         increasing = false;
-                    } else if (entry > scaleInThreshold) {
+                    }
+                    if (entry > scaleInThreshold) {
                         decreasing = false;
                     }
                 }
                 if (increasing) {
-                    excess = backLogHistory.get().get(backLogHistory.get().size() - 1) - scaleOutThreshold;
+                    excess = getAverageBacklog() - scaleOutThreshold;
                 } else if (decreasing) {
-                    excess = backLogHistory.get().get(backLogHistory.get().size() - 1) - scaleInThreshold;
+                    excess = getAverageBacklog() - scaleInThreshold;
                 }
             }
             return excess;
+        }
+
+        private double getAverageBacklog() {
+            long sum = 0;
+            for (long entry : backLogHistory.get()) {
+                sum += entry;
+            }
+            return (sum * 1.0) / backLogHistory.get().size();
         }
     }
 
