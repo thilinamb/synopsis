@@ -52,7 +52,7 @@ public class Node {
     /**
      * Constructor for Root node
      */
-    public Node(){
+    public Node() {
         this.prefix = "_";
         this.prefixLength = 1; // assuming the minimum length we consider is 2 characters
         this.computationId = "";
@@ -61,95 +61,84 @@ public class Node {
 
     /**
      * Registers a new prefix in an existing node.
-     * @param node  A node representing the given sub-prefix
+     *
+     * @param node A node representing the given sub-prefix
      */
     protected void add(Node node) {
-        if (prefixLength > 1) {
-            String newNodePrefix = node.prefix;
-            String childQualifier = newNodePrefix.substring(0, prefixLength + CHILD_NODE_QUALIFIER_LENGTH);
-            if (childNodes.containsKey(childQualifier)) { // there is a child node who can handles a longer prefix.
-                childNodes.get(childQualifier).add(node);
-            } else { // it should be a prefix that the current node maintains.
+        Node longestPrefixMatch = getChildWithLongestMatchingPrefix(node.prefix);
+        if (longestPrefixMatch == null) {
+            if (isRoot()) {
+                childNodes.put(node.prefix, node);
+            } else {
                 if (this.computationId.equals(node.computationId)) {
                     if (logger.isTraceEnabled()) {
-                        logger.trace(String.format("[Trie: %s] New prefix %s added to %s", prefix, newNodePrefix,
+                        logger.trace(String.format("[Trie: %s] New prefix %s added to %s", prefix, node.prefix,
                                 computationId));
                     }
                 } else {
                     logger.error(String.format("[Trie: %s] Error in the trie. Conflicting endpoints for the prefix. " +
-                                    "Prefix: %s, Provided Comp: %s, Expected Comp: %s", prefix, newNodePrefix,
+                                    "Prefix: %s, Provided Comp: %s, Expected Comp: %s", prefix, node.prefix,
                             node.computationId, computationId));
                 }
             }
         } else {
-            expand(node, false);
+            longestPrefixMatch.add(node);
         }
     }
 
-    /**
-     * Scales out a given prefix
-     * @param node  A node representing the given sub-prefix
-     */
-    protected void expand(Node node) {
-        expand(node, true);
+    private Node getChildWithLongestMatchingPrefix(String prefix) {
+        Node node = null;
+        int longestMatchLen = 0;
+        for (String childPrefix : childNodes.keySet()) {
+            if (prefix.contains(childPrefix)) {
+                if (childPrefix.length() > longestMatchLen) {
+                    longestMatchLen = childPrefix.length();
+                    node = childNodes.get(childPrefix);
+                }
+            }
+        }
+        return node;
+    }
+
+    private boolean isRoot() {
+        return prefix.equals("_");
     }
 
     /**
      * Scales out a given prefix
+     *
      * @param node A node representing the given sub-prefix
-     * @param recursive Whether to perform a recursive expansion.
-     *                  Used to handles a special case when expanding from the root.
      */
-    protected void expand(Node node, boolean recursive) {
-        String newNodePrefix = node.prefix;
-        String childQualifier = newNodePrefix.substring(0, prefixLength + CHILD_NODE_QUALIFIER_LENGTH);
-        if (childNodes.containsKey(childQualifier)) { // there is a child node who can handles a longer prefix.
-            if (recursive) {
-                childNodes.get(childQualifier).expand(node);
-            } else {
-                childNodes.get(childQualifier).add(node);
-            }
+    protected void expand(Node node) {
+        Node longestMatchingPrefix = getChildWithLongestMatchingPrefix(node.prefix);
+        if (longestMatchingPrefix == null) {
+            childNodes.put(node.prefix, node);
         } else {
-            childNodes.put(childQualifier, node);
-            if (logger.isDebugEnabled()) {
-                logger.debug(String.format("[Trie - %s] Trie is expanded. A new child node added. New prefix: %s, " +
-                        "New Comp: %s", prefix, newNodePrefix, node.computationId));
-            }
+            longestMatchingPrefix.expand(node);
         }
     }
 
     /**
      * Scales in the given sub-prefix.
+     *
      * @param node A node representing the given sub-prefix.
      */
     protected void shrink(Node node) {
-        String newNodePrefix = node.prefix;
-        String childQualifier = newNodePrefix.substring(0, prefixLength + CHILD_NODE_QUALIFIER_LENGTH);
-        if (childNodes.containsKey(childQualifier)) { // there is a child node who can handles a longer prefix.
-            if (childNodes.get(childQualifier).prefix.equals(newNodePrefix)) {
-                childNodes.remove(childQualifier);
-                if (this.computationId.equals(node.computationId)) {
-                    if (logger.isDebugEnabled()) {
-                        logger.debug(String.format("[Trie: %s] Prefix %s scaled in to %s", prefix, newNodePrefix,
-                                computationId));
-                    }
-                } else {
-                    logger.error(String.format("[Trie: %s] Error in the trie. Conflicting endpoints for the prefix. " +
-                                    "Prefix: %s, Provided Comp: %s, Expected Comp: %s", prefix, newNodePrefix,
-                            node.computationId, computationId));
-                }
-
-            } else {
-                childNodes.get(childQualifier).shrink(node);
-            }
+        Node longestPrefixMatch = getChildWithLongestMatchingPrefix(node.prefix);
+        if (longestPrefixMatch == null) {
+            logger.warn(String.format("Invalid shrink request. Current prefix: %s, Shrink Request: %s", prefix, node.prefix));
         } else {
-            logger.error(String.format("[Trie - %s] Error in the trie. Trying to shrink non-existing child." +
-                    " Child Prefix: %s", prefix, newNodePrefix));
+            if (longestPrefixMatch.prefix.equals(node.prefix)) {
+                childNodes.remove(node.prefix);
+            } else {
+                longestPrefixMatch.shrink(node);
+            }
         }
     }
 
     /**
      * Traverse the prefix tree in a depth first manner and return the list of prefixes.
+     *
      * @return a list of prefixes. Each node returns a sorted list of child prefixes followed by its own prefix
      */
     protected List<String> traverse() {
@@ -170,6 +159,7 @@ public class Node {
 
     /**
      * Encodes the results of a traverse into a single String
+     *
      * @param traverseResults List of prefixes returned by the {@code traverse} method.
      * @return A string encoded version of the prefix results.
      */
