@@ -77,4 +77,26 @@ public class GeoHashPrefixTree implements EntryAddedListener<String, SketchLocat
             recordScaleOut(prefix, sketchLocation.getComputation(), sketchLocation.getCtrlEndpoint());
         }
     }
+
+    private String printTree(){
+        return root.printTraverseResults(root.traverse());
+    }
+
+    public static void main(String[] args) {
+        GeoHashPrefixTree prefixTree = new GeoHashPrefixTree();
+        String[] computations = {"comp-1", "comp-2", "comp-3"};
+        String[] endpoints = {"endpoint-1", "endpoint-2", "endpoint-3"};
+        prefixTree.registerPrefix("8GF", computations[0], endpoints[0]);
+        System.out.println(prefixTree.printTree());
+        prefixTree.registerPrefix("9X1", computations[1], endpoints[1]);
+        System.out.println(prefixTree.printTree());
+        prefixTree.registerPrefix("9X2", computations[1], endpoints[1]);
+        System.out.println(prefixTree.printTree());
+        prefixTree.registerPrefix("9X1A", computations[2], endpoints[2]);
+        System.out.println(prefixTree.printTree());
+        prefixTree.recordScaleOut("9X1", computations[2], endpoints[2]);
+        System.out.println(prefixTree.printTree());
+        prefixTree.registerPrefix("9X1A", computations[1], endpoints[1]);
+        System.out.println(prefixTree.printTree());
+    }
 }

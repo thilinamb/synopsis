@@ -176,40 +176,4 @@ public class Node {
         sBuilder.deleteCharAt(sBuilder.lastIndexOf(":"));
         return sBuilder.toString();
     }
-
-    public static void main(String[] args) {
-        Node root = new Node();
-        System.out.println(root.printTraverseResults(root.traverse()));
-        root.add(new Node("9XA", "comp_id-1", "localhost:9099"));
-        root.add(new Node("9JB", "comp_id-1", "localhost:9099"));
-        System.out.println(root.printTraverseResults(root.traverse()));
-        root.add(new Node("8GF", "comp_id-2", "localhost:9099"));
-        System.out.println(root.printTraverseResults(root.traverse()));
-        root.add(new Node("ABC", "comp_id-3", "localhost:9099"));
-        System.out.println(root.printTraverseResults(root.traverse()));
-
-        System.out.println("\nExpanding ----------------------");
-        root.expand(new Node("9X1", "comp_id-4", "localhost:9099"));
-        root.expand(new Node("9X2", "comp_id-5", "localhost:9099"));
-        root.expand(new Node("9X1A", "comp_id-6", "localhost:9099"));
-        root.expand(new Node("9X3", "comp_id-7", "localhost:9099"));
-        System.out.println(root.printTraverseResults(root.traverse()));
-
-        System.out.println("\nShrinking 9X1 ----------------------");
-        root.shrink(new Node("9X1", "comp_id-1", "localhost:9099"));
-        System.out.println(root.printTraverseResults(root.traverse()));
-
-        System.out.println("\nAdding 9X1 ----------------------");
-        root.add(new Node("9X1", "comp_id-1", "localhost:9099"));
-        System.out.println(root.printTraverseResults(root.traverse()));
-
-        System.out.println("\nExpanding 9X1 ----------------------");
-        root.expand(new Node("9X1", "comp_id-4", "localhost:9099"));
-        System.out.println(root.printTraverseResults(root.traverse()));
-
-        System.out.println("\nAdding 9X1A2 ----------------------");
-        root.add(new Node("9X1A2", "comp_id-4", "localhost:9099"));
-        System.out.println(root.printTraverseResults(root.traverse()));
-    }
-
 }
