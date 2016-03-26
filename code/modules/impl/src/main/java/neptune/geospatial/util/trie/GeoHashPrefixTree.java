@@ -29,8 +29,8 @@ public class GeoHashPrefixTree implements EntryAddedListener<String, SketchLocat
      * @param computation  Computation Id handling the prefix
      * @param ctrlEndpoint Control Endpoint hosting the computation
      */
-    public synchronized void registerPrefix(String prefix, String computation, String ctrlEndpoint) {
-        Node node = new Node(prefix, computation, ctrlEndpoint);
+    private synchronized void registerPrefix(String prefix, String computation, String ctrlEndpoint) {
+        Node node = new Node(prefix.substring(0, prefix.length() - 1), computation, ctrlEndpoint);
         root.add(node);
     }
 
@@ -41,7 +41,7 @@ public class GeoHashPrefixTree implements EntryAddedListener<String, SketchLocat
      * @param newCompId New computation
      * @param newCtrlEp Location of the new computation
      */
-    public synchronized void recordScaleOut(String prefix, String newCompId, String newCtrlEp) {
+    private synchronized void recordScaleOut(String prefix, String newCompId, String newCtrlEp) {
         Node node = new Node(prefix, newCompId, newCtrlEp);
         root.expand(node);
     }
@@ -53,7 +53,7 @@ public class GeoHashPrefixTree implements EntryAddedListener<String, SketchLocat
      * @param compId Computation which is going to hold the prefix after scaling in
      * @param ctrlEp location of the above computation
      */
-    public synchronized void recordScaleIn(String prefix, String compId, String ctrlEp) {
+    private synchronized void recordScaleIn(String prefix, String compId, String ctrlEp) {
         Node node = new Node(prefix, compId, ctrlEp);
         root.shrink(node);
     }
