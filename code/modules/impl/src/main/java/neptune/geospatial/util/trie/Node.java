@@ -6,21 +6,15 @@ import org.apache.log4j.Logger;
 import java.util.*;
 
 /**
+ * Implements a customized version of a prefix tree.
+ * The prefixes are not incremented one character at a time, instead takes leaps
+ * of multiple characters at a time.
+ *
  * @author Thilina Buddhika
  */
-public class Node {
+class Node {
 
     private Logger logger = Logger.getLogger(Node.class);
-
-    /**
-     * The number of bits/chars the prefixes are advanced when traversing the tree.
-     */
-    public static final int CHILD_NODE_QUALIFIER_LENGTH = 1;
-
-    /**
-     * prefix length.
-     */
-    private int prefixLength;
 
     /**
      * prefix it is responsible for
@@ -42,9 +36,8 @@ public class Node {
      */
     private String ctrlEndpoint;
 
-    public Node(String prefix, String computationId, String ctrlEndpoint) {
+    Node(String prefix, String computationId, String ctrlEndpoint) {
         this.prefix = prefix;
-        this.prefixLength = prefix.length() - 1;
         this.computationId = computationId;
         this.ctrlEndpoint = ctrlEndpoint;
     }
@@ -52,9 +45,8 @@ public class Node {
     /**
      * Constructor for Root node
      */
-    public Node() {
+    Node() {
         this.prefix = "_";
-        this.prefixLength = 1; // assuming the minimum length we consider is 2 characters
         this.computationId = "";
         this.ctrlEndpoint = "";
     }
@@ -86,30 +78,12 @@ public class Node {
         }
     }
 
-    private Node getChildWithLongestMatchingPrefix(String prefix) {
-        Node node = null;
-        int longestMatchLen = 0;
-        for (String childPrefix : childNodes.keySet()) {
-            if (prefix.contains(childPrefix)) {
-                if (childPrefix.length() > longestMatchLen) {
-                    longestMatchLen = childPrefix.length();
-                    node = childNodes.get(childPrefix);
-                }
-            }
-        }
-        return node;
-    }
-
-    private boolean isRoot() {
-        return prefix.equals("_");
-    }
-
     /**
      * Scales out a given prefix
      *
      * @param node A node representing the given sub-prefix
      */
-    protected void expand(Node node) {
+    void expand(Node node) {
         Node longestMatchingPrefix = getChildWithLongestMatchingPrefix(node.prefix);
         if (longestMatchingPrefix == null) {
             childNodes.put(node.prefix, node);
@@ -123,7 +97,7 @@ public class Node {
      *
      * @param node A node representing the given sub-prefix.
      */
-    protected void shrink(Node node) {
+    void shrink(Node node) {
         Node longestPrefixMatch = getChildWithLongestMatchingPrefix(node.prefix);
         if (longestPrefixMatch == null) {
             logger.warn(String.format("Invalid shrink request. Current prefix: %s, Shrink Request: %s", prefix, node.prefix));
@@ -141,7 +115,7 @@ public class Node {
      *
      * @return a list of prefixes. Each node returns a sorted list of child prefixes followed by its own prefix
      */
-    protected List<String> traverse() {
+    List<String> traverse() {
         // first sort the children
         TreeSet<String> sortedKeys = new TreeSet<>(childNodes.keySet());
         List<String> traverseResults = new ArrayList<>();
@@ -163,7 +137,7 @@ public class Node {
      * @param traverseResults List of prefixes returned by the {@code traverse} method.
      * @return A string encoded version of the prefix results.
      */
-    protected String printTraverseResults(List<String> traverseResults) {
+    String printTraverseResults(List<String> traverseResults) {
         StringBuilder sBuilder = new StringBuilder();
         for (String prefix : traverseResults) {
             if (prefix.equals("")) {
@@ -175,5 +149,23 @@ public class Node {
         }
         sBuilder.deleteCharAt(sBuilder.lastIndexOf(":"));
         return sBuilder.toString();
+    }
+
+    private Node getChildWithLongestMatchingPrefix(String prefix) {
+        Node node = null;
+        int longestMatchLen = 0;
+        for (String childPrefix : childNodes.keySet()) {
+            if (prefix.contains(childPrefix)) {
+                if (childPrefix.length() > longestMatchLen) {
+                    longestMatchLen = childPrefix.length();
+                    node = childNodes.get(childPrefix);
+                }
+            }
+        }
+        return node;
+    }
+
+    private boolean isRoot() {
+        return prefix.equals("_");
     }
 }

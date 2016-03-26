@@ -8,6 +8,7 @@ import neptune.geospatial.hazelcast.type.SketchLocation;
 /**
  * A customized version of a prefix tree representing the
  * distributed sketch.
+ * This is an eventually consistent data structure.
  *
  * @author Thilina Buddhika
  */
@@ -96,7 +97,9 @@ public class GeoHashPrefixTree implements EntryAddedListener<String, SketchLocat
         System.out.println(prefixTree.printTree());
         prefixTree.recordScaleOut("9X1", computations[2], endpoints[2]);
         System.out.println(prefixTree.printTree());
-        prefixTree.registerPrefix("9X1A", computations[1], endpoints[1]);
+        prefixTree.recordScaleOut("9X1A", computations[1], endpoints[1]);
+        System.out.println(prefixTree.printTree());
+        prefixTree.recordScaleIn("9X1", computations[1], endpoints[1]);
         System.out.println(prefixTree.printTree());
     }
 }
