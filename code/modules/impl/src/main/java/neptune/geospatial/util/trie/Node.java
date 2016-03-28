@@ -64,11 +64,11 @@ class Node {
             } else {
                 if (this.computationId.equals(node.computationId)) {
                     if (logger.isTraceEnabled()) {
-                        logger.trace(String.format("[Trie: %s] New prefix %s added to %s", prefix, node.prefix,
+                        logger.trace(String.format("[%s] New prefix %s added to %s", prefix, node.prefix,
                                 computationId));
                     }
                 } else {
-                    logger.error(String.format("[Trie: %s] Error in the trie. Conflicting endpoints for the prefix. " +
+                    logger.error(String.format("[%s] Error in the trie. Conflicting endpoints for the prefix. " +
                                     "Prefix: %s, Provided Comp: %s, Expected Comp: %s", prefix, node.prefix,
                             node.computationId, computationId));
                 }
@@ -87,6 +87,9 @@ class Node {
         Node longestMatchingPrefix = getChildWithLongestMatchingPrefix(node.prefix);
         if (longestMatchingPrefix == null) {
             childNodes.put(node.prefix, node);
+            if(logger.isTraceEnabled()){
+                logger.trace(String.format("[%s] Prefix tree is expanded. Child Prefix: %s", this.prefix, node.prefix));
+            }
         } else {
             longestMatchingPrefix.expand(node);
         }
@@ -100,10 +103,13 @@ class Node {
     void shrink(Node node) {
         Node longestPrefixMatch = getChildWithLongestMatchingPrefix(node.prefix);
         if (longestPrefixMatch == null) {
-            logger.warn(String.format("Invalid shrink request. Current prefix: %s, Shrink Request: %s", prefix, node.prefix));
+            logger.error(String.format("Invalid shrink request. Current prefix: %s, Shrink Request: %s", prefix, node.prefix));
         } else {
             if (longestPrefixMatch.prefix.equals(node.prefix)) {
                 childNodes.remove(node.prefix);
+                if(logger.isTraceEnabled()){
+                    logger.trace(String.format("[%s] Prefix tree is shrinked. Child Prefix: %s", this.prefix, node.prefix));
+                }
             } else {
                 longestPrefixMatch.shrink(node);
             }
