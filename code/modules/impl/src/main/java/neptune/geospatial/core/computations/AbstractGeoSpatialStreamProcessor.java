@@ -57,7 +57,7 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
     private AtomicInteger messageSize = new AtomicInteger(-1);
     private AtomicLong tsLastUpdated = new AtomicLong(0);
 
-    private ScalingContext scalingContext = new ScalingContext(getInstanceIdentifier());
+    private ScalingContext scalingContext;
 
     // mutex to ensure only a single scale in/out operations takes place at a given time
     private final Mutex mutex = new Mutex();
@@ -119,6 +119,7 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
                 // register with the resource to enable monitoring
                 initializeProtocolProcessors();
                 messageSize.set(getMessageSize(streamEvent));
+                this.scalingContext = new ScalingContext(getInstanceIdentifier());
                 ManagedResource.getInstance().registerStreamProcessor(this);
                 initialized.set(true);
                 if (logger.isDebugEnabled()) {
