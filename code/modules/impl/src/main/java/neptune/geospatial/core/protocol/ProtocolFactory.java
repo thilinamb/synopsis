@@ -4,10 +4,7 @@ import ds.funnel.topic.TopicDataEvent;
 import ds.granules.communication.direct.control.ControlMessage;
 import neptune.geospatial.core.protocol.msg.*;
 import neptune.geospatial.core.protocol.msg.scalein.*;
-import neptune.geospatial.core.protocol.msg.scaleout.DeploymentAck;
-import neptune.geospatial.core.protocol.msg.scaleout.ScaleOutCompleteAck;
-import neptune.geospatial.core.protocol.msg.scaleout.ScaleOutRequest;
-import neptune.geospatial.core.protocol.msg.scaleout.ScaleOutResponse;
+import neptune.geospatial.core.protocol.msg.scaleout.*;
 
 import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;
@@ -42,6 +39,12 @@ public class ProtocolFactory {
                     break;
                 case ProtocolTypes.SCALE_OUT_RESP:
                     message = new ScaleOutResponse();
+                    break;
+                case ProtocolTypes.SCALE_OUT_LOCK_REQ:
+                    message = new ScaleOutLockRequest();
+                    break;
+                case ProtocolTypes.SCALE_OUT_LOCK_RESP:
+                    message = new ScaleOutLockResponse();
                     break;
                 case ProtocolTypes.DEPLOYMENT_ACK:
                     message = new DeploymentAck();

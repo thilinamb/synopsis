@@ -6,6 +6,8 @@ import neptune.geospatial.core.protocol.ProtocolTypes;
 import neptune.geospatial.core.protocol.msg.*;
 import neptune.geospatial.core.protocol.msg.scalein.*;
 import neptune.geospatial.core.protocol.msg.scaleout.ScaleOutCompleteAck;
+import neptune.geospatial.core.protocol.msg.scaleout.ScaleOutLockRequest;
+import neptune.geospatial.core.protocol.msg.scaleout.ScaleOutLockResponse;
 import neptune.geospatial.core.protocol.msg.scaleout.ScaleOutResponse;
 import org.apache.log4j.Logger;
 
@@ -35,6 +37,20 @@ public class ResourceProtocolHandler extends AbstractProtocolHandler {
                     logger.debug("Received a trigger scale ack message for " + scaleOutResponse.getTargetComputation());
                 }
                 managedResource.dispatchControlMessage(scaleOutResponse.getTargetComputation(), scaleOutResponse);
+                break;
+            case ProtocolTypes.SCALE_OUT_LOCK_REQ:
+                ScaleOutLockRequest scaleOutLockRequest = (ScaleOutLockRequest) ctrlMsg;
+                if (logger.isDebugEnabled()) {
+                    logger.debug("Received a ScaleOutLockRequest for " + scaleOutLockRequest.getTargetComputation());
+                }
+                managedResource.dispatchControlMessage(scaleOutLockRequest.getTargetComputation(), scaleOutLockRequest);
+                break;
+            case ProtocolTypes.SCALE_OUT_LOCK_RESP:
+                ScaleOutLockResponse scaleOutLockResponse = (ScaleOutLockResponse) ctrlMsg;
+                if (logger.isDebugEnabled()) {
+                    logger.debug("Received a ScaleOutLockResponse for " + scaleOutLockResponse.getTargetComputation());
+                }
+                managedResource.dispatchControlMessage(scaleOutLockResponse.getTargetComputation(), scaleOutLockResponse);
                 break;
             case ProtocolTypes.SCALE_OUT_COMPLETE_ACK:
                 ScaleOutCompleteAck scaleOutCompleteAck = (ScaleOutCompleteAck) ctrlMsg;

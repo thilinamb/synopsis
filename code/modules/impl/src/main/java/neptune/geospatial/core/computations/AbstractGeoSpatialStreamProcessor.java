@@ -20,6 +20,8 @@ import neptune.geospatial.core.protocol.msg.StateTransferMsg;
 import neptune.geospatial.core.protocol.processors.*;
 import neptune.geospatial.core.protocol.processors.scalein.*;
 import neptune.geospatial.core.protocol.processors.scalout.ScaleOutCompleteProcessor;
+import neptune.geospatial.core.protocol.processors.scalout.ScaleOutLockRequestProcessor;
+import neptune.geospatial.core.protocol.processors.scalout.ScaleOutLockResponseProcessor;
 import neptune.geospatial.core.protocol.processors.scalout.ScaleOutResponseProcessor;
 import neptune.geospatial.core.resource.ManagedResource;
 import neptune.geospatial.graph.messages.GeoHashIndexedRecord;
@@ -434,6 +436,8 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
 
     private void initializeProtocolProcessors() {
         protocolProcessors.put(ProtocolTypes.SCALE_OUT_RESP, new ScaleOutResponseProcessor());
+        protocolProcessors.put(ProtocolTypes.SCALE_OUT_LOCK_REQ, new ScaleOutLockRequestProcessor());
+        protocolProcessors.put(ProtocolTypes.SCALE_OUT_LOCK_RESP, new ScaleOutLockResponseProcessor());
         protocolProcessors.put(ProtocolTypes.SCALE_OUT_COMPLETE_ACK, new ScaleOutCompleteProcessor());
         protocolProcessors.put(ProtocolTypes.SCALE_IN_LOCK_REQ, new ScaleInLockReqProcessor());
         protocolProcessors.put(ProtocolTypes.SCALE_IN_LOCK_RESP, new ScaleInLockResponseProcessor());
