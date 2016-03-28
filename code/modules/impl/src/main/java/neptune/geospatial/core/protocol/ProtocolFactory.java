@@ -3,6 +3,11 @@ package neptune.geospatial.core.protocol;
 import ds.funnel.topic.TopicDataEvent;
 import ds.granules.communication.direct.control.ControlMessage;
 import neptune.geospatial.core.protocol.msg.*;
+import neptune.geospatial.core.protocol.msg.scalein.*;
+import neptune.geospatial.core.protocol.msg.scaleout.DeploymentAck;
+import neptune.geospatial.core.protocol.msg.scaleout.ScaleOutCompleteAck;
+import neptune.geospatial.core.protocol.msg.scaleout.ScaleOutRequest;
+import neptune.geospatial.core.protocol.msg.scaleout.ScaleOutResponse;
 
 import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;

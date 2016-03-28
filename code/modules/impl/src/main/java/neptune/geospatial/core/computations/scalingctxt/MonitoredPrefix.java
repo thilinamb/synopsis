@@ -1,6 +1,6 @@
 package neptune.geospatial.core.computations.scalingctxt;
 
-import neptune.geospatial.core.protocol.msg.ScaleInActivateReq;
+import neptune.geospatial.core.protocol.msg.scalein.ScaleInActivateReq;
 
 /**
  * Represents a monitored prefix.

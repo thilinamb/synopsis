@@ -10,7 +10,7 @@ import neptune.geospatial.core.computations.scalingctxt.FullQualifiedComputation
 import neptune.geospatial.core.computations.scalingctxt.MonitoredPrefix;
 import neptune.geospatial.core.computations.scalingctxt.PendingScaleInRequest;
 import neptune.geospatial.core.computations.scalingctxt.ScalingContext;
-import neptune.geospatial.core.protocol.msg.ScaleInActivateReq;
+import neptune.geospatial.core.protocol.msg.scalein.ScaleInActivateReq;
 import neptune.geospatial.core.protocol.msg.StateTransferMsg;
 import neptune.geospatial.core.protocol.processors.ProtocolProcessor;
 import neptune.geospatial.hazelcast.type.SketchLocation;

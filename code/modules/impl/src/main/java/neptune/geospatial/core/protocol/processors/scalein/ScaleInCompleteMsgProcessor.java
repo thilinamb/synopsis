@@ -7,8 +7,8 @@ import neptune.geospatial.core.computations.AbstractGeoSpatialStreamProcessor;
 import neptune.geospatial.core.computations.scalingctxt.FullQualifiedComputationAddr;
 import neptune.geospatial.core.computations.scalingctxt.PendingScaleInRequest;
 import neptune.geospatial.core.computations.scalingctxt.ScalingContext;
-import neptune.geospatial.core.protocol.msg.ScaleInComplete;
-import neptune.geospatial.core.protocol.msg.ScaleInCompleteAck;
+import neptune.geospatial.core.protocol.msg.scalein.ScaleInComplete;
+import neptune.geospatial.core.protocol.msg.scalein.ScaleInCompleteAck;
 import neptune.geospatial.core.protocol.processors.ProtocolProcessor;
 import org.apache.log4j.Logger;
 

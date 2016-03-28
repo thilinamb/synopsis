@@ -9,7 +9,7 @@ import ds.granules.neptune.interfere.core.NIException;
 import neptune.geospatial.core.computations.AbstractGeoSpatialStreamProcessor;
 import neptune.geospatial.core.computations.scalingctxt.PendingScaleInRequest;
 import neptune.geospatial.core.computations.scalingctxt.ScalingContext;
-import neptune.geospatial.core.protocol.msg.ScaleInCompleteAck;
+import neptune.geospatial.core.protocol.msg.scalein.ScaleInCompleteAck;
 import neptune.geospatial.core.protocol.processors.ProtocolProcessor;
 import neptune.geospatial.core.resource.ManagedResource;
 import neptune.geospatial.hazelcast.type.SketchLocation;

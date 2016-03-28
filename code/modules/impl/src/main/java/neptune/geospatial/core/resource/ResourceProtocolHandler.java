@@ -4,6 +4,9 @@ import ds.granules.communication.direct.control.ControlMessage;
 import neptune.geospatial.core.protocol.AbstractProtocolHandler;
 import neptune.geospatial.core.protocol.ProtocolTypes;
 import neptune.geospatial.core.protocol.msg.*;
+import neptune.geospatial.core.protocol.msg.scalein.*;
+import neptune.geospatial.core.protocol.msg.scaleout.ScaleOutCompleteAck;
+import neptune.geospatial.core.protocol.msg.scaleout.ScaleOutResponse;
 import org.apache.log4j.Logger;
 
 /**

@@ -1,4 +1,4 @@
-package neptune.geospatial.core.protocol.msg;
+package neptune.geospatial.core.protocol.msg.scalein;
 
 import ds.granules.communication.direct.control.ControlMessage;
 import neptune.geospatial.core.protocol.ProtocolTypes;

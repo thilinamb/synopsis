@@ -3,8 +3,8 @@ package neptune.geospatial.core.deployer;
 import ds.granules.communication.direct.control.ControlMessage;
 import neptune.geospatial.core.protocol.AbstractProtocolHandler;
 import neptune.geospatial.core.protocol.ProtocolTypes;
-import neptune.geospatial.core.protocol.msg.DeploymentAck;
-import neptune.geospatial.core.protocol.msg.ScaleOutRequest;
+import neptune.geospatial.core.protocol.msg.scaleout.DeploymentAck;
+import neptune.geospatial.core.protocol.msg.scaleout.ScaleOutRequest;
 import org.apache.log4j.Logger;
 
 /**

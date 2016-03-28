@@ -8,7 +8,7 @@ import neptune.geospatial.core.computations.AbstractGeoSpatialStreamProcessor;
 import neptune.geospatial.core.computations.scalingctxt.MonitoredPrefix;
 import neptune.geospatial.core.computations.scalingctxt.PendingScaleOutRequest;
 import neptune.geospatial.core.computations.scalingctxt.ScalingContext;
-import neptune.geospatial.core.protocol.msg.ScaleOutResponse;
+import neptune.geospatial.core.protocol.msg.scaleout.ScaleOutResponse;
 import neptune.geospatial.core.protocol.msg.StateTransferMsg;
 import neptune.geospatial.core.protocol.processors.ProtocolProcessor;
 import neptune.geospatial.graph.messages.GeoHashIndexedRecord;

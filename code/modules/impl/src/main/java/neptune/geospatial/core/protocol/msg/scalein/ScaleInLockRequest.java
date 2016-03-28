@@ -1,4 +1,4 @@
-package neptune.geospatial.core.protocol.msg;
+package neptune.geospatial.core.protocol.msg.scalein;
 
 import ds.granules.communication.direct.control.ControlMessage;
 import neptune.geospatial.core.protocol.ProtocolTypes;
@@ -10,43 +10,43 @@ import java.io.IOException;
 /**
  * @author Thilina Buddhika
  */
-public class ScaleOutCompleteAck extends ControlMessage {
+public class ScaleInLockRequest extends ControlMessage {
 
-    private String key;
     private String prefix;
+    private String sourceComputation;
     private String targetComputation;
 
-    public ScaleOutCompleteAck(String key, String prefix, String targetComputation) {
-        super(ProtocolTypes.SCALE_OUT_COMPLETE_ACK);
-        this.key = key;
-        this.prefix = prefix;
-        this.targetComputation = targetComputation;
+    public ScaleInLockRequest() {
+        super(ProtocolTypes.SCALE_IN_LOCK_REQ);
     }
 
-    public ScaleOutCompleteAck() {
-        super(ProtocolTypes.SCALE_OUT_COMPLETE_ACK);
+    public ScaleInLockRequest(String prefix, String sourceComputation, String targetComputation) {
+        super(ProtocolTypes.SCALE_IN_LOCK_REQ);
+        this.prefix = prefix;
+        this.sourceComputation = sourceComputation;
+        this.targetComputation = targetComputation;
     }
 
     @Override
     public void readValues(DataInputStream dis) throws IOException {
-        this.key = dis.readUTF();
         this.prefix = dis.readUTF();
+        this.sourceComputation = dis.readUTF();
         this.targetComputation = dis.readUTF();
     }
 
     @Override
     public void writeValues(DataOutputStream dos) throws IOException {
-        dos.writeUTF(this.key);
         dos.writeUTF(this.prefix);
+        dos.writeUTF(this.sourceComputation);
         dos.writeUTF(this.targetComputation);
-    }
-
-    public String getKey() {
-        return key;
     }
 
     public String getPrefix() {
         return prefix;
+    }
+
+    public String getSourceComputation() {
+        return sourceComputation;
     }
 
     public String getTargetComputation() {
