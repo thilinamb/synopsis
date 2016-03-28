@@ -1,14 +1,19 @@
 package neptune.geospatial.core.protocol.processors;
 
+import com.hazelcast.core.IMap;
 import ds.granules.communication.direct.control.ControlMessage;
 import ds.granules.communication.direct.control.SendUtility;
 import ds.granules.exception.CommunicationsException;
+import ds.granules.exception.GranulesConfigurationException;
 import ds.granules.neptune.interfere.core.NIException;
 import neptune.geospatial.core.computations.AbstractGeoSpatialStreamProcessor;
 import neptune.geospatial.core.computations.scalingctxt.PendingScaleInRequest;
 import neptune.geospatial.core.computations.scalingctxt.ScalingContext;
 import neptune.geospatial.core.protocol.msg.ScaleInCompleteAck;
 import neptune.geospatial.core.resource.ManagedResource;
+import neptune.geospatial.hazelcast.type.SketchLocation;
+import neptune.geospatial.util.RivuletUtil;
+import neptune.geospatial.util.trie.GeoHashPrefixTree;
 import org.apache.log4j.Logger;
 
 import java.io.IOException;
@@ -40,7 +45,7 @@ public class ScaleInCompleteAckProcessor implements ProtocolProcessor {
                     ScaleInCompleteAck ackToParent = new ScaleInCompleteAck(ack.getPrefix(),
                             pendingReq.getOriginComputation());
                     // stop monitoring the prefixes that are scaled in
-                    for (String locallyProcessedPrefix : pendingReq.getLocallyProcessedPrefixes()){
+                    for (String locallyProcessedPrefix : pendingReq.getLocallyProcessedPrefixes()) {
                         scalingContext.removeMonitoredPrefix(locallyProcessedPrefix);
                     }
                     try {
@@ -53,10 +58,14 @@ public class ScaleInCompleteAckProcessor implements ProtocolProcessor {
                         logger.debug(String.format("[%s] Completed Scaling in for prefix : %s",
                                 instanceIdentifier, ack.getPrefix()));
                     }
-                    // update hazelcast
-                    /*IMap<String, SketchLocation> prefMap = getHzInstance().getMap(GeoHashPrefixTree.PREFIX_MAP);
-                        prefMap.put(ack.getPrefix(), new SketchLocation(getInstanceIdentifier(), getCtrlEndpoint(),
-                                SketchLocation.MODE_SCALE_IN)); */
+                    // update the prefix tree
+                    try {
+                        IMap<String, SketchLocation> prefMap = streamProcessor.getHzInstance().getMap(GeoHashPrefixTree.PREFIX_MAP);
+                        prefMap.put(ack.getPrefix(), new SketchLocation(streamProcessor.getInstanceIdentifier(), RivuletUtil.getCtrlEndpoint(),
+                                SketchLocation.MODE_SCALE_IN));
+                    } catch (GranulesConfigurationException e) {
+                        logger.error("Error retrieving the control endpoint for updating the prefix tree.", e);
+                    }
                     streamProcessor.onSuccessfulScaleIn(pendingReq.getChildLeafPrefixes());
                 }
                 scalingContext.removePendingScaleInRequest(ack.getPrefix());
