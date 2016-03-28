@@ -43,15 +43,7 @@ public class ScaleOutLockRequest extends ControlMessage {
         return sourceComputation;
     }
 
-    public void setSourceComputation(String sourceComputation) {
-        this.sourceComputation = sourceComputation;
-    }
-
     public String getTargetComputation() {
         return targetComputation;
-    }
-
-    public void setTargetComputation(String targetComputation) {
-        this.targetComputation = targetComputation;
     }
 }
