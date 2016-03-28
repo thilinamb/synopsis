@@ -1,4 +1,4 @@
-package neptune.geospatial.core.protocol.processors;
+package neptune.geospatial.core.protocol.processors.scalein;
 
 import com.hazelcast.core.IMap;
 import ds.granules.communication.direct.control.ControlMessage;
@@ -10,6 +10,7 @@ import neptune.geospatial.core.computations.AbstractGeoSpatialStreamProcessor;
 import neptune.geospatial.core.computations.scalingctxt.PendingScaleInRequest;
 import neptune.geospatial.core.computations.scalingctxt.ScalingContext;
 import neptune.geospatial.core.protocol.msg.ScaleInCompleteAck;
+import neptune.geospatial.core.protocol.processors.ProtocolProcessor;
 import neptune.geospatial.core.resource.ManagedResource;
 import neptune.geospatial.hazelcast.type.SketchLocation;
 import neptune.geospatial.util.RivuletUtil;

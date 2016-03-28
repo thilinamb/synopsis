@@ -1,4 +1,4 @@
-package neptune.geospatial.core.protocol.processors;
+package neptune.geospatial.core.protocol.processors.scalein;
 
 import ds.granules.communication.direct.control.ControlMessage;
 import ds.granules.communication.direct.control.SendUtility;
@@ -12,6 +12,7 @@ import neptune.geospatial.core.computations.scalingctxt.ScalingContext;
 import neptune.geospatial.core.protocol.msg.ScaleInActivateReq;
 import neptune.geospatial.core.protocol.msg.ScaleInComplete;
 import neptune.geospatial.core.protocol.msg.ScaleInLockResponse;
+import neptune.geospatial.core.protocol.processors.ProtocolProcessor;
 import neptune.geospatial.util.RivuletUtil;
 import org.apache.log4j.Logger;
 

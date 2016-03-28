@@ -1,4 +1,4 @@
-package neptune.geospatial.core.protocol.processors;
+package neptune.geospatial.core.protocol.processors.scalout;
 
 import ds.granules.communication.direct.control.ControlMessage;
 import ds.granules.communication.direct.control.SendUtility;
@@ -10,6 +10,7 @@ import neptune.geospatial.core.computations.scalingctxt.PendingScaleOutRequest;
 import neptune.geospatial.core.computations.scalingctxt.ScalingContext;
 import neptune.geospatial.core.protocol.msg.ScaleOutResponse;
 import neptune.geospatial.core.protocol.msg.StateTransferMsg;
+import neptune.geospatial.core.protocol.processors.ProtocolProcessor;
 import neptune.geospatial.graph.messages.GeoHashIndexedRecord;
 import org.apache.log4j.Logger;
 
@@ -20,7 +21,7 @@ import java.io.IOException;
  *
  * @author Thilina Buddhika
  */
-public class ScaleOutResponseProcessor implements ProtocolProcessor{
+public class ScaleOutResponseProcessor implements ProtocolProcessor {
 
     private Logger logger = Logger.getLogger(ScaleOutResponseProcessor.class);
 
