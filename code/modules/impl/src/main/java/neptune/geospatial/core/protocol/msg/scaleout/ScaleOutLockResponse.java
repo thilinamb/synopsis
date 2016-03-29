@@ -12,6 +12,7 @@ import java.io.IOException;
  */
 public class ScaleOutLockResponse extends ControlMessage {
 
+    private String key;
     private String sourceComputation;
     private String targetComputation;
     private boolean lockAcquired;
@@ -20,8 +21,9 @@ public class ScaleOutLockResponse extends ControlMessage {
         super(ProtocolTypes.SCALE_OUT_LOCK_RESP);
     }
 
-    public ScaleOutLockResponse(String sourceComputation, String targetComputation, boolean lockAcquired) {
+    public ScaleOutLockResponse(String key, String sourceComputation, String targetComputation, boolean lockAcquired) {
         super(ProtocolTypes.SCALE_OUT_LOCK_RESP);
+        this.key = key;
         this.targetComputation = targetComputation;
         this.sourceComputation = sourceComputation;
         this.lockAcquired = lockAcquired;
@@ -29,6 +31,7 @@ public class ScaleOutLockResponse extends ControlMessage {
 
     @Override
     public void readValues(DataInputStream dataInputStream) throws IOException {
+        this.key = dataInputStream.readUTF();
         this.sourceComputation = dataInputStream.readUTF();
         this.targetComputation = dataInputStream.readUTF();
         this.lockAcquired = dataInputStream.readBoolean();
@@ -36,9 +39,14 @@ public class ScaleOutLockResponse extends ControlMessage {
 
     @Override
     public void writeValues(DataOutputStream dataOutputStream) throws IOException {
+        dataOutputStream.writeUTF(this.key);
         dataOutputStream.writeUTF(this.sourceComputation);
         dataOutputStream.writeUTF(this.targetComputation);
         dataOutputStream.writeBoolean(this.lockAcquired);
+    }
+
+    public String getKey() {
+        return key;
     }
 
     public String getSourceComputation() {
