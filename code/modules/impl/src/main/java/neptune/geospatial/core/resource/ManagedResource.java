@@ -254,6 +254,7 @@ public class ManagedResource {
                     GeoHashPrefixTree.PREFIX_MAP);
             // TODO: Remove me after the micro benchmark
             //map.addEntryListener(new GeoHashPrefixTree(), true);
+            map.addEntryListener(new GeoHashPrefixTree(), true);
         } catch (neptune.geospatial.hazelcast.HazelcastException e) {
             logger.error("Error getting the Hazelcast client to register the entry listener.", e);
         }
