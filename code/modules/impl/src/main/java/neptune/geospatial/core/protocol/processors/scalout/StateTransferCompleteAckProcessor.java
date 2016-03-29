@@ -7,7 +7,7 @@ import neptune.geospatial.core.computations.AbstractGeoSpatialStreamProcessor;
 import neptune.geospatial.core.computations.scalingctxt.MonitoredPrefix;
 import neptune.geospatial.core.computations.scalingctxt.PendingScaleOutRequest;
 import neptune.geospatial.core.computations.scalingctxt.ScalingContext;
-import neptune.geospatial.core.protocol.msg.scaleout.ScaleOutCompleteAck;
+import neptune.geospatial.core.protocol.msg.scaleout.StateTransferCompleteAck;
 import neptune.geospatial.core.protocol.processors.ProtocolProcessor;
 import neptune.geospatial.core.resource.ManagedResource;
 import neptune.geospatial.hazelcast.type.SketchLocation;
@@ -17,15 +17,15 @@ import org.apache.log4j.Logger;
 /**
  * @author Thilina Buddhika
  */
-public class ScaleOutCompleteProcessor implements ProtocolProcessor {
+public class StateTransferCompleteAckProcessor implements ProtocolProcessor {
 
-    private Logger logger = Logger.getLogger(ScaleOutCompleteProcessor.class);
+    private Logger logger = Logger.getLogger(StateTransferCompleteAckProcessor.class);
 
     @Override
     public void process(ControlMessage ctrlMsg, ScalingContext scalingContext,
                         AbstractGeoSpatialStreamProcessor streamProcessor) {
 
-        ScaleOutCompleteAck ack = (ScaleOutCompleteAck) ctrlMsg;
+        StateTransferCompleteAck ack = (StateTransferCompleteAck) ctrlMsg;
         PendingScaleOutRequest pendingReq = scalingContext.getPendingScaleOutRequest(ack.getKey());
         String instanceIdentifier = streamProcessor.getInstanceIdentifier();
 

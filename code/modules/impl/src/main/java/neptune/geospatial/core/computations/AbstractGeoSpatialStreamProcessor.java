@@ -438,7 +438,7 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
         protocolProcessors.put(ProtocolTypes.SCALE_OUT_RESP, new ScaleOutResponseProcessor());
         protocolProcessors.put(ProtocolTypes.SCALE_OUT_LOCK_REQ, new ScaleOutLockRequestProcessor());
         protocolProcessors.put(ProtocolTypes.SCALE_OUT_LOCK_RESP, new ScaleOutLockResponseProcessor());
-        protocolProcessors.put(ProtocolTypes.SCALE_OUT_COMPLETE_ACK, new ScaleOutCompleteProcessor());
+        protocolProcessors.put(ProtocolTypes.STATE_TRANSFER_COMPLETE_ACK, new StateTransferCompleteAckProcessor());
         protocolProcessors.put(ProtocolTypes.SCALE_IN_LOCK_REQ, new ScaleInLockReqProcessor());
         protocolProcessors.put(ProtocolTypes.SCALE_IN_LOCK_RESP, new ScaleInLockResponseProcessor());
         protocolProcessors.put(ProtocolTypes.SCALE_IN_ACTIVATION_REQ, new ScaleInActivateReqProcessor());

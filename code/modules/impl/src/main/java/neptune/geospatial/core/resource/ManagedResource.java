@@ -349,7 +349,7 @@ public class ManagedResource {
                         pendingStateTransfers.put(computationId, stateTransferMsgs);
                     }
                     stateTransferMsgs.add(stateTransferMsg);
-                    ScaleOutCompleteAck completeAck = new ScaleOutCompleteAck(stateTransferMsg.getKeyPrefix(),
+                    StateTransferCompleteAck completeAck = new StateTransferCompleteAck(stateTransferMsg.getKeyPrefix(),
                             stateTransferMsg.getPrefix(), stateTransferMsg.getOriginComputation());
                     SendUtility.sendControlMessage(stateTransferMsg.getOriginEndpoint(), completeAck);
                     logger.debug("New Computation is not active yet. Storing the StateTransfer Request.");

@@ -11,7 +11,7 @@ import neptune.geospatial.core.computations.scalingctxt.MonitoredPrefix;
 import neptune.geospatial.core.computations.scalingctxt.PendingScaleInRequest;
 import neptune.geospatial.core.computations.scalingctxt.ScalingContext;
 import neptune.geospatial.core.protocol.msg.scalein.ScaleInComplete;
-import neptune.geospatial.core.protocol.msg.scaleout.ScaleOutCompleteAck;
+import neptune.geospatial.core.protocol.msg.scaleout.StateTransferCompleteAck;
 import neptune.geospatial.core.protocol.msg.StateTransferMsg;
 import neptune.geospatial.hazelcast.type.SketchLocation;
 import neptune.geospatial.util.RivuletUtil;
@@ -71,7 +71,7 @@ public class StateTransferMsgProcessor implements ProtocolProcessor {
                 }
             }
             if (!stateTransferMsg.isAcked()) {
-                ScaleOutCompleteAck ack = new ScaleOutCompleteAck(
+                StateTransferCompleteAck ack = new StateTransferCompleteAck(
                         stateTransferMsg.getKeyPrefix(), stateTransferMsg.getPrefix(),
                         stateTransferMsg.getOriginComputation());
                 try {
