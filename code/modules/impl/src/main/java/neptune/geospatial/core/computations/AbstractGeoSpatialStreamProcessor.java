@@ -47,7 +47,7 @@ import java.util.concurrent.atomic.AtomicLong;
 public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor {
 
     private Logger logger = Logger.getLogger(AbstractGeoSpatialStreamProcessor.class.getName());
-    public static final String OUTGOING_STREAM_BASE_ID = "out-going";
+    private static final String OUTGOING_STREAM_BASE_ID = "out-going";
     public static final int MAX_CHARACTER_DEPTH = 4;
     private static final int INPUT_RATE_UPDATE_INTERVAL = 10 * 1000;
 
@@ -78,6 +78,7 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
 
     /**
      * Return the state for the given prefix
+     *
      * @param prefix Geohash Prefix
      * @return serialized state of the prefix
      */
@@ -85,31 +86,48 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
 
     /**
      * Merge the state of the provided prefix with the current prefix
-     * @param prefix Prefix
+     *
+     * @param prefix           Prefix
      * @param serializedSketch Serialized state corresponding to the prefix
      */
     public abstract void merge(String prefix, byte[] serializedSketch);
 
-    public void onStartOfScaleOut(){}
+    /**
+     * Invoked when Scale out protocol is initiated.
+     * Can be used to track scaling out acitivity along with {@code onSuccessfulScaleOut}.
+     * Overriding this method is optional.
+     */
+    public void onStartOfScaleOut() {
+    }
 
-    public void onStartOfScaleIn(){}
+    /**
+     * Invoked when Scale in protocol is initiated.
+     * Can be used to track scaling in acitivity along with {@code onSuccessfulScaleIn}.
+     * Overriding this method is optional.
+     */
+    public void onStartOfScaleIn() {
+    }
 
     /**
      * Invoked after a successful completion of a scale out operation.
      * Can be used to track dynamic scaling activity.
      * Overriding this method is optional.
+     *
      * @param prefixes List of prefixes that were scaled out.
      */
-    public void onSuccessfulScaleOut(List<String> prefixes){}
+    public void onSuccessfulScaleOut(List<String> prefixes) {
+    }
 
     /**
      * Invoked after a successful completion of a scale in operation.
      * Similar to {@code onSuccessfulScaleOut}, this method can also be used to track
      * dynamic scaling activity.
      * Overriding this method is optional.
+     *
      * @param prefixes List of prefixes that were scaled in.
      */
-    public void onSuccessfulScaleIn(List<String> prefixes){}
+    public void onSuccessfulScaleIn(List<String> prefixes) {
+    }
 
     @Override
     public final void onEvent(StreamEvent streamEvent) throws StreamingDatasetException {
@@ -149,7 +167,7 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
      * @param record <code>GeoHashIndexedRecord</code> element
      * @return Whether to process the record locally(true) or not(false).
      */
-    protected boolean preprocess(GeoHashIndexedRecord record) throws StreamingDatasetException {
+    private boolean preprocess(GeoHashIndexedRecord record) throws StreamingDatasetException {
         String prefix = getPrefix(record);
         boolean processLocally;
         synchronized (this) {
