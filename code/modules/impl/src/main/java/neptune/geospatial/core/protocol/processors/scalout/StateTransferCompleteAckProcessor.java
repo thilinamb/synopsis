@@ -2,17 +2,20 @@ package neptune.geospatial.core.protocol.processors.scalout;
 
 import com.hazelcast.core.IMap;
 import ds.granules.communication.direct.control.ControlMessage;
-import ds.granules.neptune.interfere.core.NIException;
+import ds.granules.communication.direct.control.SendUtility;
+import ds.granules.exception.CommunicationsException;
 import neptune.geospatial.core.computations.AbstractGeoSpatialStreamProcessor;
 import neptune.geospatial.core.computations.scalingctxt.MonitoredPrefix;
 import neptune.geospatial.core.computations.scalingctxt.PendingScaleOutRequest;
 import neptune.geospatial.core.computations.scalingctxt.ScalingContext;
+import neptune.geospatial.core.protocol.msg.scaleout.ScaleOutCompleteMsg;
 import neptune.geospatial.core.protocol.msg.scaleout.StateTransferCompleteAck;
 import neptune.geospatial.core.protocol.processors.ProtocolProcessor;
-import neptune.geospatial.core.resource.ManagedResource;
 import neptune.geospatial.hazelcast.type.SketchLocation;
 import neptune.geospatial.util.trie.GeoHashPrefixTree;
 import org.apache.log4j.Logger;
+
+import java.io.IOException;
 
 /**
  * @author Thilina Buddhika
@@ -42,16 +45,16 @@ public class StateTransferCompleteAckProcessor implements ProtocolProcessor {
                     monitoredPrefix.getDestResourceCtrlEndpoint(), SketchLocation.MODE_SCALE_OUT));
             // finalize the scale out operation
             if (ackCount == pendingReq.getPrefixes().size()) {
+                ScaleOutCompleteMsg completeMsg = new ScaleOutCompleteMsg(ack.getKey(), instanceIdentifier,
+                        monitoredPrefix.getDestComputationId());
                 try {
+                    SendUtility.sendControlMessage(monitoredPrefix.getDestResourceCtrlEndpoint(), completeMsg);
                     if (logger.isDebugEnabled()) {
-                        logger.debug(String.format("[%s] Scaling out complete for now.", instanceIdentifier));
+                        logger.debug(String.format("[%s] Received all state transfer acks. " +
+                                "Sent ScaleOutComplete Message.", instanceIdentifier));
                     }
-                    scalingContext.completeScalingOut(ack.getKey());
-                    streamProcessor.onSuccessfulScaleOut(pendingReq.getPrefixes());
-                    streamProcessor.releaseMutex();
-                    ManagedResource.getInstance().scalingOperationComplete(instanceIdentifier);
-                } catch (NIException ignore) {
-
+                } catch (CommunicationsException | IOException e) {
+                    logger.error("Error sending ScaleOutCompleteMsg to " + monitoredPrefix.getDestResourceCtrlEndpoint());
                 }
             }
         } else {
