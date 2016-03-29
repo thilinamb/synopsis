@@ -4,7 +4,6 @@ import ds.granules.communication.direct.control.ControlMessage;
 import ds.granules.communication.direct.control.SendUtility;
 import ds.granules.exception.CommunicationsException;
 import ds.granules.neptune.interfere.core.NIException;
-import ds.granules.streaming.core.exception.StreamingDatasetException;
 import neptune.geospatial.core.computations.AbstractGeoSpatialStreamProcessor;
 import neptune.geospatial.core.computations.scalingctxt.MonitoredPrefix;
 import neptune.geospatial.core.computations.scalingctxt.PendingScaleOutRequest;
@@ -13,7 +12,6 @@ import neptune.geospatial.core.protocol.msg.StateTransferMsg;
 import neptune.geospatial.core.protocol.msg.scaleout.ScaleOutLockResponse;
 import neptune.geospatial.core.protocol.processors.ProtocolProcessor;
 import neptune.geospatial.core.resource.ManagedResource;
-import neptune.geospatial.graph.messages.GeoHashIndexedRecord;
 import org.apache.log4j.Logger;
 
 import java.io.IOException;
@@ -46,10 +44,6 @@ public class ScaleOutLockResponseProcessor implements ProtocolProcessor {
                     monitoredPrefix.setDestResourceCtrlEndpoint(targetLocCtrlEndpoint);
                     monitoredPrefix.setOutGoingStream(pendingReq.getStreamId());
                     try {
-                        // send a dummy message, just to ensure the new computation is activated.
-                        GeoHashIndexedRecord record = new GeoHashIndexedRecord(monitoredPrefix.getLastGeoHashSent(),
-                                prefix.length() + 1, -1, System.currentTimeMillis(), new byte[0]);
-                        streamProcessor.emit(monitoredPrefix.getOutGoingStream(), record);
                         byte[] state = streamProcessor.split(prefix);
                         StateTransferMsg stateTransferMsg = new StateTransferMsg(prefix, lockResponse.getKey(),
                                 state, targetComputation, instanceIdentifier,
@@ -63,8 +57,6 @@ public class ScaleOutLockResponseProcessor implements ProtocolProcessor {
                         }
                     } catch (CommunicationsException | IOException e) {
                         logger.error("Error transferring state to " + monitoredPrefix.getDestResourceCtrlEndpoint());
-                    } catch (StreamingDatasetException e) {
-                        logger.error("Error sending a message");
                     }
                 }
             } else {
