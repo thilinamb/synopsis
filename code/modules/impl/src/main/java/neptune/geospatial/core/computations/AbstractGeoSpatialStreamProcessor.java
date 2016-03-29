@@ -19,7 +19,7 @@ import neptune.geospatial.core.protocol.msg.scaleout.ScaleOutRequest;
 import neptune.geospatial.core.protocol.msg.StateTransferMsg;
 import neptune.geospatial.core.protocol.processors.*;
 import neptune.geospatial.core.protocol.processors.scalein.*;
-import neptune.geospatial.core.protocol.processors.scalout.ScaleOutCompleteProcessor;
+import neptune.geospatial.core.protocol.processors.scalout.StateTransferCompleteAckProcessor;
 import neptune.geospatial.core.protocol.processors.scalout.ScaleOutLockRequestProcessor;
 import neptune.geospatial.core.protocol.processors.scalout.ScaleOutLockResponseProcessor;
 import neptune.geospatial.core.protocol.processors.scalout.ScaleOutResponseProcessor;

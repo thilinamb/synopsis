@@ -46,11 +46,17 @@ public class ProtocolFactory {
                 case ProtocolTypes.SCALE_OUT_LOCK_RESP:
                     message = new ScaleOutLockResponse();
                     break;
-                case ProtocolTypes.DEPLOYMENT_ACK:
-                    message = new DeploymentAck();
+                case ProtocolTypes.SCALE_OUT_COMPLETE:
+                    message = new ScaleOutCompleteMsg();
                     break;
                 case ProtocolTypes.SCALE_OUT_COMPLETE_ACK:
                     message = new ScaleOutCompleteAck();
+                    break;
+                case ProtocolTypes.DEPLOYMENT_ACK:
+                    message = new DeploymentAck();
+                    break;
+                case ProtocolTypes.STATE_TRANSFER_COMPLETE_ACK:
+                    message = new StateTransferCompleteAck();
                     break;
                 case ProtocolTypes.SCALE_IN_LOCK_REQ:
                     message = new ScaleInLockRequest();

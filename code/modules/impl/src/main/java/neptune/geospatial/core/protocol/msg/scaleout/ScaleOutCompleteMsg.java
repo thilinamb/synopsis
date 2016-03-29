@@ -10,18 +10,18 @@ import java.io.IOException;
 /**
  * @author Thilina Buddhika
  */
-public class ScaleOutCompleteAck extends ControlMessage {
+public class ScaleOutCompleteMsg extends ControlMessage {
 
     private String key;
     private String sourceComputation;
     private String targetComputation;
 
-    public ScaleOutCompleteAck() {
-        super(ProtocolTypes.SCALE_OUT_COMPLETE_ACK);
+    public ScaleOutCompleteMsg() {
+        super(ProtocolTypes.SCALE_OUT_COMPLETE);
     }
 
-    public ScaleOutCompleteAck(String key, String sourceComputation, String targetComputation) {
-        super(ProtocolTypes.SCALE_OUT_COMPLETE_ACK);
+    public ScaleOutCompleteMsg(String key, String sourceComputation, String targetComputation) {
+        super(ProtocolTypes.SCALE_OUT_COMPLETE);
         this.key = key;
         this.sourceComputation = sourceComputation;
         this.targetComputation = targetComputation;

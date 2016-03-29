@@ -5,10 +5,7 @@ import neptune.geospatial.core.protocol.AbstractProtocolHandler;
 import neptune.geospatial.core.protocol.ProtocolTypes;
 import neptune.geospatial.core.protocol.msg.*;
 import neptune.geospatial.core.protocol.msg.scalein.*;
-import neptune.geospatial.core.protocol.msg.scaleout.ScaleOutCompleteAck;
-import neptune.geospatial.core.protocol.msg.scaleout.ScaleOutLockRequest;
-import neptune.geospatial.core.protocol.msg.scaleout.ScaleOutLockResponse;
-import neptune.geospatial.core.protocol.msg.scaleout.ScaleOutResponse;
+import neptune.geospatial.core.protocol.msg.scaleout.*;
 import org.apache.log4j.Logger;
 
 /**
@@ -52,12 +49,26 @@ public class ResourceProtocolHandler extends AbstractProtocolHandler {
                 }
                 managedResource.dispatchControlMessage(scaleOutLockResponse.getTargetComputation(), scaleOutLockResponse);
                 break;
+            case ProtocolTypes.SCALE_OUT_COMPLETE:
+                ScaleOutCompleteMsg scaleOutCompleteMsg = (ScaleOutCompleteMsg)ctrlMsg;
+                if (logger.isDebugEnabled()) {
+                    logger.debug("Received a ScaleOutCompleteMsg for " + scaleOutCompleteMsg.getTargetComputation());
+                }
+                managedResource.dispatchControlMessage(scaleOutCompleteMsg.getTargetComputation(), scaleOutCompleteMsg);
+                break;
             case ProtocolTypes.SCALE_OUT_COMPLETE_ACK:
-                ScaleOutCompleteAck scaleOutCompleteAck = (ScaleOutCompleteAck) ctrlMsg;
+                ScaleOutCompleteAck scaleOutCompleteAck = (ScaleOutCompleteAck)ctrlMsg;
                 if (logger.isDebugEnabled()) {
                     logger.debug("Received a ScaleOutCompleteAck for " + scaleOutCompleteAck.getTargetComputation());
                 }
                 managedResource.dispatchControlMessage(scaleOutCompleteAck.getTargetComputation(), scaleOutCompleteAck);
+                break;
+            case ProtocolTypes.STATE_TRANSFER_COMPLETE_ACK:
+                StateTransferCompleteAck stateTransferCompleteAck = (StateTransferCompleteAck) ctrlMsg;
+                if (logger.isDebugEnabled()) {
+                    logger.debug("Received a ScaleOutCompleteAck for " + stateTransferCompleteAck.getTargetComputation());
+                }
+                managedResource.dispatchControlMessage(stateTransferCompleteAck.getTargetComputation(), stateTransferCompleteAck);
                 break;
             case ProtocolTypes.SCALE_IN_LOCK_REQ:
                 ScaleInLockRequest lockReq = (ScaleInLockRequest) ctrlMsg;
