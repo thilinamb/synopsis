@@ -19,9 +19,10 @@ import ds.granules.util.NeptuneRuntime;
 import ds.granules.util.ParamsReader;
 import neptune.geospatial.core.computations.AbstractGeoSpatialStreamProcessor;
 import neptune.geospatial.core.protocol.AbstractProtocolHandler;
-import neptune.geospatial.core.protocol.msg.*;
+import neptune.geospatial.core.protocol.msg.StateTransferMsg;
 import neptune.geospatial.core.protocol.msg.scaleout.DeploymentAck;
-import neptune.geospatial.core.protocol.msg.scaleout.ScaleOutCompleteAck;
+import neptune.geospatial.core.protocol.msg.scaleout.ScaleOutLockRequest;
+import neptune.geospatial.core.protocol.msg.scaleout.StateTransferCompleteAck;
 import neptune.geospatial.hazelcast.HazelcastClientInstanceHolder;
 import neptune.geospatial.hazelcast.HazelcastNodeInstanceHolder;
 import neptune.geospatial.util.trie.GeoHashPrefixTree;
@@ -32,7 +33,10 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.*;
-import java.util.concurrent.*;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -104,7 +108,7 @@ public class ManagedResource {
     /**
      * Monitors the computations to detect the stragglers.
      */
-    class ComputationMonitor implements Runnable {
+    private class ComputationMonitor implements Runnable {
         @Override
         public void run() {
             if (logger.isDebugEnabled()) {
@@ -137,19 +141,18 @@ public class ManagedResource {
 
     private static Logger logger = Logger.getLogger(ManagedResource.class.getName());
     // config properties
-    public static final String ENABLE_DYNAMIC_SCALING = "rivulet-enable-dynamic-scaling";
-    public static final String MONITORING_INTERVAL = "rivulet-monitor-interval";
-    public static final String SCALE_OUT_THRESHOLD = "rivulet-scale-out-threshold";
-    public static final String SCALE_IN_THRESHOLD = "rivulet-scale-in-threshold";
-    public static final String MONITORED_BACKLOG_HISTORY_LENGTH = "rivulet-monitored-backlog-history-length";
-    public static final String HAZELCAST_SERIALIZER_PREFIX = "rivulet-hazelcast-serializer-";
-    public static final String HAZELCAST_INTERFACE = "rivulet-hazelcast-interface";
+    private static final String ENABLE_DYNAMIC_SCALING = "rivulet-enable-dynamic-scaling";
+    private static final String MONITORING_INTERVAL = "rivulet-monitor-interval";
+    private static final String SCALE_OUT_THRESHOLD = "rivulet-scale-out-threshold";
+    private static final String SCALE_IN_THRESHOLD = "rivulet-scale-in-threshold";
+    private static final String MONITORED_BACKLOG_HISTORY_LENGTH = "rivulet-monitored-backlog-history-length";
+    private static final String HAZELCAST_SERIALIZER_PREFIX = "rivulet-hazelcast-serializer-";
+    private static final String HAZELCAST_INTERFACE = "rivulet-hazelcast-interface";
 
     // default values
-    public int monitoredBackLogLength;
-    public long scaleOutThreshold;
-    public long scaleInThreshold;
-    public int monitoringPeriod;
+    private int monitoredBackLogLength;
+    private long scaleOutThreshold;
+    private long scaleInThreshold;
 
     private static ManagedResource instance;
     private String deployerEndpoint = null;
@@ -157,8 +160,9 @@ public class ManagedResource {
     private final Map<String, MonitoredComputationState> monitoredProcessors = new HashMap<>();
     private ScheduledExecutorService monitoringService = Executors.newSingleThreadScheduledExecutor();
     private Map<String, List<StateTransferMsg>> pendingStateTransfers = new HashMap<>();
+    private Map<String, ScaleOutLockRequest> pendingScaleOutLockRequests = new HashMap<>();
 
-    public ManagedResource(Properties inProps, int numOfThreads) throws CommunicationsException {
+    private ManagedResource(Properties inProps, int numOfThreads) throws CommunicationsException {
         Resource resource = new Resource(inProps, numOfThreads);
         resource.init();
         logger.info("Successfully Started ManagedResource.");
@@ -184,7 +188,7 @@ public class ManagedResource {
                         Integer.parseInt(startupProps.getProperty(SCALE_OUT_THRESHOLD)) : 100;
                 scaleInThreshold = startupProps.containsKey(SCALE_IN_THRESHOLD) ?
                         Integer.parseInt(startupProps.getProperty(SCALE_IN_THRESHOLD)) : 10;
-                monitoringPeriod = startupProps.containsKey(MONITORING_INTERVAL) ?
+                int monitoringPeriod = startupProps.containsKey(MONITORING_INTERVAL) ?
                         Integer.parseInt(startupProps.getProperty(MONITORING_INTERVAL)) : 5000;
                 monitoredBackLogLength = startupProps.containsKey(MONITORED_BACKLOG_HISTORY_LENGTH) ?
                         Integer.parseInt(startupProps.getProperty(MONITORED_BACKLOG_HISTORY_LENGTH)) : 5;
@@ -302,7 +306,7 @@ public class ManagedResource {
         }
     }
 
-    protected void acknowledgeCtrlMsgListenerStartup() {
+    void acknowledgeCtrlMsgListenerStartup() {
         countDownLatch.countDown();
     }
 
@@ -315,17 +319,28 @@ public class ManagedResource {
     }
 
     public void registerStreamProcessor(AbstractGeoSpatialStreamProcessor processor) {
-        synchronized (monitoredProcessors) {
-            monitoredProcessors.put(processor.getInstanceIdentifier(), new MonitoredComputationState(processor));
-            if (pendingStateTransfers.containsKey(processor.getInstanceIdentifier())) {
-                List<StateTransferMsg> stateTransferMsgs = pendingStateTransfers.remove(processor.getInstanceIdentifier());
+        synchronized (this) {
+            String instanceIdentifier = processor.getInstanceIdentifier();
+            monitoredProcessors.put(instanceIdentifier, new MonitoredComputationState(processor));
+            if (pendingStateTransfers.containsKey(instanceIdentifier)) {
+                List<StateTransferMsg> stateTransferMsgs = pendingStateTransfers.remove(instanceIdentifier);
                 for (StateTransferMsg stateTransferMsg : stateTransferMsgs) {
-                    logger.debug(String.format("Handing over the state for prefix: %s to: %s",
-                            processor.getInstanceIdentifier(), stateTransferMsg.getPrefix()));
+                    if (logger.isDebugEnabled()) {
+                        logger.debug(String.format("Handing over the state for prefix: %s to: %s",
+                                instanceIdentifier, stateTransferMsg.getPrefix()));
+                    }
                     stateTransferMsg.setAcked(true);
                     processor.processCtrlMessage(stateTransferMsg);
                 }
             }
+            if (pendingScaleOutLockRequests.containsKey(instanceIdentifier)) {
+                processor.processCtrlMessage(pendingScaleOutLockRequests.remove(instanceIdentifier));
+                if (logger.isDebugEnabled()) {
+                    logger.debug(String.format("Handing over ScaleOutLockRequest to %s.", instanceIdentifier));
+                }
+            }
+        }
+        synchronized (monitoredProcessors) {
             monitoredProcessors.notifyAll();
         }
     }
@@ -336,36 +351,43 @@ public class ManagedResource {
         monitoredComputationState.eligibleForScaling.set(true);
     }
 
-    public void dispatchControlMessage(String computationId, ControlMessage ctrlMessage) {
-        if (monitoredProcessors.containsKey(computationId)) {
-            monitoredProcessors.get(computationId).computation.processCtrlMessage(ctrlMessage);
-        } else if (ctrlMessage instanceof StateTransferMsg) {
-            StateTransferMsg stateTransferMsg = (StateTransferMsg) ctrlMessage;
-            if (!stateTransferMsg.isScaleType()) {
-                try {
-                    List<StateTransferMsg> stateTransferMsgs = pendingStateTransfers.get(computationId);
-                    if (stateTransferMsgs == null) {
-                        stateTransferMsgs = new ArrayList<>();
-                        pendingStateTransfers.put(computationId, stateTransferMsgs);
+    void dispatchControlMessage(String computationId, ControlMessage ctrlMessage) {
+        synchronized (this) {
+            if (monitoredProcessors.containsKey(computationId)) {
+                monitoredProcessors.get(computationId).computation.processCtrlMessage(ctrlMessage);
+            } else if (ctrlMessage instanceof StateTransferMsg) {
+                StateTransferMsg stateTransferMsg = (StateTransferMsg) ctrlMessage;
+                if (!stateTransferMsg.isScaleType()) {
+                    try {
+                        List<StateTransferMsg> stateTransferMsgs = pendingStateTransfers.get(computationId);
+                        if (stateTransferMsgs == null) {
+                            stateTransferMsgs = new ArrayList<>();
+                            pendingStateTransfers.put(computationId, stateTransferMsgs);
+                        }
+                        stateTransferMsgs.add(stateTransferMsg);
+                        StateTransferCompleteAck completeAck = new StateTransferCompleteAck(stateTransferMsg.getKeyPrefix(),
+                                stateTransferMsg.getPrefix(), stateTransferMsg.getOriginComputation());
+                        SendUtility.sendControlMessage(stateTransferMsg.getOriginEndpoint(), completeAck);
+                        logger.debug("New Computation is not active yet. Storing the StateTransfer Request.");
+                    } catch (CommunicationsException | IOException e) {
+                        logger.error("Error sending out the ScaleOutCompleteAck to " + stateTransferMsg.getOriginEndpoint());
                     }
-                    stateTransferMsgs.add(stateTransferMsg);
-                    StateTransferCompleteAck completeAck = new StateTransferCompleteAck(stateTransferMsg.getKeyPrefix(),
-                            stateTransferMsg.getPrefix(), stateTransferMsg.getOriginComputation());
-                    SendUtility.sendControlMessage(stateTransferMsg.getOriginEndpoint(), completeAck);
-                    logger.debug("New Computation is not active yet. Storing the StateTransfer Request.");
-                } catch (CommunicationsException | IOException e) {
-                    logger.error("Error sending out the ScaleOutCompleteAck to " + stateTransferMsg.getOriginEndpoint());
+                } else {
+                    logger.warn("Invalid StateTransferMsg to " + computationId);
+                }
+            } else if (ctrlMessage instanceof ScaleOutLockRequest) {
+                pendingScaleOutLockRequests.put(computationId, (ScaleOutLockRequest) ctrlMessage);
+                if (logger.isDebugEnabled()) {
+                    logger.debug("New computation is not active yet. Storing ScaleOutLockRequest.");
                 }
             } else {
-                logger.warn("Invalid StateTransferMsg to " + computationId);
+                logger.warn(String.format("Invalid control message to computation : %s, type: %d", computationId,
+                        ctrlMessage.getMessageType()));
             }
-        } else {
-            logger.warn(String.format("Invalid control message to computation : %s, type: %d", computationId,
-                    ctrlMessage.getMessageType()));
         }
     }
 
-    public void ackDeployment(String instanceId) {
+    void ackDeployment(String instanceId) {
         if (logger.isDebugEnabled()) {
             logger.debug(String.format("Sending deployment ack for %s", instanceId));
         }

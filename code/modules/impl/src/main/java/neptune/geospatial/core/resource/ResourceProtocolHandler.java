@@ -50,14 +50,14 @@ public class ResourceProtocolHandler extends AbstractProtocolHandler {
                 managedResource.dispatchControlMessage(scaleOutLockResponse.getTargetComputation(), scaleOutLockResponse);
                 break;
             case ProtocolTypes.SCALE_OUT_COMPLETE:
-                ScaleOutCompleteMsg scaleOutCompleteMsg = (ScaleOutCompleteMsg)ctrlMsg;
+                ScaleOutCompleteMsg scaleOutCompleteMsg = (ScaleOutCompleteMsg) ctrlMsg;
                 if (logger.isDebugEnabled()) {
                     logger.debug("Received a ScaleOutCompleteMsg for " + scaleOutCompleteMsg.getTargetComputation());
                 }
                 managedResource.dispatchControlMessage(scaleOutCompleteMsg.getTargetComputation(), scaleOutCompleteMsg);
                 break;
             case ProtocolTypes.SCALE_OUT_COMPLETE_ACK:
-                ScaleOutCompleteAck scaleOutCompleteAck = (ScaleOutCompleteAck)ctrlMsg;
+                ScaleOutCompleteAck scaleOutCompleteAck = (ScaleOutCompleteAck) ctrlMsg;
                 if (logger.isDebugEnabled()) {
                     logger.debug("Received a ScaleOutCompleteAck for " + scaleOutCompleteAck.getTargetComputation());
                 }
