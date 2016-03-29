@@ -1,6 +1,5 @@
 package neptune.geospatial.core.protocol.processors.scalout;
 
-import com.hazelcast.core.IMap;
 import ds.granules.communication.direct.control.ControlMessage;
 import ds.granules.communication.direct.control.SendUtility;
 import ds.granules.exception.CommunicationsException;
@@ -11,8 +10,6 @@ import neptune.geospatial.core.computations.scalingctxt.ScalingContext;
 import neptune.geospatial.core.protocol.msg.scaleout.ScaleOutCompleteMsg;
 import neptune.geospatial.core.protocol.msg.scaleout.StateTransferCompleteAck;
 import neptune.geospatial.core.protocol.processors.ProtocolProcessor;
-import neptune.geospatial.hazelcast.type.SketchLocation;
-import neptune.geospatial.util.trie.GeoHashPrefixTree;
 import org.apache.log4j.Logger;
 
 import java.io.IOException;
@@ -38,11 +35,7 @@ public class StateTransferCompleteAckProcessor implements ProtocolProcessor {
                 logger.debug(String.format("[%s] Received a ScaleOutCompleteAck. Sent Count: %d, Received Count: %d",
                         instanceIdentifier, pendingReq.getPrefixes().size(), ackCount));
             }
-            // update prefix tree
-            IMap<String, SketchLocation> prefMap = streamProcessor.getHzInstance().getMap(GeoHashPrefixTree.PREFIX_MAP);
             MonitoredPrefix monitoredPrefix = scalingContext.getMonitoredPrefix(ack.getPrefix());
-            prefMap.put(ack.getPrefix(), new SketchLocation(monitoredPrefix.getDestComputationId(),
-                    monitoredPrefix.getDestResourceCtrlEndpoint(), SketchLocation.MODE_SCALE_OUT));
             // finalize the scale out operation
             if (ackCount == pendingReq.getPrefixes().size()) {
                 ScaleOutCompleteMsg completeMsg = new ScaleOutCompleteMsg(ack.getKey(), instanceIdentifier,
