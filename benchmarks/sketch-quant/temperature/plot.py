@@ -18,7 +18,7 @@ kernel._compute_covariance()
 plt.ion()
 plt.clf()
 
-plt.suptitle('Density-Driven Synopsis Quantization', fontsize=16)
+plt.suptitle('Density-Driven Sketch Quantization', fontsize=16)
 
 fig1 = plt.figure(1)
 
