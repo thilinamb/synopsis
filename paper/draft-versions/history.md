@@ -1,5 +1,5 @@
 #Draft Version History
-Every version of the draft paper since (version 8) is tracked.
+Every draft version of the paper (since version 8) is tracked here.
 
 ###version 8
 **Date**:  03/20/2016
