@@ -68,9 +68,11 @@ class Node {
                                 computationId));
                     }
                 } else {
-                    logger.error(String.format("[%s] Error in the trie. Conflicting endpoints for the prefix. " +
-                                    "Prefix: %s, Provided Comp: %s, Expected Comp: %s", prefix, node.prefix,
-                            node.computationId, computationId));
+                    if (logger.isTraceEnabled()) {
+                        logger.trace(String.format("[%s] Conflicting endpoints for the prefix. " +
+                                        "Prefix: %s, Provided Comp: %s, Expected Comp: %s", prefix, node.prefix,
+                                node.computationId, computationId));
+                    }
                 }
             }
         } else {
