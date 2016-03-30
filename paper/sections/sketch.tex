@@ -48,7 +48,7 @@ Figure~\ref{fig:quantization} illustrates the quantization process for the \emph
 \end{table}
 
 \subsection{Temporal Dimensionality Reduction}
-While our quantization approach enables Synopsis to retain large volumes of data in main memory, we also offer a temporal \emph{accuracy gradient} to ensure the most relevant data points are prioritized for high accuracy. This is achieved by iteratively removing features from the Synopsis hierarchy in the oldest subgraphs, eventually phasing out old records. A user-defined ``length of study'' (for instance, 12 months) informs the system when dimensionality reduction can begin. As data ages, this process results in the creation of temporal accuracy bands.
+While our quantization approach enables Synopsis to retain large volumes of data in main memory, we also offer a temporal \emph{accuracy gradient} to ensure the most relevant data points are prioritized for high accuracy. This is achieved by iteratively removing features from the Sketch hierarchy in the oldest subgraphs, eventually phasing out old records. A user-defined ``length of study'' (for instance, 12 months) informs the system when dimensionality reduction can begin. As data ages, this process results in the creation of temporal accuracy bands.
 
 Selective temporal dimensionality reduction proceeds in a bottom-up fashion, starting from the leaf nodes. Given a set of relevant vertices, neighboring bins are merged uniformly across the feature space. As the bins are merged, their respective metadata is also merged, reducing memory consumption. Given two metadata instances, merging results in half the memory footprint. However, it is worth noting that this process is irreversible -- once metadata has been merged, it cannot be split at a later point in time. As time passes, entire feature planes are removed from the graph until a single metadata record is left for a particular temporal range. This allows users to still query the summary statistics and models for historical data, but at a lower level of accuracy.
 
@@ -59,7 +59,7 @@ Selective temporal dimensionality reduction proceeds in a bottom-up fashion, sta
     \begin{center}
         \begin{tabular}{|l|c|c|c|}
             \hline
-            Synopsis Age & Vertices & Edges & Leaves \\
+            Sketch Age & Vertices & Edges & Leaves \\
             \hline
             1 month & & & \\
             \hline
