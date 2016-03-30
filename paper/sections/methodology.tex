@@ -23,31 +23,31 @@ In targeted load migration, during heavy traffic the original node spawns a new 
 Replication-based scaling introduces a challenge during query evaluations in that the query must be forwarded to all nodes responsible for a particular scope and the results merged; depending on the nature of these queries (for e.g., correlation analysis and inferential queries) merging of results may be difficult to accomplish without extensive state synchronizations.
 %TODO: lines about how downscaling can be difficult in replication settings
 
-In Rivulet, we use targeted load migration for scaling out.
+In \textsc{Synopsis}, we use targeted load migration for scaling out.
 Our implementation closely follows the MAPE loop~\cite{maurer2011revealing} which is comprised of four phases: monitor (M), analyze (A), planning (P) and execution (E).
-The monitoring task as shown in Figure~\ref{fig:process-monitor} periodically probes every Rivulet task to gather two performance metrics as part of monitoring phase.
+The monitoring task as shown in Figure~\ref{fig:process-monitor} periodically probes every \textsc{Synopsis} task to gather two performance metrics as part of monitoring phase.
 \begin{enumerate}[leftmargin=*]
-	\item Length of the backlog: This represents the number of unprocessed messages in the queue. If the Rivulet task cannot keep up with the incoming data rate, then the backlog will grow over time.
+	\item Length of the backlog: This represents the number of unprocessed messages in the queue. If the \textsc{Synopsis} task cannot keep up with the incoming data rate, then the backlog will grow over time.
 	\item Memory pressure: Each Neptune resource is a JVM process which is being allocated a fixed amount of memory. 
 	Exceeding these memory limits create memory pressure which may cause extended garbage collection cycles and increased paging activity. 
-	This will eventually lead to reduced performance in every Rivulet task running in the Neptune resource.
-	Monitoring task will continuously record the memory utilization by the entire JVM process as well as the memory utilization by individual Rivulet tasks.
+	This will eventually lead to reduced performance in every  \textsc{Synopsis} task running in the Neptune resource.
+	Monitoring task will continuously record the memory utilization by the entire JVM process as well as the memory utilization by individual \textsc{Synopsis} tasks.
 \end{enumerate} 
 
-During the analysis phase, we use threshold based rules~\cite{lorido2012auto} to provide scale out recommendations to Rivulet nodes if necessary.
+During the analysis phase, we use threshold based rules~\cite{lorido2012auto} to provide scale out recommendations to \textsc{Synopsis} nodes if necessary.
 Currently we rely on a reactive scheme where we evaluate the threshold based rules based on the current observations.
 Scaling out recommendations are provided if either of following rules are consistently satisfied for certain number of observations.
 \begin{itemize}[leftmargin=*]  
-\item Growing backlog - This is an indication that a portion of the load needs to be migrated to a different Rivulet node.
+\item Growing backlog - This is an indication that a portion of the load needs to be migrated to a different \textsc{Synopsis} node.
 \item High overall memory utilization above a certain threshold (threshold is usually set below the memory limits allowing a capacity buffer for the process to avoid oscillation)
 \end{itemize}
 
-Upon receiving a scaling out recommendation from the monitoring task, a Rivulet node executes planning and execution phases.
+Upon receiving a scaling out recommendation from the monitoring task, a \textsc{Synopsis} node executes planning and execution phases.
 During the planning phase, it will choose the portion(s) of the region within its current purview to be handed over to another node.
 For this task, it relies on meta-data it maintains for each sub region (region corresponding to a longer Geohash string) and a numeric value provided along with the scale out recommendation which is a measure of how much load should be migrated.
 This meta data includes the data rate and the timestamp of the last processed message for each sub region.
-A Rivulet node updates these meta data with each message it processes.
-Often a Rivulet node migrates several prefixes during a single scale out operation.
+A \textsc{Synopsis} node updates these meta data with each message it processes.
+Often a \textsc{Synopsis} node migrates several prefixes during a single scale out operation.
 
 Only a single scale out operation takes place at a given time in a Neptune process.
 This is controlled using a mutual exclusive lock (mutex) located in each Neptune process.
@@ -56,22 +56,22 @@ The objective of above constraints is to avoid oscillations in scaling activitie
 For instance, if system aggressively scales out in the presence of a memory pressure without allowing a stabilization period, it is possible that the system ends up in a state where it is under provisioned. As a result of this, it will start aggressively scaling in and run again into an over provisioned state.
 
 Figure~\ref{fig:scale-out-protocol} depicts the phases of the scale out protocol.
-Once a Rivulet node decides on the sub regions, it initiates the scale out protocol by contacting the deployer.
-In this message, it includes a list of preferred Rivulet nodes for the load migration as well as memory requirements and expected message rate for the load.
-The preferred node set includes the Rivulet nodes that already holds its sub regions.
-The objective is to minimize the number of Rivulet nodes responsible for holding sketches for a given geographical region, because it reduces the number of Rivulet nodes to contact during a query evaluation for that region.
+Once a \textsc{Synopsis} node decides on the sub regions, it initiates the scale out protocol by contacting the deployer.
+In this message, it includes a list of preferred \textsc{Synopsis} nodes for the load migration as well as memory requirements and expected message rate for the load.
+The preferred node set includes the \textsc{Synopsis} nodes that already holds its sub regions.
+The objective is to minimize the number of \textsc{Synopsis} nodes responsible for holding sketches for a given geographical region, because it reduces the number of \textsc{Synopsis} nodes to contact during a query evaluation for that region.
 Deployer has an approximate view of the entire system gathered through gossip messages which includes the memory pressure and cumulative backlog information of each node.
-Based on this view and the information present in the request, deployer replies back with a set of target Rivulet nodes.
-If it cannot find a suitable node out of the existing set, the deployer will launch a new Rivulet node and include its location in the new request.
-Upon receiving the response from the deployer, Rivulet node contacts the target node and try to acquire the mutex.
-Lock will be granted if no other scaling operations takes place in the Neptune process which holds the Rivulet node and it can accommodate the migrated load.
-The second condition is checked again because the deployer may not have most upto-date metrics regarding the target Rivulet node due to the eventual consistent nature of its system view.
+Based on this view and the information present in the request, deployer replies back with a set of target \textsc{Synopsis} nodes.
+If it cannot find a suitable node out of the existing set, the deployer will launch a new \textsc{Synopsis} node and include its location in the new request.
+Upon receiving the response from the deployer, \textsc{Synopsis} node contacts the target node and try to acquire the mutex.
+Lock will be granted if no other scaling operations takes place in the Neptune process which holds the \textsc{Synopsis} node and it can accommodate the migrated load.
+The second condition is checked again because the deployer may not have most upto-date metrics regarding the target \textsc{Synopsis} node due to the eventual consistent nature of its system view.
 If the lock acquisition is failed, another node from the list of attempted.
-Else the original Rivulet node will create a pass-through channel and direct traffic towards the target node.
+Else the original \textsc{Synopsis} node will create a pass-through channel and direct traffic towards the target node.
 In the same time, it will initiate a state transfer using a different channel in the background.
 This will ensure that the state transfer doesn't affect the stream data flow and it happens asynchronously and the protocol ends without waiting for state transfer to complete.
-Even if the state transfer is not complete, the target Rivulet node updates its memory utilization metric to account for the pending state transfer. 
-Ending protocol within a short period of time is important because it can release mutual exclusive locks in both origin and target Rivulet nodes quickly and participate in other scaling activities soon after the stabilization period.
+Even if the state transfer is not complete, the target \textsc{Synopsis} node updates its memory utilization metric to account for the pending state transfer. 
+Ending protocol within a short period of time is important because it can release mutual exclusive locks in both origin and target \textsc{Synopsis} nodes quickly and participate in other scaling activities soon after the stabilization period.
 %
 \begin{figure}
     \centerline{\includegraphics[scale=0.55]{figures/scale-out-protocol.png}}
@@ -80,14 +80,14 @@ Ending protocol within a short period of time is important because it can releas
 \end{figure}
 %
 \subsection{Downscaling}
-During Scaling in, Rivulet nodes attempt to take back some of the sub-regions it scaled out previously to other Rivulet nodes.
+During Scaling in, \textsc{Synopsis} nodes attempt to take back some of the sub-regions it scaled out previously to other \textsc{Synopsis} nodes.
 This ensures better resource utilization in the system in addition to efficient query evaluations by having to contact less number of nodes.
 Scaling in operations are also guarded by the same mutual exclusive lock used for scale out (only one scale out or scale in operation takes place at a given time) and followed by a stabilization period.
 
 Monitoring and analysis phases are similar to scaling out scenario except for the obvious change to the threshold based rules.
 Now both memory pressure and backlog length metrics should consistently record values below a predefined lower threshold.
 When scaling in, we use a less aggressive scheme than scaling out; a single sub region is acquired during a single scale in operation.
-Scaling in is more complex than scaling out because it deals with more than one Rivulet node in most cases.
+Scaling in is more complex than scaling out because it deals with more than one \textsc{Synopsis} node in most cases.
 Because at this point, it is possible that further scale out operations have taken place in the scaled out sub region after the initial scale out.
 For instance, if node A in Figure~\ref{fig:stream-partitioning} decides to scale in the sub region \emph{DJK}, then it has to work with both nodes C and E.
 Scale in protocol starts with a lock acquisition protocol similar to scale out protocol as illustrated in Figure~\ref{fig:scale-in-protocol}.
@@ -98,7 +98,7 @@ If lock acquisition is failed in any part of the sub tree, then the scale in ope
 If the sub tree is successfully locked, then data flow to the child nodes corresponding to this sub region is immediately terminated.
 If there was a short circuit set up before, it will be removed and the data will start flow to the parent node.
 The state acquisition phase begins next.
-To ensure that Rivulet does not lose any messages, the initiator node sends a termination point control message to the child node.
+To ensure that \textsc{Synopsis} does not lose any messages, the initiator node sends a termination point control message to the child node.
 Termination point is the sequence number of the last message sent to the child node either by the parent itself or by the short circuit channel.
 It may be possible that the child has already processed this message and updated its sketch by the time it receives the termination point control message.
 But in extreme cases, the termination point control message may get processed before the actual stream packet with the same sequence number.
@@ -116,22 +116,22 @@ Locks are released from the bottom to top in the sub tree where parent releases 
 
 \subsection{Query Evaluations}
 \label{subsec:query-eval}
-Accounting for data arrival rates, accuracy requirements, memory pressures, and the capacity of network links result in dynamic upscaling and downscaling of nodes that comprise Rivulet. The result of these scaling operations is a distributed sketch, with constituent nodes holding compact representations of observational data from different geographic locations. 
+Accounting for data arrival rates, accuracy requirements, memory pressures, and the capacity of network links result in dynamic upscaling and downscaling of nodes that comprise \textsc{Synopsis}. The result of these scaling operations is a distributed sketch, with constituent nodes holding compact representations of observational data from different geographic locations. 
 
-Information about nodes that comprise the Rivulet sketch is maintained as a prefix tree at each node. Addition and removal of nodes comprising the distributed sketch due to scaling maneuvers are propagated through the system and the prefix trees updated. Information within the prefix trees is designed to be eventually consistent.  Alongside each vertex in this prefix tree, we maintain information about the spatiotemporal scope/range and the set of features available at the node.  
+Information about nodes that comprise the \textsc{Synopsis} sketch is maintained as a prefix tree at each node. Addition and removal of nodes comprising the distributed sketch due to scaling maneuvers are propagated through the system and the prefix trees updated. Information within the prefix trees is designed to be eventually consistent.  Alongside each vertex in this prefix tree, we maintain information about the spatiotemporal scope/range and the set of features available at the node.  
 
-Rivulet incorporates support for discrete and continuous queries specified by users. Queries specified by a user are evaluated over the distributed sketch. Depending on the spatial scopes that may be implicitly or explicitly specified within these queries, query evaluations will be performed on one or more nodes comprising the distributed sketch. 
+\textsc{Synopsis} incorporates support for discrete and continuous queries specified by users. Queries specified by a user are evaluated over the distributed sketch. Depending on the spatial scopes that may be implicitly or explicitly specified within these queries, query evaluations will be performed on one or more nodes comprising the distributed sketch. 
 
-The entry point for these queries may be any of the nodes comprising the distributed sketch – we refer to this node as the conduit for the particular query.  During query evaluations, a first step is to identify the set of Rivulet nodes that must be targeted for query evaluations. The conduit node consults its prefix tree to identify nodes to contact based on the spatial, chronological, and particular features implied in the query. Conduit nodes are responsible for forwarding queries to the relevant nodes comprising the distributed sketch where the query must be evaluated.  The conduit node also responds to the client with the list of nodes that will be responding to the query. 
+The entry point for these queries may be any of the nodes comprising the distributed sketch – we refer to this node as the conduit for the particular query.  During query evaluations, a first step is to identify the set of \textsc{Synopsis} nodes that must be targeted for query evaluations. The conduit node consults its prefix tree to identify nodes to contact based on the spatial, chronological, and particular features implied in the query. Conduit nodes are responsible for forwarding queries to the relevant nodes comprising the distributed sketch where the query must be evaluated.  The conduit node also responds to the client with the list of nodes that will be responding to the query. 
 
-Results from query evaluations performed over the distributed sketch are streamed back to the client.  Precisely what is streamed depends on the nature of the query.  For example, if a client is interested in retrieving average temperatures in Colorado for July 2015 and if there are multiple nodes (within Rivulet) that hold relevant portions of this data; then the query must be forwarded to all these nodes. The results returned from each of these nodes would include {\textless}temperature, frequency{\textgreater} tuples that would then be combined at the client side to compute the final average temperature.
+Results from query evaluations performed over the distributed sketch are streamed back to the client.  Precisely what is streamed depends on the nature of the query.  For example, if a client is interested in retrieving average temperatures in Colorado for July 2015 and if there are multiple nodes (within \textsc{Synopsis}) that hold relevant portions of this data; then the query must be forwarded to all these nodes. The results returned from each of these nodes would include {\textless}temperature, frequency{\textgreater} tuples that would then be combined at the client side to compute the final average temperature.
 
-Alternatively, Rivulet nodes participating in the query evaluations will return vertices and edges (from their internal sketches) that satisfied the specified query constraints. The vertices and edges will be restricted to those pertinent to the query. For example, if a query targets a particular feature (say humidity) then vertices/edges relating to other features not targeted by the query will be pruned and not returned.  Spatiotemporal features are exempt from this constraint. As vertices and edges are streamed back to the client from multiple nodes comprising Rivulet, these are organized into a graph that is then used to return the final results. 
+Alternatively, \textsc{Synopsis} nodes participating in the query evaluations will return vertices and edges (from their internal sketches) that satisfied the specified query constraints. The vertices and edges will be restricted to those pertinent to the query. For example, if a query targets a particular feature (say humidity) then vertices/edges relating to other features not targeted by the query will be pruned and not returned.  Spatiotemporal features are exempt from this constraint. As vertices and edges are streamed back to the client from multiple nodes comprising \textsc{Synopsis}, these are organized into a graph that is then used to return the final results. 
 
-The prefix tree also allows query evaluations during both upscaling and downscaling operations. During query evaluations, queries are forwarded to child nodes (created during a recent upscaling operation). When the conduit forwards a query to a Rivulet node and the node is unavailable, it is either due to a failure at that node or a downscaling operation that merges the child node with its parent node. When a node is unreachable, the conduit forwards the query to the parent node. 
+The prefix tree also allows query evaluations during both upscaling and downscaling operations. During query evaluations, queries are forwarded to child nodes (created during a recent upscaling operation). When the conduit forwards a query to a \textsc{Synopsis} node and the node is unavailable, it is either due to a failure at that node or a downscaling operation that merges the child node with its parent node. When a node is unreachable, the conduit forwards the query to the parent node. 
 
 \subsection{Types of Queries}
-Queries within Rivulet can be discrete or continuous queries. Unlike discrete queries that are evaluated once, continuous queries are evaluated periodically or when observations become available. Though observations are never stored on stable storage, queries specified by users may target spatial and chronological scopes. In the case of continuous queries, the chronological range implicitly evolves as new observations trickle in; in the case of windowing operators, the specified chronological window continually slides over the observational streams. We classify queries – discrete or continuous –   supported by Rivulet into 5 broad queries. These include:
+Queries within \textsc{Synopsis} can be discrete or continuous queries. Unlike discrete queries that are evaluated once, continuous queries are evaluated periodically or when observations become available. Though observations are never stored on stable storage, queries specified by users may target spatial and chronological scopes. In the case of continuous queries, the chronological range implicitly evolves as new observations trickle in; in the case of windowing operators, the specified chronological window continually slides over the observational streams. We classify queries – discrete or continuous –   supported by \textsc{Synopsis} into 5 broad queries. These include:
 \begin{enumerate} 
 	\item	Filter queries that specify inequality/relational queries along one or more dimensions. 
 	\item	Statistical queries allow users to explore statistical properties of the observational space. For example, users can retrieve and contrast correlations between any two features at different geographic locations at the same time. Alternatively, queries may contrast correlations between different features at different time ranges at the same geographic location. Statistical queries also support retrieval of the mean, standard deviation, and also of feature outliers based on Chebyshev’s rule about the distribution of feature values.
@@ -159,6 +159,6 @@ Queries that we have discussed so far report on what has happened; a forecasting
 
 \subsection{Support for High throughput Query Evaluations}
 
-\subsection{Coping with Failures in Rivulet}
+\subsection{Coping with Failures in \textsc{Synopsis}}
 
 

@@ -43,11 +43,11 @@ The sketch scales (up or down) dynamically to cope with data arrival rates. At e
 \subsection{Paper Contributions}
 In this paper we presented a framework for supporting real-time query evaluations over voluminous, time-series data streams. Our specific contributions include:
 \begin{itemize}
-\item   Design of the Trident sketch that maintains compact, distributed representations of the observational space. At each node, the sketch supports dynamic reorientations to conserve memory and support faster query evaluations.
+\item   Design of the \textsc{Synopsis} sketch that maintains compact, distributed representations of the observational space. At each node, the sketch supports dynamic reorientations to conserve memory and support faster query evaluations.
 \item   Support for dynamic scaling of the sketch in response to the data arrival rates. Upscaling operations support targeted alleviation of hotspots. Only geographic locations that are observing high data arrival rates are scale. The framework manages the complexity of identifying these hotspots, splitting the particular portion of the sketch, and migrating relevant portions of the sketch. Most importantly, the framework achieves this while maintaining acceptable levels of accuracy in query evaluations.
 \item   Support for one-time and continuous evaluations of the observational space. We incorporate support for CQL queries. Query evaluations can target arbitrarily sized (chronological) window sizes and geospatial scopes.
 \item   Support for high-throughput, distributed evaluation of queries.
-To our knowledge, Trident is the first sketch designed specifically for geospatial observational data. We have validated the suitability of our approach through a comprehensive set of benchmarks with real observational data. 
+To our knowledge, \textsc{Synopsis} is the first sketch designed specifically for geospatial observational data. We have validated the suitability of our approach through a comprehensive set of benchmarks with real observational data. 
 \end{itemize}
 
 \subsection{Paper Organization}

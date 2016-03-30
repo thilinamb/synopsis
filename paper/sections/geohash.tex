@@ -1,5 +1,5 @@
 \subsection{Stream Partitioning}
-We use the Geohash~algorithm~\cite{geohash} to balance load and partition incoming data streams across processing resources. Geohash divides the earth into a hierarchy of bounding boxes identified by Base 32 strings; the longer the Geohash string, the more precise the bounding box. Figure~\ref{fig:geohash} illustrates this hierarchy. Most of the eastern United States is contained within the bounding box described by Geohash string \emph{D}, while \emph{DJ} encompasses substantial parts of Florida, Georgia, and Alabama. The bounding box \emph{DJKJ} (highlighted in red) contains Tallahassee, Florida. This hierarchical representation enables \textsc{Rivulet} to cope with both low- and high-density regions: several resources may be tasked with managing streams originating in and around large cities, while rural areas fall under the purview of a single node.
+We use the Geohash~algorithm~\cite{geohash} to balance load and partition incoming data streams across processing resources. Geohash divides the earth into a hierarchy of bounding boxes identified by Base 32 strings; the longer the Geohash string, the more precise the bounding box. Figure~\ref{fig:geohash} illustrates this hierarchy. Most of the eastern United States is contained within the bounding box described by Geohash string \emph{D}, while \emph{DJ} encompasses substantial parts of Florida, Georgia, and Alabama. The bounding box \emph{DJKJ} (highlighted in red) contains Tallahassee, Florida. This hierarchical representation enables \textsc{Synopsis} to cope with both low- and high-density regions: several resources may be tasked with managing streams originating in and around large cities, while rural areas fall under the purview of a single node.
 
 \begin{figure}
     \centerline{\includegraphics[width=3.5in]{figures/geohash.pdf}}
@@ -11,13 +11,13 @@ To achieve fine-grained control over our Geohash partitions, we operate at the b
 
 Figure~\ref{fig:stream-partitioning} depicts a possible arrangement of the distributed sketch and the associated stream partitioning scheme corresponding to the same geographic region described above.
 The distributed sketch is arranged in a tree-like structure.
-Stream ingesters act as root nodes of this tree structure and they partition the geo-spatial stream among the Rivulet nodes using the Geohash based partitioning function.
+Stream ingesters act as root nodes of this tree structure and they partition the geo-spatial stream among the \textsc{Synopsis} nodes using the Geohash based partitioning function.
 Nodes closer to the root hold sketches corresponding to shorter Geohash strings.
 In other words, they contain sketches for larger geographical regions.
 For instance, nodes A and B in Figure~\ref{fig:stream-partitioning} are responsible for regions represented by Geohashes \emph{DJ} and and \emph{DN} respectively.
 Node E, which is 3 edges deep from the stream ingester, is responsible for a smaller region, \emph{DJKJ}.
 
-Rivulet is designed to ensure that the regions which are corresponding to larger portions of input streams, hence more frequent updates to the sketch, are moved to dedicated or less crowded nodes.
+\textsc{Synopsis} is designed to ensure that the regions which are corresponding to larger portions of input streams, hence more frequent updates to the sketch, are moved to dedicated or less crowded nodes.
 If a node decides to scale out a portion of the region it is currently responsible for, then the corresponding state (sketch and related meta data) is transferred over to the new computation and it starts to treat the stream packets corresponding to the scaled out region as pass-through traffic (Scaling out is explained in section~\ref{subsec:scaling-out}).
 More specifically, it will not process the stream packet, instead updates its statistics based on the headers of the packet and forwards it to the child node . 
 For instance, node A in Figure~\ref{fig:stream-partitioning} have scaled out two regions (\emph{DJK} and \emph{DJM}) to nodes C and D.
