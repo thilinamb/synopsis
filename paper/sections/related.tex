@@ -7,4 +7,9 @@ Dynamic scaling and elasticity in stream processing systems are studied before~\
 Heinze et al.~\cite{heinze2014auto} have explored using different dynamic scaling schemes including threshold based rules and reinforcement learning using the FUGU~\cite{heinze2013elastic} stream processing engine.
 Based on these schemes, the operators are continuously migrated between hosts in a FUGU cluster in order to optimize the resource utilization and to maintain a low latency.
 Their approach is quite different from ours, because in \textsc{Synopsis} we perform a targeted load migration where the workload of a computation is dynamically adjusted instead of entirely moving it to a host with a higher or lower capacity than the current host.
-Further we do not interrupt the data flow through \textsc{Synopsis} when dynamic scaling activities are in progress whereas in FUGU predecessor operator is temporarily paused until the operator migration is complete. sou
+Further we do not interrupt the data flow through \textsc{Synopsis} when dynamic scaling activities are in progress whereas in FUGU predecessor operator is temporarily paused until the operator migration is complete. 
+StreamCloud~\cite{gulisano2012streamcloud} relies on a global threshold based scheme to implement elasticity where a query is partioned into sub-queries which run on separate clusters.
+StreamCloud relies on a centralized component, Elastic Manager, to initiate the elastic reconfiguration protocol whereas in Synopsis each node independently initiates the dynamic scaling protocol.
+This difference is mainly due to different optimization objectives of the two systems; StreamCloud tries to optimize the average CPU usage per cluster while Synopsis attempts to maintain stability at each node.
+State recreation protocol of StreamCloud is conceptually similar to the state transfer protocol in Synopsis, except in StreamCloud the tuples are buffered at the new location until the state transfer is complete.
+But in Synopsis, the new node starts building the state (sketch) which is later merged with the asynchronously transferred state from the previous node.
