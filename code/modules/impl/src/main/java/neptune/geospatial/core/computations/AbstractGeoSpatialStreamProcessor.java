@@ -129,6 +129,44 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
     public void onSuccessfulScaleIn(List<String> prefixes) {
     }
 
+    /**
+     * Returns an estimation of the memory consumed by the sketch for a given prefix
+     * @param prefix Prefix String
+     * @return estimation of consumed memory
+     */
+    public double getMemoryConsumptionForPrefix(String prefix){
+        throw new UnsupportedOperationException("getMemoryConsumptionForPrefix is not implemented in " +
+                "AbstractGeoSpatialStreamProcessor class.");
+    }
+
+    /**
+     * Returns an estimation of memory consumption by all prefixes
+     * @return estimated memory consumption
+     */
+    public double getMemoryConsumptionForAllPrefixes(){
+        throw new UnsupportedOperationException("getMemoryConsumptionForAllPrefixes is not implemented in " +
+                "AbstractGeoSpatialStreamProcessor class.");
+    }
+
+    /**
+     * Returns the state change since last invocation of this method.
+     * If this is invoked for the first time, returns the base version.
+     * @return Serialized state change
+     */
+    public byte[] getSketchDiff(){
+        throw new UnsupportedOperationException("getSketchDiff is not implemented in " +
+                "AbstractGeoSpatialStreamProcessor class.");
+    }
+
+    /**
+     * Repopulate the sketch using serialized state changes stored in disk
+     * @param baseDirPath Path to the directory where the serialized state changes are stored
+     */
+    public void populateSketch(String baseDirPath){
+        throw new UnsupportedOperationException("populateSketch is not implemented in " +
+                "AbstractGeoSpatialStreamProcessor class.");
+    }
+
     @Override
     public final void onEvent(StreamEvent streamEvent) throws StreamingDatasetException {
         if (!initialized.get()) {
