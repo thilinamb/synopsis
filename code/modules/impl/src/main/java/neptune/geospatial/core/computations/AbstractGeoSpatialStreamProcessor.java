@@ -67,6 +67,8 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
     // protocol processors
     private Map<Integer, ProtocolProcessor> protocolProcessors = new HashMap<>();
 
+    // fault tolerance enabled
+    private boolean faultToleranceEnabled;
 
     /**
      * Implement the specific business logic to process each
@@ -176,6 +178,7 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
                 messageSize.set(getMessageSize(streamEvent));
                 this.scalingContext = new ScalingContext(getInstanceIdentifier());
                 ManagedResource.getInstance().registerStreamProcessor(this);
+                this.faultToleranceEnabled = ManagedResource.getInstance().isFaultToleranceEnabled();
                 initialized.set(true);
                 if (logger.isDebugEnabled()) {
                     logger.debug(String.format("[%s] Initialized. Message Size: %d", getInstanceIdentifier(),

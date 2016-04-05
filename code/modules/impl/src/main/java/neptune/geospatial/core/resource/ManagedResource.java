@@ -28,9 +28,7 @@ import neptune.geospatial.hazelcast.HazelcastNodeInstanceHolder;
 import neptune.geospatial.util.trie.GeoHashPrefixTree;
 import org.apache.log4j.Logger;
 
-import java.io.BufferedWriter;
 import java.io.File;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.CountDownLatch;
@@ -148,6 +146,7 @@ public class ManagedResource {
     private static final String MONITORED_BACKLOG_HISTORY_LENGTH = "rivulet-monitored-backlog-history-length";
     private static final String HAZELCAST_SERIALIZER_PREFIX = "rivulet-hazelcast-serializer-";
     private static final String HAZELCAST_INTERFACE = "rivulet-hazelcast-interface";
+    private static final String ENABLE_FAULT_TOLERANCE = "rivulet-enable-fault-tolerance";
 
     // default values
     private int monitoredBackLogLength;
@@ -161,6 +160,8 @@ public class ManagedResource {
     private ScheduledExecutorService monitoringService = Executors.newSingleThreadScheduledExecutor();
     private Map<String, List<StateTransferMsg>> pendingStateTransfers = new HashMap<>();
     private Map<String, ScaleOutLockRequest> pendingScaleOutLockRequests = new HashMap<>();
+
+    private boolean enableFaultTolerance = false;
 
     private ManagedResource(Properties inProps, int numOfThreads) throws CommunicationsException {
         Resource resource = new Resource(inProps, numOfThreads);
@@ -199,6 +200,10 @@ public class ManagedResource {
                                 "Monitoring Period: %d (ms), Monitored Backlog History Length: %d", scaleInThreshold,
                         scaleOutThreshold, monitoringPeriod, monitoredBackLogLength));
             }
+            // if fault tolerance enabled
+            enableFaultTolerance = startupProps.containsKey(ENABLE_FAULT_TOLERANCE) && Boolean.parseBoolean(
+                    startupProps.getProperty(ENABLE_FAULT_TOLERANCE).toLowerCase());
+
             initializeHazelcast(startupProps);
             // register callback to receive deployment acks.
             ChannelToStreamDeMultiplexer.getInstance().registerCallback(Constants.DEPLOYMENT_REQ,
@@ -393,5 +398,9 @@ public class ManagedResource {
             logger.debug(String.format("Sending deployment ack for %s", instanceId));
         }
         sendToDeployer(new DeploymentAck(instanceId));
+    }
+
+    public boolean isFaultToleranceEnabled(){
+        return this.enableFaultTolerance;
     }
 }
