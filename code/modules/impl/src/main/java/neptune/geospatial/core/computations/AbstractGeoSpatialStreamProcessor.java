@@ -67,8 +67,10 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
     // protocol processors
     private Map<Integer, ProtocolProcessor> protocolProcessors = new HashMap<>();
 
-    // fault tolerance enabled
+    // fault tolerance related configurations
     private boolean faultToleranceEnabled;
+    private long tsLastStateReplication = -1;
+    private long stateReplicationInterval;
 
     /**
      * Implement the specific business logic to process each
@@ -177,8 +179,12 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
                 initializeProtocolProcessors();
                 messageSize.set(getMessageSize(streamEvent));
                 this.scalingContext = new ScalingContext(getInstanceIdentifier());
-                ManagedResource.getInstance().registerStreamProcessor(this);
-                this.faultToleranceEnabled = ManagedResource.getInstance().isFaultToleranceEnabled();
+                ManagedResource resource = ManagedResource.getInstance();
+                resource.registerStreamProcessor(this);
+                this.faultToleranceEnabled = resource.isFaultToleranceEnabled();
+                if(faultToleranceEnabled){
+                    stateReplicationInterval = resource.getStateReplicationInterval();
+                }
                 initialized.set(true);
                 if (logger.isDebugEnabled()) {
                     logger.debug(String.format("[%s] Initialized. Message Size: %d", getInstanceIdentifier(),
@@ -197,6 +203,15 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
         if (preprocess(geoHashIndexedRecord)) {
             // perform the business logic: do this selectively. Send through the traffic we don't process.
             process(geoHashIndexedRecord);
+        }
+        if(faultToleranceEnabled){
+            long currentTs = System.currentTimeMillis();
+            if(tsLastStateReplication == -1){
+                tsLastStateReplication = currentTs;
+            } else if((currentTs - tsLastStateReplication) >= stateReplicationInterval) {
+                // state replication logic goes here
+                tsLastStateReplication = currentTs;
+            }
         }
     }
 

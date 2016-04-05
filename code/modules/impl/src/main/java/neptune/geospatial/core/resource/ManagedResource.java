@@ -147,6 +147,7 @@ public class ManagedResource {
     private static final String HAZELCAST_SERIALIZER_PREFIX = "rivulet-hazelcast-serializer-";
     private static final String HAZELCAST_INTERFACE = "rivulet-hazelcast-interface";
     private static final String ENABLE_FAULT_TOLERANCE = "rivulet-enable-fault-tolerance";
+    public static final String STATE_REPLICATION_INTERVAL = "rivulet-state-replication-interval";
 
     // default values
     private int monitoredBackLogLength;
@@ -162,6 +163,7 @@ public class ManagedResource {
     private Map<String, ScaleOutLockRequest> pendingScaleOutLockRequests = new HashMap<>();
 
     private boolean enableFaultTolerance = false;
+    private long stateReplicationInterval = 2000;
 
     private ManagedResource(Properties inProps, int numOfThreads) throws CommunicationsException {
         Resource resource = new Resource(inProps, numOfThreads);
@@ -203,6 +205,10 @@ public class ManagedResource {
             // if fault tolerance enabled
             enableFaultTolerance = startupProps.containsKey(ENABLE_FAULT_TOLERANCE) && Boolean.parseBoolean(
                     startupProps.getProperty(ENABLE_FAULT_TOLERANCE).toLowerCase());
+            if (enableFaultTolerance) {
+                stateReplicationInterval = startupProps.containsKey(STATE_REPLICATION_INTERVAL) ?
+                        Long.parseLong(STATE_REPLICATION_INTERVAL) : 2000;
+            }
 
             initializeHazelcast(startupProps);
             // register callback to receive deployment acks.
@@ -400,7 +406,11 @@ public class ManagedResource {
         sendToDeployer(new DeploymentAck(instanceId));
     }
 
-    public boolean isFaultToleranceEnabled(){
+    public boolean isFaultToleranceEnabled() {
         return this.enableFaultTolerance;
+    }
+
+    public long getStateReplicationInterval() {
+        return stateReplicationInterval;
     }
 }
