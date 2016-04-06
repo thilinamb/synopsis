@@ -12,9 +12,9 @@ import org.apache.log4j.Logger;
  *
  * @author Thilina Buddhika
  */
-public class FTGeoSpatialStreamProcessor extends StreamProcessor {
+public class StateReplicaProcessor extends StreamProcessor {
 
-    private Logger logger = Logger.getLogger(FTGeoSpatialStreamProcessor.class);
+    private Logger logger = Logger.getLogger(StateReplicaProcessor.class);
 
     @Override
     public void onEvent(StreamEvent streamEvent) throws StreamingDatasetException {
