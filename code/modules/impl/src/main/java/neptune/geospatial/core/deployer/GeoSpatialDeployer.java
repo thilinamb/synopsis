@@ -34,6 +34,7 @@ import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
+import neptune.geospatial.core.computations.AbstractGeoSpatialStreamProcessor;
 import neptune.geospatial.core.protocol.msg.scaleout.DeploymentAck;
 import neptune.geospatial.core.protocol.msg.scaleout.ScaleOutRequest;
 import neptune.geospatial.core.protocol.msg.scaleout.ScaleOutResponse;
@@ -105,6 +106,7 @@ public class GeoSpatialDeployer extends JobDeployer {
     private Map<String, String> niOpAssignments = new HashMap<>();
     private Map<String, Operation> computationIdToObjectMap = new HashMap<>();
     private Map<String, String> niControlToDataEndPoints = new HashMap<>();
+    private Map<String, Topic> stateReplicationOpPlacements = new HashMap<>();
     private List<ScaleOutResponse> pendingDeployments = new ArrayList<>();
     private String jobId;
     private DeployerConfig deployerConfig;
@@ -138,6 +140,10 @@ public class GeoSpatialDeployer extends JobDeployer {
                     // write the assignments to ZooKeeper
                     ZooKeeperUtils.createDirectory(zk, Constants.ZK_ZNODE_OP_ASSIGNMENTS + "/" + operatorId,
                             resourceEndpoint.getDataEndpoint().getBytes(), CreateMode.PERSISTENT);
+                    // configure state replication
+                    if(faultToleranceEnabled && op instanceof AbstractGeoSpatialStreamProcessor){
+                        configureReplicationStreams((AbstractGeoSpatialStreamProcessor) op);
+                    }
                 }
                 // send the deployment messages
                 for (Map.Entry<Operation, String> entry : assignments.entrySet()) {
@@ -153,6 +159,14 @@ public class GeoSpatialDeployer extends JobDeployer {
             System.exit(-1);
         }
         return null;
+    }
+
+    private void configureReplicationStreams(AbstractGeoSpatialStreamProcessor streamProcessor) {
+        Topic[] topics = new Topic[]{stateReplicationOpPlacements.get(
+                resourceEndpoints.get((lastAssigned + 1) % resourceEndpoints.size()).getDataEndpoint())
+                , stateReplicationOpPlacements.get(
+                resourceEndpoints.get((lastAssigned + 2) % resourceEndpoints.size()).getDataEndpoint())};
+        streamProcessor.deployStateReplicationStreams(topics);
     }
 
     private void deployStateReplicaOperators(String jobId) throws CommunicationsException, DeploymentException {
@@ -172,6 +186,7 @@ public class GeoSpatialDeployer extends JobDeployer {
                         resourceEndpoint.getDataEndpoint().getBytes(), CreateMode.PERSISTENT);
                 // deploy the operator
                 deployOperation(jobId, resourceEndpoint.getDataEndpoint(), stateReplicaProcessor);
+                stateReplicationOpPlacements.put(resourceEndpoint.getDataEndpoint(), topic);
             } catch (KeeperException | InterruptedException | StreamingDatasetException e) {
                 throw new DeploymentException(e.getMessage(), e);
             }
