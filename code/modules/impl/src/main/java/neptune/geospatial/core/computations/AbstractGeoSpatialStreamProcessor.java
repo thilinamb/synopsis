@@ -5,22 +5,27 @@ import com.hazelcast.core.HazelcastInstance;
 import ds.funnel.topic.Topic;
 import ds.granules.communication.direct.control.ControlMessage;
 import ds.granules.communication.direct.control.SendUtility;
+import ds.granules.dataset.DatasetException;
 import ds.granules.dataset.StreamEvent;
 import ds.granules.exception.CommunicationsException;
 import ds.granules.neptune.interfere.core.NIException;
 import ds.granules.streaming.core.StreamProcessor;
 import ds.granules.streaming.core.exception.StreamingDatasetException;
 import ds.granules.streaming.core.exception.StreamingGraphConfigurationException;
+import ds.granules.streaming.core.partition.scheme.SendToAllPartitioner;
 import neptune.geospatial.core.computations.scalingctxt.*;
 import neptune.geospatial.core.protocol.ProtocolTypes;
+import neptune.geospatial.core.protocol.msg.StateTransferMsg;
 import neptune.geospatial.core.protocol.msg.scalein.ScaleInActivateReq;
 import neptune.geospatial.core.protocol.msg.scalein.ScaleInLockRequest;
 import neptune.geospatial.core.protocol.msg.scaleout.ScaleOutRequest;
-import neptune.geospatial.core.protocol.msg.StateTransferMsg;
-import neptune.geospatial.core.protocol.processors.*;
+import neptune.geospatial.core.protocol.processors.ProtocolProcessor;
+import neptune.geospatial.core.protocol.processors.StateTransferMsgProcessor;
 import neptune.geospatial.core.protocol.processors.scalein.*;
 import neptune.geospatial.core.protocol.processors.scalout.*;
 import neptune.geospatial.core.resource.ManagedResource;
+import neptune.geospatial.ft.StateReplicationMessage;
+import neptune.geospatial.graph.Constants;
 import neptune.geospatial.graph.messages.GeoHashIndexedRecord;
 import neptune.geospatial.hazelcast.HazelcastClientInstanceHolder;
 import neptune.geospatial.hazelcast.HazelcastException;
@@ -29,6 +34,7 @@ import neptune.geospatial.util.Mutex;
 import org.apache.log4j.Logger;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -518,5 +524,32 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
         protocolProcessors.put(ProtocolTypes.STATE_TRANSFER_MSG, new StateTransferMsgProcessor());
         protocolProcessors.put(ProtocolTypes.SCALE_IN_COMPLETE, new ScaleInCompleteMsgProcessor());
         protocolProcessors.put(ProtocolTypes.SCALE_IN_COMPLETE_ACK, new ScaleInCompleteAckProcessor());
+    }
+
+    /**
+     * deploy outgoing streams for state replication
+     *
+     * @param topics Stream ids of chosen replica locations
+     */
+    public void deployStateReplicationStreams(Topic[] topics){
+        String fqStreamId = getStreamIdentifier(Constants.Streams.STATE_REPLICA_STREAM);
+        try {
+            for(Topic topic : topics){
+                this.streamDataset.addOutputStream(topic);
+                String streamType = StateReplicationMessage.class.getName();
+                outGoingStreamTypes.put(fqStreamId, streamType);
+                outGoingStreamTypes.put(topic.toString(), streamType);
+            }
+            StreamDisseminationMetadata streamDisseminationMetadata = new StreamDisseminationMetadata(new SendToAllPartitioner(), topics);
+            if (metadataRegistry.containsKey(Constants.Streams.STATE_REPLICA_STREAM)) {
+                metadataRegistry.get(Constants.Streams.STATE_REPLICA_STREAM).add(streamDisseminationMetadata);
+            } else {
+                List<StreamDisseminationMetadata> streamDisseminationMetadataElems = new ArrayList<>();
+                streamDisseminationMetadataElems.add(streamDisseminationMetadata);
+                metadataRegistry.put(Constants.Streams.STATE_REPLICA_STREAM, streamDisseminationMetadataElems);
+            }
+        } catch (DatasetException e) {
+            e.printStackTrace();
+        }
     }
 }
