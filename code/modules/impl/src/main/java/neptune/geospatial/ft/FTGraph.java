@@ -56,7 +56,7 @@ public class FTGraph {
             job.addStreamProcessor("record-counter", RecordCounter.class, 1, processorProps);
 
             // add operators related to fault tolerance
-            job.addStreamProcessor("state-replica", FTGeoSpatialStreamProcessor.class, 2);
+            job.addStreamProcessor("state-replica", StateReplicaProcessor.class, 2);
 
             // edges
             job.addLink("ingester", "record-counter", Constants.Streams.GEO_HASH_INDEXED_RECORDS,
