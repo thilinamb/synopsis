@@ -146,8 +146,8 @@ public class ManagedResource {
     private static final String MONITORED_BACKLOG_HISTORY_LENGTH = "rivulet-monitored-backlog-history-length";
     private static final String HAZELCAST_SERIALIZER_PREFIX = "rivulet-hazelcast-serializer-";
     private static final String HAZELCAST_INTERFACE = "rivulet-hazelcast-interface";
-    private static final String ENABLE_FAULT_TOLERANCE = "rivulet-enable-fault-tolerance";
-    public static final String STATE_REPLICATION_INTERVAL = "rivulet-state-replication-interval";
+    public static final String ENABLE_FAULT_TOLERANCE = "rivulet-enable-fault-tolerance";
+    private static final String STATE_REPLICATION_INTERVAL = "rivulet-state-replication-interval";
 
     // default values
     private int monitoredBackLogLength;

@@ -3,7 +3,9 @@ package neptune.geospatial.core.deployer;
 import com.google.gson.Gson;
 import com.google.gson.stream.JsonReader;
 import ds.funnel.topic.StringTopic;
+import ds.funnel.topic.Topic;
 import ds.granules.communication.direct.JobDeployer;
+import ds.granules.communication.direct.ZooKeeperAgent;
 import ds.granules.communication.direct.control.SendUtility;
 import ds.granules.communication.direct.dispatch.ControlMessageDispatcher;
 import ds.granules.communication.direct.netty.server.MessageReceiver;
@@ -35,9 +37,12 @@ import io.netty.channel.socket.nio.NioServerSocketChannel;
 import neptune.geospatial.core.protocol.msg.scaleout.DeploymentAck;
 import neptune.geospatial.core.protocol.msg.scaleout.ScaleOutRequest;
 import neptune.geospatial.core.protocol.msg.scaleout.ScaleOutResponse;
+import neptune.geospatial.core.resource.ManagedResource;
+import neptune.geospatial.ft.StateReplicaProcessor;
 import org.apache.log4j.Logger;
 import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.KeeperException;
+import org.apache.zookeeper.ZooKeeper;
 
 import java.io.FileReader;
 import java.io.IOException;
@@ -103,16 +108,22 @@ public class GeoSpatialDeployer extends JobDeployer {
     private List<ScaleOutResponse> pendingDeployments = new ArrayList<>();
     private String jobId;
     private DeployerConfig deployerConfig;
+    private boolean faultToleranceEnabled;
 
     @Override
     public ProgressTracker deployOperations(Operation[] operations) throws
             CommunicationsException, DeploymentException, MarshallingException {
+        this.jobId = uuidRetriever.getRandomBasedUUIDAsString();
+
+        if (faultToleranceEnabled) {
+            // deploy state replica computations at each resource
+            deployStateReplicaOperators(jobId);
+        }
         // shuffle operations
         List<Operation> opList = Arrays.asList(operations);
         //Collections.shuffle(opList);
         opList.toArray(operations);
 
-        this.jobId = uuidRetriever.getRandomBasedUUIDAsString();
         if (!resourceEndpoints.isEmpty()) {
             try {
                 Map<Operation, String> assignments = new HashMap<>(operations.length);
@@ -142,6 +153,29 @@ public class GeoSpatialDeployer extends JobDeployer {
             System.exit(-1);
         }
         return null;
+    }
+
+    private void deployStateReplicaOperators(String jobId) throws CommunicationsException, DeploymentException {
+        ZooKeeper zk = ZooKeeperAgent.getInstance().getZooKeeperInstance();
+        // deploy one state replica operator per instance
+        for (ResourceEndpoint resourceEndpoint : resourceEndpoints) {
+            StateReplicaProcessor stateReplicaProcessor = new StateReplicaProcessor();
+            int topicId;
+            try {
+                topicId = ZooKeeperUtils.getNextSequenceNumber(zk);
+                Topic topic = new StringTopic(Integer.toString(topicId));
+                // create a subscription
+                stateReplicaProcessor.registerIncomingTopic(topic);
+                // write the assignments to ZooKeeper
+                ZooKeeperUtils.createDirectory(zk, Constants.ZK_ZNODE_OP_ASSIGNMENTS + "/" +
+                                stateReplicaProcessor.getInstanceIdentifier(),
+                        resourceEndpoint.getDataEndpoint().getBytes(), CreateMode.PERSISTENT);
+                // deploy the operator
+                deployOperation(jobId, resourceEndpoint.getDataEndpoint(), stateReplicaProcessor);
+            } catch (KeeperException | InterruptedException | StreamingDatasetException e) {
+                throw new DeploymentException(e.getMessage(), e);
+            }
+        }
     }
 
     private ResourceEndpoint nextResource(Operation op) {
@@ -175,6 +209,9 @@ public class GeoSpatialDeployer extends JobDeployer {
             JsonReader jsonReader = gson.newJsonReader(configReader);
             deployerConfig = gson.fromJson(jsonReader, DeployerConfig.class);
             logger.info("Using the custom deployment configuration.");
+        }
+        if (streamingProperties.containsKey(ManagedResource.ENABLE_FAULT_TOLERANCE)) {
+            faultToleranceEnabled = Boolean.parseBoolean(streamingProperties.getProperty(ManagedResource.ENABLE_FAULT_TOLERANCE));
         }
         super.initialize(streamingProperties);
         initializationCompleted();
@@ -253,15 +290,14 @@ public class GeoSpatialDeployer extends JobDeployer {
                 } catch (CommunicationsException | IOException e) {
                     logger.error("Error sending out the TriggerScaleAck to " + scaleOutReq.getOriginEndpoint());
                 }
-            }
-            else {
+            } else {
                 pendingDeployments.add(ack);
             }
         }
     }
 
-    public void handleDeploymentAck(DeploymentAck deploymentAck){
-        if(!pendingDeployments.isEmpty()){
+    public void handleDeploymentAck(DeploymentAck deploymentAck) {
+        if (!pendingDeployments.isEmpty()) {
             ScaleOutResponse ack = pendingDeployments.remove(0);
             try {
                 SendUtility.sendControlMessage(ack.getTargetEndpoint(), ack);
