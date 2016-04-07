@@ -293,11 +293,12 @@ public class GeoSpatialDeployer extends JobDeployer {
                             clone.getInstanceIdentifier(),
                     resourceEndpoint.getDataEndpoint().getBytes(), CreateMode.PERSISTENT);
             // deploy the operation in the chosen Granules resource
-            deployOperation(this.jobId, resourceEndpoint.getDataEndpoint(), clone);
             computationIdToObjectMap.put(clone.getInstanceIdentifier(), clone);
             niOpAssignments.put(clone.getInstanceIdentifier(), resourceEndpoint.getControlEndpoint());
             ack = new ScaleOutResponse(scaleOutReq.getMessageId(), computationId, scaleOutReq.getOriginEndpoint(), true,
                     clone.getInstanceIdentifier(), resourceEndpoint.getControlEndpoint());
+            pendingDeployments.add(ack);
+            deployOperation(this.jobId, resourceEndpoint.getDataEndpoint(), clone);
             if (logger.isDebugEnabled()) {
                 logger.debug(String.format("Sent the deployment request new instance. Instance Id: %s, Location: %s",
                         clone.getInstanceIdentifier(), resourceEndpoint.getDataEndpoint()));
