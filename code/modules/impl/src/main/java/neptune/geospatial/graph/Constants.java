@@ -15,4 +15,11 @@ public class Constants {
         public static final String NOAA_DATA_STREAM = "noaa-data-stream";
         public static final String STATE_REPLICA_STREAM = "state-replica-stream";
     }
+
+    /**
+     * Operators names
+     */
+    public class Operators {
+        public static final String STATE_REPLICA_PROCESSOR_NAME = "state-replica-processor";
+    }
 }

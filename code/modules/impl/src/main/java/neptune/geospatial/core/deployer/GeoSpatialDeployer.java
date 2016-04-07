@@ -179,7 +179,7 @@ public class GeoSpatialDeployer extends JobDeployer {
                 topicId = ZooKeeperUtils.getNextSequenceNumber(zk);
                 Topic topic = new StringTopic(Integer.toString(topicId));
                 // create a subscription
-                stateReplicaProcessor.registerIncomingTopic(topic);
+                stateReplicaProcessor.registerIncomingTopic(topic, jobId);
                 // write the assignments to ZooKeeper
                 ZooKeeperUtils.createDirectory(zk, Constants.ZK_ZNODE_OP_ASSIGNMENTS + "/" +
                                 stateReplicaProcessor.getInstanceIdentifier(),
