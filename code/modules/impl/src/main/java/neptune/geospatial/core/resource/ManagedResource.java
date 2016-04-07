@@ -207,8 +207,10 @@ public class ManagedResource {
                     startupProps.getProperty(ENABLE_FAULT_TOLERANCE).toLowerCase());
             if (enableFaultTolerance) {
                 stateReplicationInterval = startupProps.containsKey(STATE_REPLICATION_INTERVAL) ?
-                        Long.parseLong(STATE_REPLICATION_INTERVAL) : 2000;
+                        Long.parseLong(startupProps.getProperty(STATE_REPLICATION_INTERVAL)) : 2000;
             }
+
+            logger.info("Fault tolerance enabled: " + enableFaultTolerance);
 
             initializeHazelcast(startupProps);
             // register callback to receive deployment acks.

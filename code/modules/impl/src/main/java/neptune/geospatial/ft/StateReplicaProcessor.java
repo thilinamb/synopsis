@@ -25,7 +25,10 @@ public class StateReplicaProcessor extends StreamProcessor {
 
     @Override
     public void onEvent(StreamEvent streamEvent) throws StreamingDatasetException {
-        logger.debug("Received a state replication message");
+        StateReplicationMessage stateReplicationMsg = (StateReplicationMessage) streamEvent;
+        if (logger.isDebugEnabled()) {
+            logger.debug("Received a state replication message. Comp: " + stateReplicationMsg.getComputationId());
+        }
     }
 
     @Override

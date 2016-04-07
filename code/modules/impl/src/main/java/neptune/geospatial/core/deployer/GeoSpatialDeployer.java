@@ -141,7 +141,7 @@ public class GeoSpatialDeployer extends JobDeployer {
                     ZooKeeperUtils.createDirectory(zk, Constants.ZK_ZNODE_OP_ASSIGNMENTS + "/" + operatorId,
                             resourceEndpoint.getDataEndpoint().getBytes(), CreateMode.PERSISTENT);
                     // configure state replication
-                    if(faultToleranceEnabled && op instanceof AbstractGeoSpatialStreamProcessor){
+                    if (faultToleranceEnabled && op instanceof AbstractGeoSpatialStreamProcessor) {
                         configureReplicationStreams((AbstractGeoSpatialStreamProcessor) op);
                     }
                 }
@@ -167,6 +167,12 @@ public class GeoSpatialDeployer extends JobDeployer {
                 , stateReplicationOpPlacements.get(
                 resourceEndpoints.get((lastAssigned + 2) % resourceEndpoints.size()).getDataEndpoint())};
         streamProcessor.deployStateReplicationStreams(topics);
+        if (logger.isDebugEnabled()) {
+            logger.debug(String.format("State Replication Processors are deployed for %s in %s and %s",
+                    streamProcessor.getInstanceIdentifier(),
+                    resourceEndpoints.get((lastAssigned + 1) % resourceEndpoints.size()).getDataEndpoint(),
+                    resourceEndpoints.get((lastAssigned + 2) % resourceEndpoints.size()).getDataEndpoint()));
+        }
     }
 
     private void deployStateReplicaOperators(String jobId) throws CommunicationsException, DeploymentException {
@@ -228,6 +234,7 @@ public class GeoSpatialDeployer extends JobDeployer {
         if (streamingProperties.containsKey(ManagedResource.ENABLE_FAULT_TOLERANCE)) {
             faultToleranceEnabled = Boolean.parseBoolean(streamingProperties.getProperty(ManagedResource.ENABLE_FAULT_TOLERANCE));
         }
+        logger.info("Fault Tolerance Enabled: " + faultToleranceEnabled);
         super.initialize(streamingProperties);
         initializationCompleted();
     }
