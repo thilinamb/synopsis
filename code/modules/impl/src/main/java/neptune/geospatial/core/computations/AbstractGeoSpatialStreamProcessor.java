@@ -138,19 +138,21 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
 
     /**
      * Returns an estimation of the memory consumed by the sketch for a given prefix
+     *
      * @param prefix Prefix String
      * @return estimation of consumed memory
      */
-    public double getMemoryConsumptionForPrefix(String prefix){
+    public double getMemoryConsumptionForPrefix(String prefix) {
         throw new UnsupportedOperationException("getMemoryConsumptionForPrefix is not implemented in " +
                 "AbstractGeoSpatialStreamProcessor class.");
     }
 
     /**
      * Returns an estimation of memory consumption by all prefixes
+     *
      * @return estimated memory consumption
      */
-    public double getMemoryConsumptionForAllPrefixes(){
+    public double getMemoryConsumptionForAllPrefixes() {
         throw new UnsupportedOperationException("getMemoryConsumptionForAllPrefixes is not implemented in " +
                 "AbstractGeoSpatialStreamProcessor class.");
     }
@@ -158,18 +160,20 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
     /**
      * Returns the state change since last invocation of this method.
      * If this is invoked for the first time, returns the base version.
+     *
      * @return Serialized state change
      */
-    public byte[] getSketchDiff(){
+    public byte[] getSketchDiff() {
         throw new UnsupportedOperationException("getSketchDiff is not implemented in " +
                 "AbstractGeoSpatialStreamProcessor class.");
     }
 
     /**
      * Repopulate the sketch using serialized state changes stored in disk
+     *
      * @param baseDirPath Path to the directory where the serialized state changes are stored
      */
-    public void populateSketch(String baseDirPath){
+    public void populateSketch(String baseDirPath) {
         throw new UnsupportedOperationException("populateSketch is not implemented in " +
                 "AbstractGeoSpatialStreamProcessor class.");
     }
@@ -185,7 +189,7 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
                 ManagedResource resource = ManagedResource.getInstance();
                 resource.registerStreamProcessor(this);
                 this.faultToleranceEnabled = resource.isFaultToleranceEnabled();
-                if(faultToleranceEnabled){
+                if (faultToleranceEnabled) {
                     stateReplicationInterval = resource.getStateReplicationInterval();
                 }
                 initialized.set(true);
@@ -536,10 +540,10 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
      *
      * @param topics Stream ids of chosen replica locations
      */
-    public void deployStateReplicationStreams(Topic[] topics){
+    public void deployStateReplicationStreams(Topic[] topics) {
         String fqStreamId = getStreamIdentifier(Constants.Streams.STATE_REPLICA_STREAM);
         try {
-            for(Topic topic : topics){
+            for (Topic topic : topics) {
                 this.streamDataset.addOutputStream(topic);
                 String streamType = StateReplicationMessage.class.getName();
                 outGoingStreamTypes.put(fqStreamId, streamType);

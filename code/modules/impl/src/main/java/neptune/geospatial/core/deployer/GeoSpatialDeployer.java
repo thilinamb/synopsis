@@ -62,7 +62,7 @@ public class GeoSpatialDeployer extends JobDeployer {
 
         private int ctrlPort;
 
-        public CtrlMessageEndpoint(int ctrlPort) {
+        CtrlMessageEndpoint(int ctrlPort) {
             this.ctrlPort = ctrlPort;
         }
 
@@ -98,7 +98,7 @@ public class GeoSpatialDeployer extends JobDeployer {
     }
 
     private static final Logger logger = Logger.getLogger(GeoSpatialDeployer.class);
-    public static final String DEPLOYER_CONFIG_PATH = "deployer-config";
+    private static final String DEPLOYER_CONFIG_PATH = "deployer-config";
 
     private CountDownLatch initializationLatch = new CountDownLatch(2);
     private NIScheduler scheduler = new NIRoundRobinScheduler();
@@ -252,7 +252,7 @@ public class GeoSpatialDeployer extends JobDeployer {
         return instance;
     }
 
-    protected void ackCtrlMsgHandlerStarted() {
+    void ackCtrlMsgHandlerStarted() {
         initializationLatch.countDown();
     }
 
@@ -265,7 +265,7 @@ public class GeoSpatialDeployer extends JobDeployer {
         }
     }
 
-    public void handleScaleUpRequest(ScaleOutRequest scaleOutReq) throws GeoSpatialDeployerException {
+    void handleScaleUpRequest(ScaleOutRequest scaleOutReq) throws GeoSpatialDeployerException {
         String computationId = scaleOutReq.getCurrentComputation();
         if (!computationIdToObjectMap.containsKey(computationId)) {
             throw new GeoSpatialDeployerException("Invalid computation: " + computationId);
@@ -283,7 +283,7 @@ public class GeoSpatialDeployer extends JobDeployer {
             currentComp.addStreamConsumer(new StringTopic(scaleOutReq.getTopic()), clone, scaleOutReq.getStreamId(),
                     scaleOutReq.getStreamType());
             // initialize the state replication streams for the new computation
-            if(clone instanceof AbstractGeoSpatialStreamProcessor){
+            if (faultToleranceEnabled && clone instanceof AbstractGeoSpatialStreamProcessor) {
                 configureReplicationStreams((AbstractGeoSpatialStreamProcessor) clone);
             }
             // deploy
@@ -317,13 +317,11 @@ public class GeoSpatialDeployer extends JobDeployer {
                 } catch (CommunicationsException | IOException e) {
                     logger.error("Error sending out the TriggerScaleAck to " + scaleOutReq.getOriginEndpoint());
                 }
-            } else {
-                pendingDeployments.add(ack);
             }
         }
     }
 
-    public void handleDeploymentAck(DeploymentAck deploymentAck) {
+    void handleDeploymentAck(DeploymentAck deploymentAck) {
         if (!pendingDeployments.isEmpty()) {
             ScaleOutResponse ack = pendingDeployments.remove(0);
             try {
