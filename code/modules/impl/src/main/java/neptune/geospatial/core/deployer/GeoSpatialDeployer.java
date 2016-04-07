@@ -275,6 +275,10 @@ public class GeoSpatialDeployer extends JobDeployer {
             }
             currentComp.addStreamConsumer(new StringTopic(scaleOutReq.getTopic()), clone, scaleOutReq.getStreamId(),
                     scaleOutReq.getStreamType());
+            // initialize the state replication streams for the new computation
+            if(clone instanceof AbstractGeoSpatialStreamProcessor){
+                configureReplicationStreams((AbstractGeoSpatialStreamProcessor) clone);
+            }
             // deploy
             ResourceEndpoint resourceEndpoint = nextResource(clone);
             // write the assignments to ZooKeeper
