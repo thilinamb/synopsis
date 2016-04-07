@@ -34,10 +34,7 @@ import neptune.geospatial.util.Mutex;
 import org.apache.log4j.Logger;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -210,13 +207,21 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
             // perform the business logic: do this selectively. Send through the traffic we don't process.
             process(geoHashIndexedRecord);
         }
-        if(faultToleranceEnabled){
+        if (faultToleranceEnabled) {
             long currentTs = System.currentTimeMillis();
-            if(tsLastStateReplication == -1){
+            if (tsLastStateReplication == -1) {
                 tsLastStateReplication = currentTs;
-            } else if((currentTs - tsLastStateReplication) >= stateReplicationInterval) {
-                // state replication logic goes here
+            } else if ((currentTs - tsLastStateReplication) >= stateReplicationInterval) {
+                // send out a dummy state replication message for now
+                byte[] serializedState = new byte[100];
+                new Random().nextBytes(serializedState);
+                StateReplicationMessage stateReplicationMessage = new StateReplicationMessage(getInstanceIdentifier(),
+                        (byte) 1, serializedState);
+                writeToStream(Constants.Streams.STATE_REPLICA_STREAM, stateReplicationMessage);
                 tsLastStateReplication = currentTs;
+                if(logger.isDebugEnabled()){
+                    logger.debug(String.format("[%s] state was replicated.", getInstanceIdentifier()));
+                }
             }
         }
     }
