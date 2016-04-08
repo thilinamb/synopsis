@@ -159,7 +159,7 @@ public class FeatureArray implements ByteSerializable {
 
         int[] dimensions = getMaxDimensions(features);
         constructBackingStore(dimensions);
-        convertNativeArray(features);
+        PrimitiveArray(features);
     }
 
     /**
@@ -167,9 +167,9 @@ public class FeatureArray implements ByteSerializable {
      *
      * @param array multidimensional native array to convert.
      */
-    private void convertNativeArray(Object array) {
+    private void PrimitiveArray(Object array) {
         AtomicInteger counter = new AtomicInteger();
-        convertNativeArray(counter, array);
+        convertPrimitiveArray(counter, array);
     }
 
     /**
@@ -180,7 +180,7 @@ public class FeatureArray implements ByteSerializable {
      * @param counter used to track the 1D array indices as they are populated
      * @param array multidimensional native array to convert
      */
-    private void convertNativeArray(AtomicInteger counter, Object array) {
+    private void convertPrimitiveArray(AtomicInteger counter, Object array) {
         try {
             Array.getLength(array);
         } catch (Exception e) {
@@ -188,7 +188,7 @@ public class FeatureArray implements ByteSerializable {
             int index = counter.getAndIncrement();
             Feature feature;
             try {
-                feature = Feature.fromNativeType(array);
+                feature = Feature.fromPrimitiveType(array);
 
                 if (this.type == null) {
                     this.type = feature.getType();
@@ -204,7 +204,7 @@ public class FeatureArray implements ByteSerializable {
 
         Object[] castedArray = ((Object[]) array);
         for (int i = 0; i < castedArray.length; ++i) {
-            convertNativeArray(counter, castedArray[i]);
+            convertPrimitiveArray(counter, castedArray[i]);
         }
     }
 

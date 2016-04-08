@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2013, Colorado State University
+Copyright (c) 2016, Colorado State University
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification,
@@ -25,39 +25,15 @@ software, even if advised of the possibility of such damage.
 
 package io.sigpipe.sing.dataset.feature;
 
-import java.io.IOException;
+public class IllegalFeatureComparisonException extends ClassCastException {
 
-import io.sigpipe.sing.serialization.ByteSerializable;
-import io.sigpipe.sing.serialization.SerializationInputStream;
-import io.sigpipe.sing.serialization.SerializationOutputStream;
+    private static final long serialVersionUID = 3609806621134764641L;
 
-/**
- * Represents an interval consisting of two double-precision floating point
- * numbers.
- *
- * @author malensek
- */
-public class DoubleIntervalFeatureData
-extends IntervalFeatureData<Double> implements ByteSerializable {
-
-    public DoubleIntervalFeatureData(double data1, double data2) {
-        this.data = data1;
-        this.data2 = data2;
-        this.type = FeatureType.INTERVAL_DOUBLE;
-    }
-
-    @Deserialize
-    public DoubleIntervalFeatureData(SerializationInputStream in)
-    throws IOException {
-        this.data = in.readDouble();
-        this.data2 = in.readDouble();
-        this.type = FeatureType.INTERVAL_DOUBLE;
-    }
-
-    @Override
-    public void serialize(SerializationOutputStream out)
-    throws IOException {
-        out.writeDouble(data);
-        out.writeDouble(data2);
+    public IllegalFeatureComparisonException(
+            FeatureData<?> a, FeatureData<?> b) {
+        super(
+                "[" + a.getType() + ", " + a.data + "]"
+                + " cannot be compared to "
+                + "[" + b.getType() + ", " + b.data + "]");
     }
 }

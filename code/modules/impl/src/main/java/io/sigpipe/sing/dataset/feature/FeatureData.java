@@ -25,10 +25,6 @@ software, even if advised of the possibility of such damage.
 
 package io.sigpipe.sing.dataset.feature;
 
-import java.util.logging.Level;
-import java.util.logging.Logger;
-
-import io.sigpipe.sing.dataset.Pair;
 import io.sigpipe.sing.serialization.ByteSerializable;
 
 /**
@@ -39,8 +35,6 @@ import io.sigpipe.sing.serialization.ByteSerializable;
  */
 abstract class FeatureData<T extends Comparable<T>>
 implements ByteSerializable, Comparable<FeatureData<?>> {
-
-    private static final Logger logger = Logger.getLogger("io.sigpipe.sing");
 
     protected T data;
     protected FeatureType type = FeatureType.NULL;
@@ -85,54 +79,6 @@ implements ByteSerializable, Comparable<FeatureData<?>> {
     public abstract double toDouble();
 
     /**
-     * Provides the integer-based interval representation of this FeatureData.
-     * If the FeatureData does not contain an interval (i.e., it is just a
-     * single point) then the start and end points of the interval will be the
-     * same value.
-     *
-     * @return integer interval representation of this FeatureData.
-     */
-    public Pair<Integer, Integer> toIntInterval() {
-        return new Pair<Integer, Integer>(this.toInt(), this.toInt());
-    }
-
-    /**
-     * Provides the long integer-based interval representation of this
-     * FeatureData.  If the FeatureData does not contain an interval (i.e., it
-     * is just a single point) then the start and end points of the interval
-     * will be the same value.
-     *
-     * @return long interval representation of this FeatureData.
-     */
-    public Pair<Long, Long> toLongInterval() {
-        return new Pair<Long, Long>(this.toLong(), this.toLong());
-    }
-
-    /**
-     * Provides the floating point interval representation of this FeatureData.
-     * If the FeatureData does not contain an interval (i.e., it is just a
-     * single point) then the start and end points of the interval will be the
-     * same value.
-     *
-     * @return float interval representation of this FeatureData.
-     */
-    public Pair<Float, Float> toFloatInterval() {
-        return new Pair<Float, Float>(this.toFloat(), this.toFloat());
-    }
-
-    /**
-     * Provides the double-precision floating point interval representation of
-     * this FeatureData.  If the FeatureData does not contain an interval (i.e.,
-     * it is just a single point) then the start and end points of the interval
-     * will be the same value.
-     *
-     * @return double interval representation of this FeatureData.
-     */
-    public Pair<Double, Double> toDoubleInterval() {
-        return new Pair<Double, Double>(this.toDouble(), this.toDouble());
-    }
-
-    /**
      * Provides the String-based representation of this FeatureData.
      *
      * @return String representation of this FeatureData.
@@ -145,6 +91,48 @@ implements ByteSerializable, Comparable<FeatureData<?>> {
      * Retrieves the binary byte array representation of this FeatureData.
      */
     public abstract byte[] toBytes();
+
+    /**
+     * Adds two Features, and returns a new Feature containing the sum.
+     *
+     * @param f The feature to add to
+     * @return {@link Feature} instance containing the sum.
+     */
+    public Feature add(Feature f) {
+        throw new UnsupportedOperationException();
+    }
+
+    /**
+     * Subtracts two Features, and returns a new Feature containing the
+     * difference.
+     *
+     * @param f The feature to subtact
+     * @return {@link Feature} instance containing the difference.
+     */
+    public Feature subtract(Feature f) {
+        throw new UnsupportedOperationException();
+    }
+
+    /**
+     * Divides two Features, and returns a new Feature containing the quotient.
+     *
+     * @param f divisor
+     * @return {@link Feature} instance containing the quotient.
+     */
+    public Feature divide(Feature f) {
+        throw new UnsupportedOperationException();
+    }
+
+    /**
+     * Multiplies two Features, and returns a new Feature containing the
+     * product.
+     *
+     * @param f factor to multiply by
+     * @return {@link Feature} instance containing the multiplied product.
+     */
+    public Feature multiply(Feature f) {
+        throw new UnsupportedOperationException();
+    }
 
     /**
      * Return this FeatureData's type.
@@ -196,18 +184,7 @@ implements ByteSerializable, Comparable<FeatureData<?>> {
             int compare = this.data.compareTo((T) featureData.data);
             return compare;
         } catch (ClassCastException e) {
-            //TODO: should this really result in a log message? A better
-            //approach may be to throw a custom error here.
-            if (logger.isLoggable(Level.WARNING)) {
-                FeatureData<T> a = this;
-                FeatureData<?> b = featureData;
-
-                logger.warning("Illegal comparison between Feature types! "
-                        + "[" + a.getType() + ", " + a.data + "]"
-                        + " cannot be compared to "
-                        + "[" + b.getType() + ", " + b.data + "]");
-            }
-            throw e;
+            throw new IllegalFeatureComparisonException(this, featureData);
         }
     }
 }

@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2013, Colorado State University
+Copyright (c) 2016, Colorado State University
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification,
@@ -25,63 +25,199 @@ software, even if advised of the possibility of such damage.
 
 package io.sigpipe.sing.query;
 
-import io.sigpipe.sing.serialization.ByteSerializable;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
+import io.sigpipe.sing.dataset.feature.Feature;
+import io.sigpipe.sing.graph.Vertex;
+import io.sigpipe.sing.serialization.ByteSerializable;
 import io.sigpipe.sing.serialization.SerializationException;
 import io.sigpipe.sing.serialization.SerializationInputStream;
 import io.sigpipe.sing.serialization.SerializationOutputStream;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-
 /**
- * Encapsulates a Galileo query.
+ * General query interface. In SING, queries are executed against a graph
+ * (defined by its root vertex).
  *
  * @author malensek
  */
-public class Query implements ByteSerializable {
+public abstract class Query implements ByteSerializable {
 
-    private List<Operation> operations = new ArrayList<>();
+    protected Map<String, List<Expression>> expressions = new HashMap<>();
 
-    public Query() { }
+    public Query() {
 
-    public Query(Operation... operations) {
-        for (Operation operation : operations) {
-            addOperation(operation);
+    }
+
+    public abstract void execute(Vertex root)
+    throws IOException, QueryException;
+
+    public void addExpression(Expression e) {
+        String name = e.getOperand().getName();
+        List<Expression> expList = expressions.get(name);
+        if (expList == null) {
+            expList = new ArrayList<>();
+            expressions.put(name, expList);
         }
+        expList.add(e);
     }
 
-    public void addOperation(Operation op) {
-        operations.add(op);
-    }
+    protected Set<Vertex> evaluate(Vertex vertex, List<Expression> expressions)
+    throws QueryException {
+        Set<Vertex> matches = new HashSet<>(vertex.numNeighbors(), 1.0f);
 
-    public List<Operation> getOperations() {
-        return operations;
-    }
+        for (Expression expression : expressions) {
 
-    @Override
-    public String toString() {
-        String str = "";
-        for (int i = 0; i < operations.size(); ++i) {
-            str += operations.get(i);
+            Operator operator = expression.getOperator();
+            Feature operand = expression.getOperand();
 
-            if (i < operations.size() - 1) {
-                str += " || ";
+            switch (operator) {
+                case EQUAL: {
+                    matches.add(vertex.getNeighbor(operand));
+                    break;
+                }
+
+                case NOTEQUAL: {
+                    boolean exists = matches.contains(operand);
+                    matches.addAll(vertex.getAllNeighbors());
+                    if (exists == false) {
+                        /* If the operand (not equal value) wasn't already added
+                         * by another expression, we can safely remove it now.
+                         * In other words, if another expression includes the
+                         * value excluded by this expression, the user has
+                         * effectively requested the entire neighbor set. */
+                        matches.remove(operand);
+                    }
+                    break;
+                }
+
+                case LESS: {
+                    matches.addAll(
+                            vertex.getNeighborsLessThan(operand, false)
+                            .values());
+                    break;
+                }
+
+                case LESSEQUAL: {
+                    matches.addAll(
+                            vertex.getNeighborsLessThan(operand, true)
+                            .values());
+                    break;
+                }
+
+                case GREATER: {
+                    matches.addAll(
+                            vertex.getNeighborsGreaterThan(operand, false)
+                            .values());
+                    break;
+                }
+
+                case GREATEREQUAL: {
+                    matches.addAll(
+                            vertex.getNeighborsGreaterThan(operand, true)
+                            .values());
+                    break;
+                }
+
+                case RANGE_INC: {
+                    Feature secondOperand = expression.getSecondOperand();
+                    matches.addAll(vertex.getNeighborsInRange(
+                                operand, true,
+                                secondOperand, true)
+                            .values());
+                    break;
+                }
+
+                case RANGE_EXC: {
+                    Feature secondOperand = expression.getSecondOperand();
+                    matches.addAll(vertex.getNeighborsInRange(
+                                operand, false,
+                                secondOperand, false)
+                            .values());
+                    break;
+                }
+
+                case RANGE_INC_EXC: {
+                    Feature secondOperand = expression.getSecondOperand();
+                    matches.addAll(vertex.getNeighborsInRange(
+                                operand, true,
+                                secondOperand, false)
+                            .values());
+                    break;
+                }
+
+                case RANGE_EXC_INC: {
+                    Feature secondOperand = expression.getSecondOperand();
+                    matches.addAll(vertex.getNeighborsInRange(
+                                operand, false,
+                                secondOperand, true)
+                            .values());
+                    break;
+                }
+
+                case STR_PREFIX: {
+                    vertex
+                        .getAllNeighbors()
+                        .stream()
+                        .filter(v -> v
+                                .getLabel()
+                                .getString()
+                                .startsWith(operand.getString()))
+                        .forEach(matches::add);
+                    break;
+                }
+
+                case STR_SUFFIX: {
+                    vertex
+                        .getAllNeighbors()
+                        .stream()
+                        .filter(v -> v
+                                .getLabel()
+                                .getString()
+                                .endsWith(operand.getString()))
+                        .forEach(matches::add);
+                    break;
+                }
+
+                default:
+                    throw new QueryException("Unknown operator: " + operator);
             }
         }
-        return str;
+
+        return matches;
     }
 
     @Deserialize
     public Query(SerializationInputStream in)
     throws IOException, SerializationException {
-        in.readSerializableCollection(Operation.class, operations);
+        int size = in.readInt();
+        this.expressions = new HashMap<>(size);
+        for (int i = 0; i < size; ++i) {
+            int listSize = in.readInt();
+            List<Expression> expList = new ArrayList<>(listSize);
+            for (int j = 0; j < listSize; ++j) {
+                Expression exp = new Expression(in);
+                expList.add(exp);
+            }
+            String featureName = expList.get(0).getOperand().getName();
+            this.expressions.put(featureName, expList);
+        }
     }
 
     @Override
     public void serialize(SerializationOutputStream out)
     throws IOException {
-        out.writeSerializableCollection(operations);
+        out.writeInt(this.expressions.size());
+        for (List<Expression> expList : this.expressions.values()) {
+            out.writeInt(expList.size());
+            for (Expression expression : expList) {
+                expression.serialize(out);
+            }
+        }
     }
 }

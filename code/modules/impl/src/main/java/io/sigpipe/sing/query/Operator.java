@@ -40,7 +40,14 @@ public enum Operator {
     LESS(3),
     GREATER(4),
     LESSEQUAL(5),
-    GREATEREQUAL(6);
+    GREATEREQUAL(6),
+    RANGE_INC(7),
+    RANGE_EXC(8),
+    RANGE_INC_EXC(9),
+    RANGE_EXC_INC(10),
+    STR_PREFIX(11),
+    STR_SUFFIX(11),
+    ;
 
     /**
      * String representation of the operators.  Note that the array index
@@ -55,6 +62,12 @@ public enum Operator {
         ">",  // GREATER(4)
         "<=", // LESSEQUAL(5)
         ">=", // GREATEREQUAL(6)
+        "[]", // RANGE_INC(7)
+        "()", // RANGE_EXC(8)
+        "[)", // RANGE_INC_EXC(9)
+        "(]", // RANGE_EXC_INC(10)
+        "[=", // STR_PREFIX(11)
+        "=]", // STR_SUFFIX(11)
     };
 
     private final int op;

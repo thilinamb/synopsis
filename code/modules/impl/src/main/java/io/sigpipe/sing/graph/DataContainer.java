@@ -1,46 +1,41 @@
 package io.sigpipe.sing.graph;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
 
 import io.sigpipe.sing.serialization.ByteSerializable;
 import io.sigpipe.sing.serialization.SerializationInputStream;
 import io.sigpipe.sing.serialization.SerializationOutputStream;
+import io.sigpipe.sing.stat.RunningStatisticsND;
 
 public class DataContainer implements ByteSerializable {
 
-    public List<ContainerEntry> entries;
+    public RunningStatisticsND statistics;
 
     public DataContainer() {
-        entries = new ArrayList<>();
+        this.statistics = new RunningStatisticsND();
+    }
+
+    public DataContainer(RunningStatisticsND statistics) {
+        this.statistics = statistics;
     }
 
     public void merge(DataContainer container) {
-
+        statistics.merge(container.statistics);
     }
 
     public void clear() {
-
+        statistics.clear();
     }
 
     @Deserialize
     public DataContainer(SerializationInputStream in)
     throws IOException {
-        int numEntries = in.readInt();
-        this.entries = new ArrayList<>(numEntries);
-        for (int i = 0; i < numEntries; ++i) {
-            ContainerEntry entry = new ContainerEntry(in);
-            entries.add(entry);
-        }
+        statistics = new RunningStatisticsND(in);
     }
 
     @Override
     public void serialize(SerializationOutputStream out)
     throws IOException {
-        out.writeInt(entries.size());
-        for (ContainerEntry entry : entries) {
-            entry.serialize(out);
-        }
+        statistics.serialize(out);
     }
 }

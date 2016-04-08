@@ -40,12 +40,8 @@ public enum FeatureType {
     LONG(2),
     FLOAT(3),
     DOUBLE(4),
-    INTERVAL_INT(5),
-    INTERVAL_LONG(6),
-    INTERVAL_FLOAT(7),
-    INTERVAL_DOUBLE(8),
-    STRING(9),
-    BINARY(10);
+    STRING(5),
+    BINARY(6);
 
     private final int type;
 
@@ -55,20 +51,6 @@ public enum FeatureType {
 
     public int toInt() {
         return type;
-    }
-
-    /**
-     * Determines whether this FeatureType is an interval type (represented by
-     * an {@link IntervalFeatureData} instance).
-     *
-     * @return true if the FeatureType is an an interval type.
-     */
-    public boolean isInterval() {
-        if (type >= 5 && type <= 8) {
-            return true;
-        } else {
-            return false;
-        }
     }
 
     static Map<Integer, FeatureType> typeMap = new HashMap<>();
@@ -133,10 +115,6 @@ public enum FeatureType {
             case LONG: return LongFeatureData.class;
             case FLOAT: return FloatFeatureData.class;
             case DOUBLE: return DoubleFeatureData.class;
-            case INTERVAL_INT: return IntegerIntervalFeatureData.class;
-            case INTERVAL_LONG: return LongIntervalFeatureData.class;
-            case INTERVAL_FLOAT: return FloatIntervalFeatureData.class;
-            case INTERVAL_DOUBLE: return DoubleIntervalFeatureData.class;
             case STRING: return StringFeatureData.class;
             case BINARY: return BinaryFeatureData.class;
             default: return null;

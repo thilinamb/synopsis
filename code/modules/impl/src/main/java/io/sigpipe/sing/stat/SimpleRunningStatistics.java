@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2013, Colorado State University
+Copyright (c) 2016, Colorado State University
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification,
@@ -31,9 +31,6 @@ import io.sigpipe.sing.serialization.SerializationOutputStream;
 
 import java.io.IOException;
 
-import org.apache.commons.math3.distribution.TDistribution;
-import org.apache.commons.math3.util.FastMath;
-
 /**
  * Provides an online method for computing mean, variance, and standard
  * deviation.  Based on "Note on a Method for Calculating Corrected Sums of
@@ -41,48 +38,41 @@ import org.apache.commons.math3.util.FastMath;
  *
  * @author malensek
  */
-public class RunningStatistics implements ByteSerializable {
+public class SimpleRunningStatistics implements ByteSerializable {
 
     private long n;
     private double mean;
-    private double M2;
-
-    /* Initialize max/min to their respective opposite values: */
-    private double min = Double.MAX_VALUE;
-    private double max = Double.MIN_VALUE;
-
-    public static class WelchResult {
-        /** T-statistic */
-        public double t;
-
-        /** Two-tailed p-value */
-        public double p;
-
-        public WelchResult(double t, double p) {
-            this.t = t;
-            this.p = p;
-        }
-    }
+    private double m2;
 
     /**
      * Creates an empty running statistics instance.
      */
-    public RunningStatistics() {
+    public SimpleRunningStatistics() {
 
     }
 
     /**
-     * Creates a copy of a {@link RunningStatistics} instance.
+     * Creates a running statistics instance with an array of samples.
+     * Samples are added to the statistics in order.
      */
-    public RunningStatistics(RunningStatistics that) {
+    public SimpleRunningStatistics(double... samples ) {
+        for (double sample : samples) {
+            put(sample);
+        }
+    }
+
+    /**
+     * Creates a copy of a {@link SimpleRunningStatistics} instance.
+     */
+    public SimpleRunningStatistics(SimpleRunningStatistics that) {
         copyFrom(that);
     }
 
     /**
-     * Create a new {@link RunningStatistics} instance by combining multiple
-     * existing instances.
+     * Create a new {@link SimpleRunningStatistics} instance by combining
+     * multiple existing instances.
      */
-    public RunningStatistics(RunningStatistics... others) {
+    public SimpleRunningStatistics(SimpleRunningStatistics... others) {
         if (others.length == 0) {
             return;
         } else if (others.length == 1) {
@@ -91,46 +81,29 @@ public class RunningStatistics implements ByteSerializable {
         }
 
         /* Calculate new n */
-        for (RunningStatistics rs : others) {
+        for (SimpleRunningStatistics rs : others) {
             merge(rs);
         }
     }
 
     /**
-     * Copies statistics from another RunningStatistics instance.
+     * Copies statistics from another SimpleRunningStatistics instance.
      */
-    private void copyFrom(RunningStatistics that) {
+    private void copyFrom(SimpleRunningStatistics that) {
         this.n = that.n;
         this.mean = that.mean;
-        this.M2 = that.M2;
-        this.min = that.min;
-        this.max = that.max;
+        this.m2 = that.m2;
     }
 
     /**
-     * Merges statistics from another {@link RunningStatistics} instance with
-     * this instance.
-     *
-     * @param that The {@link RunningStatistics} instance to merge data from.
+     * Merges this set of running statistics with another.
      */
-    public void merge(RunningStatistics that) {
+    public void merge(SimpleRunningStatistics that) {
         long newN = n + that.n;
         double delta = this.mean - that.mean;
         mean = (this.n * this.mean + that.n * that.mean) / newN;
-        M2 = M2 + that.M2 + delta * delta * this.n * that.n / newN;
+        m2 = m2 + that.m2 + delta * delta * this.n * that.n / newN;
         n = newN;
-        this.min = FastMath.min(this.min, that.min);
-        this.max = FastMath.max(this.max, that.max);
-    }
-
-    /**
-     * Creates a running statistics instance with an array of samples.
-     * Samples are added to the statistics in order.
-     */
-    public RunningStatistics(double... samples ) {
-        for (double sample : samples) {
-            put(sample);
-        }
     }
 
     /**
@@ -149,10 +122,7 @@ public class RunningStatistics implements ByteSerializable {
         n++;
         double delta = sample - mean;
         mean = mean + delta / n;
-        M2 = M2 + delta * (sample - mean);
-
-        min = FastMath.min(this.min, sample);
-        max = FastMath.max(this.max, sample);
+        m2 = m2 + delta * (sample - mean);
     }
 
     /**
@@ -160,8 +130,8 @@ public class RunningStatistics implements ByteSerializable {
      * give careful consideration when using this method. If a value is removed
      * that wasn't previously added, the statistics will be meaningless.
      * Additionally, if you're keeping track of previous additions, then it
-     * might be worth evaluating whether a RunningStatistics instance is the
-     * right thing to be using at all. Caveat emptor, etc, etc.
+     * might be worth evaluating whether a SimpleRunningStatistics instance is
+     * the right thing to be using at all. Caveat emptor, etc, etc.
      */
     public void remove(double sample) {
         if (n <= 1) {
@@ -171,21 +141,19 @@ public class RunningStatistics implements ByteSerializable {
         }
 
         double prevMean = (n * mean - sample) / (n - 1);
-        M2 = M2 - (sample - mean) * (sample - prevMean);
+        m2 = m2 - (sample - mean) * (sample - prevMean);
         mean = prevMean;
         n--;
     }
 
     /**
-     * Clears all values passed in, returning the RunningStatistics instance to
-     * its original state.
+     * Clears all values passed in, returning the SimpleRunningStatistics
+     * instance to its original state.
      */
     public void clear() {
         n = 0;
         mean = 0;
-        M2 = 0;
-        min = Double.MAX_VALUE;
-        max = Double.MIN_VALUE;
+        m2 = 0;
     }
 
     /**
@@ -228,7 +196,7 @@ public class RunningStatistics implements ByteSerializable {
             return Double.NaN;
         }
 
-        return M2 / (n - ddof);
+        return m2 / (n - ddof);
     }
 
     /**
@@ -237,7 +205,7 @@ public class RunningStatistics implements ByteSerializable {
      * @return sample standard deviation
      */
     public double std() {
-        return FastMath.sqrt(var());
+        return Math.sqrt(var());
     }
 
     /**
@@ -247,7 +215,7 @@ public class RunningStatistics implements ByteSerializable {
      * @return population standard deviation
      */
     public double popStd() {
-        return FastMath.sqrt(popVar());
+        return Math.sqrt(popVar());
     }
 
     /**
@@ -259,63 +227,17 @@ public class RunningStatistics implements ByteSerializable {
      * @return standard deviation
      */
     public double std(double ddof) {
-        return FastMath.sqrt(var(ddof));
+        return Math.sqrt(var(ddof));
     }
 
     /**
-     * Retrieves the largest value seen thus far by this RunningStatistics
-     * instance.
-     */
-    public double max() {
-        return this.max;
-    }
-
-    /**
-     * Retrieves the smallest value seen thus far by this RunningStatistics
-     * instance.
-     */
-    public double min() {
-        return this.min;
-    }
-
-    public double prob(double sample) {
-        double norm = 1 / FastMath.sqrt(2 * FastMath.PI * this.var());
-        return norm * FastMath.exp((- FastMath.pow(sample - this.mean, 2))
-                / (2 * this.var()));
-    }
-
-    /**
-     * Retrieves the number of samples submitted to the RunningStatistics
+     * Retrieves the number of samples submitted to the SimpleRunningStatistics
      * instance so far.
      *
      * @return number of samples
      */
-    public long n() {
+    public long count() {
         return n;
-    }
-
-    public static WelchResult welchT(
-            RunningStatistics rs1, RunningStatistics rs2) {
-        double vn1 = rs1.var() / rs1.n();
-        double vn2 = rs2.var() / rs2.n();
-
-        /* Calculate t */
-        double xbs = rs1.mean() - rs2.mean();
-        double t = xbs / FastMath.sqrt(vn1 + vn2);
-
-        double vn12 = FastMath.pow(vn1, 2);
-        double vn22 = FastMath.pow(vn2, 2);
-
-        /* Calculate degrees of freedom */
-        double v = FastMath.pow(vn1 + vn2, 2)
-            / ((vn12 / (rs1.n() - 1)) + (vn22 / (rs2.n() - 1)));
-        if (v == Double.NaN) {
-            v = 1;
-        }
-
-        TDistribution tdist = new TDistribution(v);
-        double p = tdist.cumulativeProbability(t) * 2;
-        return new WelchResult(t, p);
     }
 
     @Override
@@ -325,19 +247,15 @@ public class RunningStatistics implements ByteSerializable {
         str += "Mean: " + mean + System.lineSeparator();
         str += "Variance: " + var() + System.lineSeparator();
         str += "Std Dev: " + std() + System.lineSeparator();
-        str += "Min: " + min + System.lineSeparator();
-        str += "Max: " + max;
         return str;
     }
 
     @Deserialize
-    public RunningStatistics(SerializationInputStream in)
+    public SimpleRunningStatistics(SerializationInputStream in)
     throws IOException {
-        this.n = in.readLong();
-        this.mean = in.readDouble();
-        this.M2 = in.readDouble();
-        this.min = in.readDouble();
-        this.max = in.readDouble();
+        n = in.readLong();
+        mean = in.readDouble();
+        m2 = in.readDouble();
     }
 
     @Override
@@ -345,8 +263,6 @@ public class RunningStatistics implements ByteSerializable {
     throws IOException {
         out.writeLong(n);
         out.writeDouble(mean);
-        out.writeDouble(M2);
-        out.writeDouble(min);
-        out.writeDouble(max);
+        out.writeDouble(m2);
     }
 }

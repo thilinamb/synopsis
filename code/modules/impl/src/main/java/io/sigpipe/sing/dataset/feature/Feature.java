@@ -120,71 +120,6 @@ public class Feature implements Comparable<Feature>, ByteSerializable {
     }
 
     /**
-     * Constructs an interval Feature with bounds specified as int values.
-     */
-    public Feature(String name, int value1, int value2) {
-        setName(name);
-        this.data = new IntegerIntervalFeatureData(value1, value2);
-    }
-
-    /**
-     * Constructs a nameless interval Feature with bounds specified as int
-     * values.
-     */
-    public Feature(int value1, int value2) {
-        this("", value1, value2);
-    }
-
-    /**
-     * Constructs an interval Feature with bounds specified as long values.
-     */
-    public Feature(String name, long value1, long value2) {
-        setName(name);
-        this.data = new LongIntervalFeatureData(value1, value2);
-    }
-
-    /**
-     * Constructs an interval Feature with bounds specified as long values.
-     */
-    public Feature(long value1, long value2) {
-        this("", value1, value2);
-    }
-
-    /**
-     * Constructs an interval Feature with bounds specified as floating point
-     * values.
-     */
-    public Feature(String name, float value1, float value2) {
-        setName(name);
-        this.data = new FloatIntervalFeatureData(value1, value2);
-    }
-
-    /**
-     * Constructs a nameless interval Feature with bounds specified as floating
-     * point values.
-     */
-    public Feature(float value1, float value2) {
-        this("", value1, value2);
-    }
-
-    /**
-     * Constructs an interval Feature with bounds specified as double-precision
-     * floating point values.
-     */
-    public Feature(String name, double value1, double value2) {
-        setName(name);
-        this.data = new DoubleIntervalFeatureData(value1, value2);
-    }
-
-    /**
-     * Constructs a nameless interval Feature with bounds specified as
-     * double-precision floating point values.
-     */
-    public Feature(double value1, double value2) {
-        this("", value1, value2);
-    }
-
-    /**
      * Constructs a String Feature.
      */
     public Feature(String name, String value) {
@@ -229,8 +164,8 @@ public class Feature implements Comparable<Feature>, ByteSerializable {
      *
      * @param o Object to convert to a Feature
      */
-    public static Feature fromNativeType(Object o) {
-        return fromNativeType("", o);
+    public static Feature fromPrimitiveType(Object o) {
+        return fromPrimitiveType("", o);
     }
 
     /**
@@ -243,7 +178,7 @@ public class Feature implements Comparable<Feature>, ByteSerializable {
      * @param name Name of the resulting Feature
      * @param o Object to convert to a Feature
      */
-    public static Feature fromNativeType(String name, Object o) {
+    public static Feature fromPrimitiveType(String name, Object o) {
         FeatureType type = FeatureType.fromPrimitiveType(o);
         if (type == null) {
             throw new IllegalArgumentException("Cannot construct a Feature "
@@ -274,8 +209,8 @@ public class Feature implements Comparable<Feature>, ByteSerializable {
         return data.getType();
     }
 
-    public boolean isInterval() {
-        return this.data.getType().isInterval();
+    public boolean sameType(Feature otherFeature) {
+        return this.getType() == otherFeature.getType();
     }
 
     public boolean isRawBytes() {
@@ -296,17 +231,6 @@ public class Feature implements Comparable<Feature>, ByteSerializable {
 
     public double getDouble() {
         return data.toDouble();
-    }
-
-    /**
-     * If this Feature contains an interval, this method retrieves the general
-     * {@link IntervalFeatureData} container.
-     *
-     * @throws ClassCastException if the underlying FeatureData is not an
-     * interval.
-     */
-    public IntervalFeatureData<?> getInterval() {
-        return (IntervalFeatureData<?>) this.data;
     }
 
     /**
@@ -340,12 +264,104 @@ public class Feature implements Comparable<Feature>, ByteSerializable {
         return data.toString();
     }
 
+    public Feature convertTo(FeatureType type) {
+        Feature f = null;
+        switch (type) {
+            case INT:
+                f = new Feature(this.getInt());
+                break;
+            case LONG:
+                f = new Feature(this.getLong());
+                break;
+            case FLOAT:
+                f = new Feature(this.getFloat());
+                break;
+            case DOUBLE:
+                f = new Feature(this.getDouble());
+                break;
+            case STRING:
+                f = new Feature(this.getString());
+                break;
+            case BINARY:
+                f = new Feature(this.getRawBytes());
+                break;
+            default:
+                f = new Feature();
+        }
+        f.setName(this.getName());
+        return f;
+    }
+
+    public Feature convertTo(Feature f) {
+        return convertTo(f.getType());
+    }
+
+    /**
+     * Adds two Features, and returns a new Feature containing the sum. The
+     * resulting Feature will inherit this Feature's name.
+     *
+     * @param f The feature to add to
+     * @return {@link Feature} instance containing the sum.
+     */
+    public Feature add(Feature f) {
+        Feature result = this.data.add(f);
+        result.setName(this.getName());
+        return result;
+    }
+
+    /**
+     * Subtracts two Features, and returns a new Feature containing the
+     * difference. The resulting Feature will inherit this Feature's name.
+     *
+     * @param f The feature to subtact from this feature
+     * @return {@link Feature} instance containing the difference.
+     */
+    public Feature subtract(Feature f) {
+        Feature result = this.data.subtract(f);
+        result.setName(this.getName());
+        return result;
+    }
+
+    /**
+     * Multiplies two Features, and returns a new Feature containing the
+     * product.  The resulting Feature will inherit this Feature's name.
+     *
+     * @param f factor to multiply by
+     * @return {@link Feature} instance containing the multiplied product.
+     */
+    public Feature multiply(Feature f) {
+        Feature result = this.data.multiply(f);
+        result.setName(this.getName());
+        return result;
+    }
+
+    /**
+     * Divides two Features, and returns a new Feature containing the quotient.
+     * The resulting Feature will inherit this Feature's name.
+     *
+     * @param f divisor
+     * @return {@link Feature} instance containing the quotient.
+     */
+    public Feature divide(Feature f) {
+        Feature result = this.data.divide(f);
+        result.setName(this.getName());
+        return result;
+    }
+
     public boolean greater(Feature f) {
         return this.compareTo(f) > 0;
     }
 
+    public boolean greaterEqual(Feature f) {
+        return this.compareTo(f) >= 0;
+    }
+
     public boolean less(Feature f) {
         return this.compareTo(f) < 0;
+    }
+
+    public boolean lessEqual(Feature f) {
+        return this.compareTo(f) <= 0;
     }
 
     @Override
@@ -372,7 +388,7 @@ public class Feature implements Comparable<Feature>, ByteSerializable {
         }
 
         Feature other = (Feature) obj;
-        if (this.name.equals(other.name) && this.data.equals(other.data)) {
+        if (this.data.equals(other.data)) {
             return true;
         }
 

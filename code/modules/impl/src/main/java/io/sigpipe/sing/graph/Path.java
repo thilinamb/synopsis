@@ -26,9 +26,6 @@ software, even if advised of the possibility of such damage.
 package io.sigpipe.sing.graph;
 
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.Iterator;
 import java.util.List;
 
 import io.sigpipe.sing.dataset.feature.Feature;
@@ -39,9 +36,9 @@ import io.sigpipe.sing.dataset.feature.Feature;
  *
  * @author malensek
  */
-public class Path implements Iterable<Vertex> {
+public class Path extends ArrayList<Vertex> {
 
-    protected List<Vertex> vertices = new ArrayList<>();
+    private static final long serialVersionUID = 8201748135149945940L;
 
     /**
      * Create a Path with a number of vertices pre-populated.
@@ -49,7 +46,7 @@ public class Path implements Iterable<Vertex> {
     @SafeVarargs
     public Path(Vertex... vertices) {
         for (Vertex vertex : vertices) {
-            this.vertices.add(vertex);
+            this.add(vertex);
         }
     }
 
@@ -59,7 +56,7 @@ public class Path implements Iterable<Vertex> {
     @SafeVarargs
     public Path(Feature... features) {
         for (Feature feature : features) {
-            this.vertices.add(new Vertex(feature));
+            this.add(new Vertex(feature));
         }
     }
 
@@ -69,20 +66,9 @@ public class Path implements Iterable<Vertex> {
     public Path(Path p) {
         /* New Vertices must be created if this path will be used anywhere but
          * its source graph; the type hierarchy is embedded in the vertices. */
-        for (Vertex v : p.getVertices()) {
-            this.vertices.add(new Vertex(v));
+        for (Vertex v : p) {
+            this.add(new Vertex(v));
         }
-    }
-
-    /**
-     * Retrieves the number of {@link Vertex} instances in this Path.
-     */
-    public int size() {
-        return vertices.size();
-    }
-
-    public void add(Vertex vertex) {
-        vertices.add(vertex);
     }
 
     public void add(Feature label) {
@@ -93,24 +79,8 @@ public class Path implements Iterable<Vertex> {
         add(new Vertex(label, value));
     }
 
-    public void remove(int index) {
-        vertices.remove(index);
-    }
-
-    public boolean remove(Vertex vertex) {
-        return vertices.remove(vertex);
-    }
-
-    public Vertex get(int index) {
-        return vertices.get(index);
-    }
-
     public Vertex getTail() {
-        return vertices.get(vertices.size() - 1);
-    }
-
-    public List<Vertex> getVertices() {
-        return vertices;
+        return this.get(this.size() - 1);
     }
 
     /**
@@ -118,29 +88,20 @@ public class Path implements Iterable<Vertex> {
      */
     public List<Feature> getLabels() {
         List<Feature> labels = new ArrayList<>();
-        for (Vertex vertex : vertices) {
+        for (Vertex vertex : this) {
             labels.add(vertex.getLabel());
         }
 
         return labels;
     }
 
-    public void sort(Comparator<? super Vertex> c) {
-        Collections.sort(vertices, c);
-    }
-
-    @Override
-    public Iterator<Vertex> iterator() {
-        return vertices.iterator();
-    }
-
     @Override
     public String toString() {
         String str = "";
-        for (int i = 0; i < vertices.size(); ++i) {
-            str += vertices.get(i).getLabel();
+        for (int i = 0; i < this.size(); ++i) {
+            str += this.get(i).getLabel();
 
-            if (i < vertices.size() - 1) {
+            if (i < this.size() - 1) {
                 str += " -> ";
             }
         }

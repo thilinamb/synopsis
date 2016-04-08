@@ -50,7 +50,6 @@ public interface SimpleMap<K, V extends ByteSerializable> {
      */
     public V get(K key);
 
-
     /**
      * Retrieves all the values contained in this data structure.
      */

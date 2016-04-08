@@ -43,6 +43,26 @@ extends NumericFeatureData<Double> implements ByteSerializable {
         super(data);
     }
 
+    @Override
+    public Feature add(Feature f) {
+        return new Feature(this.data + f.getDouble());
+    }
+
+    @Override
+    public Feature subtract(Feature f) {
+        return new Feature(this.data - f.getDouble());
+    }
+
+    @Override
+    public Feature divide(Feature f) {
+        return new Feature(this.data / f.getDouble());
+    }
+
+    @Override
+    public Feature multiply(Feature f) {
+        return new Feature(this.data * f.getDouble());
+    }
+
     @Deserialize
     public DoubleFeatureData(SerializationInputStream in)
     throws IOException {

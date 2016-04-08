@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2013, Colorado State University
+Copyright (c) 2016, Colorado State University
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification,
@@ -23,49 +23,65 @@ any theory of liability, whether in contract, strict liability, or tort
 software, even if advised of the possibility of such damage.
 */
 
-package io.sigpipe.sing.dataset.feature;
-
-import io.sigpipe.sing.dataset.Pair;
+package io.sigpipe.sing.stat;
 
 /**
- * Abstract implementation of arbitrary pairs of numeric Feature data
- * represented as an interval.
+ * Represents an immutable snapshot of summary statistics for a
+ * {@link RunningStatistics} instance.
  *
- * @author malensek
+ * @malensek
  */
-abstract class IntervalFeatureData<T extends Number & Comparable<T>>
-extends NumericFeatureData<T> {
+public class SummaryStatistics {
 
-    protected T data2;
+    private long num;
+    private double min;
+    private double max;
+    private double mean;
+    private double std;
+    private double var;
 
-    @Override
-    public Pair<Integer, Integer> toIntInterval() {
-        return new Pair<Integer, Integer>(data.intValue(), data2.intValue());
+    public SummaryStatistics(RunningStatistics rs) {
+        this.num = rs.n();
+        this.min = rs.min();
+        this.max = rs.max();
+        this.mean = rs.mean();
+        this.var = rs.var();
+        this.std = rs.std();
     }
 
-    @Override
-    public Pair<Long, Long> toLongInterval() {
-        return new Pair<Long, Long>(data.longValue(), data2.longValue());
+    public double num() {
+        return this.num;
     }
 
-    @Override
-    public Pair<Float, Float> toFloatInterval() {
-        return new Pair<Float, Float>(data.floatValue(), data2.floatValue());
+    public double min() {
+        return this.min;
     }
 
-    @Override
-    public Pair<Double, Double> toDoubleInterval() {
-        return new Pair<Double, Double>(data.doubleValue(),
-                data2.doubleValue());
+    public double max() {
+        return this.max;
     }
 
-    @Override
-    public byte[] toBytes() {
-        return new byte[] { data.byteValue(), data2.byteValue() };
+    public double mean() {
+        return this.mean;
+    }
+
+    public double std() {
+        return this.std;
+    }
+
+    public double var() {
+        return this.var;
     }
 
     @Override
     public String toString() {
-        return "[" + data.toString() + " .. " + data2.toString() + "]";
+        String str = "";
+        str += "Number of Samples: " + num + System.lineSeparator();
+        str += "Mean: " + mean + System.lineSeparator();
+        str += "Variance: " + var() + System.lineSeparator();
+        str += "Std Dev: " + std() + System.lineSeparator();
+        str += "Min: " + min + System.lineSeparator();
+        str += "Max: " + max;
+        return str;
     }
 }

@@ -1,26 +1,30 @@
 package io.sigpipe.sing.graph;
 
-import java.util.ArrayList;
+import java.io.IOException;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 
 import java.util.Iterator;
 import java.util.LinkedList;
-import java.util.List;
 import java.util.NavigableMap;
 import java.util.logging.Logger;
 import java.util.Map;
 import java.util.Queue;
 import java.util.Set;
-import java.util.TreeSet;
 
 import io.sigpipe.sing.dataset.Pair;
+import io.sigpipe.sing.dataset.Quantizer;
 import io.sigpipe.sing.dataset.feature.Feature;
 import io.sigpipe.sing.dataset.feature.FeatureType;
-import io.sigpipe.sing.stat.RunningStatistics2D;
+import io.sigpipe.sing.serialization.SerializationException;
+import io.sigpipe.sing.serialization.SerializationInputStream;
+import io.sigpipe.sing.stat.RunningStatisticsND;
+import io.sigpipe.sing.util.TestConfiguration;
 
 public class Sketch {
+
+    private GraphMetrics metrics = new GraphMetrics();
 
     private static final Logger logger = Logger.getLogger("io.sigpipe.sing");
 
@@ -52,20 +56,9 @@ public class Sketch {
         public FeatureType type;
 
     }
-    private TreeSet<Float> ts = new TreeSet<>();
 
     public Sketch() {
-        ts.add(0.0f);
-        ts.add(0.1f);
-        ts.add(0.2f);
-        ts.add(0.3f);
-        ts.add(0.4f);
-        ts.add(0.5f);
-        ts.add(0.6f);
-        ts.add(0.7f);
-        ts.add(0.8f);
-        ts.add(0.9f);
-        ts.add(1.0f);
+
     }
 
     /**
@@ -111,20 +104,34 @@ public class Sketch {
             throw new GraphException("Attempted to add empty path!");
         }
 
-        int counter = 0;
-
+        //TODO this mess really needs to be fixed up.
         Iterator<Vertex> it = path.iterator();
         while (it.hasNext()) {
-            Vertex v= it.next();
-            Float newFloat = ts.ceiling(v.getLabel().getFloat());
-            if (newFloat == null) {
-                newFloat = 1.0f;
-            }
-            v.setLabel(new Feature(v.getLabel().getName(), newFloat));
-            counter++;
-            if (counter >= 40) {
+            Vertex v = it.next();
+            Quantizer q = TestConfiguration.quantizers.get(
+                    v.getLabel().getName());
+            if (q == null) {
+                if (v.getLabel().getName().equals("location")) {
+                    continue;
+                }
+
                 it.remove();
+                continue;
             }
+            boolean ok = false;
+            for (String featureName : TestConfiguration.FEATURE_NAMES) {
+                if (featureName.equals(v.getLabel().getName()) == true) {
+                    ok = true;
+                    break;
+                }
+            }
+            if (ok == false) {
+                it.remove();
+                continue;
+            }
+
+            Feature quantizedFeature = q.quantize(v.getLabel());
+            v.setLabel(new Feature(v.getLabel().getName(), quantizedFeature));
         }
 
         checkFeatureTypes(path);
@@ -132,29 +139,17 @@ public class Sketch {
         reorientPath(path);
         optimizePath(path);
 
-        List<ContainerEntry> entries = new ArrayList<>();
-        for (int i = 0; i < path.size(); ++i) {
-            for (int j = i; j < path.size(); ++j) {
-                Feature f1 = path.get(i).getLabel();
-                Feature f2 = path.get(j).getLabel();
-                int o1 = levels.get(f1.getName()).order;
-                int o2 = levels.get(f2.getName()).order;
-                ContainerEntry entry = new ContainerEntry();
-                entry.feature1ID = o1;
-                entry.feature2ID = o2;
-                entry.stats = new RunningStatistics2D();
-                entry.stats.put(f1.getFloat(), f2.getFloat());
-                entries.add(entry);
-            }
+        double[] values = new double[path.size() - 1];
+        for (int i = 0; i < path.size() - 1; ++i) {
+            values[i] = path.get(i).getLabel().getDouble();
         }
-        DataContainer container = new DataContainer();
-        container.entries = entries;
-
+        RunningStatisticsND rsnd = new RunningStatisticsND(values);
+        DataContainer container = new DataContainer(rsnd);
 
         /* Place the path payload (traversal result) at the end of this path. */
         path.get(path.size() - 1).setData(container);
 
-        root.addPath(path.iterator());
+        root.addPath(path.iterator(), this.metrics);
     }
 
     /**
@@ -261,20 +256,6 @@ public class Sketch {
         }
     }
 
-//    private boolean applyPayloadFilter(Path path, PayloadFilter filter) {
-//
-//        Set<T> payload = path.getPayload();
-//        if (filter.excludesItems() == false) {
-//            /* We only include the items in the filter */
-//            payload.retainAll(filter.getItems());
-//        } else {
-//            /* Excludes anything in the filter */
-//            payload.removeAll(filter.getItems());
-//        }
-//
-//        return payload.isEmpty();
-//    }
-
     /**
      * Determines the numeric order of a Feature based on the current
      * orientation of the graph.  For example, humidity features may come first,
@@ -330,16 +311,30 @@ public class Sketch {
         return hierarchy;
     }
 
-//    public List<Path> getAllPaths() {
-//        List<Path> paths = root.descendantPaths();
-//        for (Path<Feature, T> path : paths) {
-//            removeNullFeatures(path);
-//        }
-//        return paths;
-//    }
-
     public Vertex getRoot() {
         return root;
+    }
+
+    public GraphMetrics getMetrics() {
+        return this.metrics;
+    }
+
+    public void merge(Vertex vertex, SerializationInputStream in)
+    throws IOException, SerializationException {
+        Feature label = new Feature(in);
+        boolean hasData = in.readBoolean();
+        DataContainer data = null;
+        if (hasData) {
+            data = new DataContainer(in);
+        }
+
+        Vertex connection = vertex.connect(
+                new Vertex(label, data), true, this.metrics);
+
+        int numNeighbors = in.readInt();
+        for (int i = 0; i < numNeighbors; ++i) {
+            merge(connection, in);
+        }
     }
 
     @Override

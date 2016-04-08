@@ -116,9 +116,7 @@ public class Serializer {
         } catch (Exception e) {
             /* We compress the myriad of possible exceptions that could occur
              * here down to a single exception (SerializationException) to
-             * simplify implementations.  However, if the current log level
-             * permits, we also embed more information in the exception detail
-             * message. */
+             * simplify implementations. */
             throw new SerializationException("Could not instantiate object "
                     + "for deserialization.", e);
         }

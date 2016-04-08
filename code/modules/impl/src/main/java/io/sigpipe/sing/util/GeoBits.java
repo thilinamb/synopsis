@@ -49,7 +49,7 @@ public class GeoBits {
     }
 
     public static String geohashToBinString(String geohash) {
-        long l = GeoHash.hashToLong(geohash);
+        long l = Geohash.hashToLong(geohash);
         return Long.toBinaryString(l);
     }
 

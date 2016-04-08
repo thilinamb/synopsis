@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2013, Colorado State University
+Copyright (c) 2016, Colorado State University
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification,
@@ -23,40 +23,16 @@ any theory of liability, whether in contract, strict liability, or tort
 software, even if advised of the possibility of such damage.
 */
 
-package io.sigpipe.sing.dataset.feature;
+package io.sigpipe.sing.query;
 
-import java.io.IOException;
+public class QueryException extends Exception {
 
-import io.sigpipe.sing.serialization.ByteSerializable;
-import io.sigpipe.sing.serialization.SerializationInputStream;
-import io.sigpipe.sing.serialization.SerializationOutputStream;
-
-/**
- * Represents an interval consisting of two integers.
- *
- * @author malensek
- */
-public class IntegerIntervalFeatureData
-extends IntervalFeatureData<Integer> implements ByteSerializable {
-
-    public IntegerIntervalFeatureData(int data1, int data2) {
-        this.data = data1;
-        this.data2 = data2;
-        this.type = FeatureType.INTERVAL_INT;
+    public QueryException() {
+        super();
     }
 
-    @Deserialize
-    public IntegerIntervalFeatureData(SerializationInputStream in)
-    throws IOException {
-        this.data = in.readInt();
-        this.data2 = in.readInt();
-        this.type = FeatureType.INTERVAL_INT;
+    public QueryException(String s) {
+        super(s);
     }
 
-    @Override
-    public void serialize(SerializationOutputStream out)
-    throws IOException {
-        out.writeInt(data);
-        out.writeInt(data2);
-    }
 }

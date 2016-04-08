@@ -32,14 +32,14 @@ import io.sigpipe.sing.dataset.Coordinates;
 import io.sigpipe.sing.dataset.SpatialRange;
 
 /**
- * This class provides an implementation of the GeoHash (http://www.geohash.org)
+ * This class provides an implementation of the Geohash (http://www.geohash.org)
  * algorithm.
  *
  * See http://en.wikipedia.org/wiki/Geohash for implementation details.
  *
  * @author malensek
  */
-public class GeoHash {
+public class Geohash {
 
     public final static byte BITS_PER_CHAR   = 5;
     public final static int  LATITUDE_RANGE  = 90;
@@ -47,7 +47,7 @@ public class GeoHash {
 
     /**
      * This character array maps integer values (array indices) to their
-     * GeoHash base32 alphabet equivalents.
+     * Geohash base32 alphabet equivalents.
      */
     public final static char[] charMap = {
         '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'b', 'c',
@@ -56,7 +56,7 @@ public class GeoHash {
     };
 
     /**
-     * Allows lookups from a GeoHash character to its integer index value.
+     * Allows lookups from a Geohash character to its integer index value.
      */
     public final static HashMap<Character, Integer> charLookupTable =
         new HashMap<Character, Integer>();
@@ -72,32 +72,32 @@ public class GeoHash {
     }
 
     /**
-     * Encode a set of {@link Coordinates} into a GeoHash string.
+     * Encode a set of {@link Coordinates} into a Geohash string.
      *
      * @param coords
-     *     Coordinates to get GeoHash for.
+     *     Coordinates to get Geohash for.
      *
      * @param precision
-     *     Desired number of characters in the returned GeoHash String.  More
+     *     Desired number of characters in the returned Geohash String.  More
      *     characters means more precision.
      *
-     * @return GeoHash string.
+     * @return Geohash string.
      */
     public static String encode(Coordinates coords, int precision) {
         return encode(coords.getLatitude(), coords.getLongitude(), precision);
     }
 
     /**
-     * Encode {@link SpatialRange} into a GeoHash string.
+     * Encode {@link SpatialRange} into a Geohash string.
      *
      * @param range
-     *     SpatialRange to get GeoHash for.
+     *     SpatialRange to get Geohash for.
      *
      * @param precision
-     *     Number of characters in the returned GeoHash String.
+     *     Number of characters in the returned Geohash String.
      *     More characters is more precise.
      *
-     * @return GeoHash string.
+     * @return Geohash string.
      */
     public static String encode(SpatialRange range, int precision) {
         Coordinates rangeCoords = range.getCenterPoint();
@@ -107,7 +107,7 @@ public class GeoHash {
     }
 
     /**
-     * Encode latitude and longitude into a GeoHash string.
+     * Encode latitude and longitude into a Geohash string.
      *
      * @param latitude
      *     Latitude coordinate, in degrees.
@@ -116,10 +116,10 @@ public class GeoHash {
      *     Longitude coordinate, in degrees.
      *
      * @param precision
-     *     Number of characters in the returned GeoHash String.
+     *     Number of characters in the returned Geohash String.
      *     More characters is more precise.
      *
-     * @return resulting GeoHash String.
+     * @return resulting Geohash String.
      */
     public static String encode(float latitude, float longitude,
                                 int precision) {
@@ -163,37 +163,45 @@ public class GeoHash {
     }
 
     /**
-     * Convert a GeoHash String to a long integer.
+     * Convert a Geohash String to a long integer. Sets of Geohash bits are
+     * placed such that the least-significant 5 bits contain the first character
+     * of the hash, and so on. This method supports up to 12 characters of
+     * precision; extra characters will be dropped when creating the long
+     * integer.
      *
      * @param hash
-     *     GeoHash String to convert.
+     *     Geohash String to convert.
      *
-     * @return The GeoHash as a long integer.
+     * @return The Geohash as a long integer.
      */
     public static long hashToLong(String hash) {
-        long longForm = 0;
-
-        /* Long can fit 12 GeoHash characters worth of precision. */
-        if (hash.length() > 12) {
+        /* Long can fit 12 Geohash characters worth of precision. */
+        int hashLen = hash.length();
+        if (hashLen > 12) {
             hash = hash.substring(0, 12);
         }
 
-        for (char c : hash.toCharArray()) {
-            longForm <<= BITS_PER_CHAR;
-            longForm |= charLookupTable.get(c);
+        long longHash = 0;
+        for (int i = hashLen - 1; i >= 0; --i) {
+            char c = hash.charAt(i);
+            longHash |= charLookupTable.get(c);
+
+            if (i > 0) {
+                longHash <<= BITS_PER_CHAR;
+            }
         }
 
-        return longForm;
+        return longHash;
     }
 
     /**
-     * Decode a GeoHash to an approximate bounding box that contains the
-     * original GeoHashed point.
+     * Decode a Geohash to an approximate bounding box that contains the
+     * original Geohashed point.
      *
      * @param geoHash
-     *     GeoHash string
+     *     Geohash string
      *
-     * @return Spatial Range (bounding box) of the GeoHash.
+     * @return Spatial Range (bounding box) of the Geohash.
      */
     public static SpatialRange decodeHash(String geoHash) {
         ArrayList<Boolean> bits = getBits(geoHash);
@@ -206,16 +214,16 @@ public class GeoHash {
     }
 
     /**
-     * Decode GeoHash bits from a binary GeoHash.
+     * Decode Geohash bits from a binary Geohash.
      *
      * @param bits
-     *     ArrayList of Booleans containing the GeoHash bits
+     *     ArrayList of Booleans containing the Geohash bits
      *
      * @param latitude
      *     If set to <code>true</code> the latitude bits are decoded.  If set to
      *     <code>false</code> the longitude bits are decoded.
      *
-     * @return low, high range that the GeoHashed location falls between.
+     * @return low, high range that the Geohashed location falls between.
      */
     private static float[] decodeBits(ArrayList<Boolean> bits,
                                       boolean latitude) {
@@ -250,12 +258,12 @@ public class GeoHash {
     }
 
     /**
-     * Converts a GeoHash string to its binary representation.
+     * Converts a Geohash string to its binary representation.
      *
      * @param hash
-     *     GeoHash string to convert to binary
+     *     Geohash string to convert to binary
      *
-     * @return The GeoHash in binary form, as an ArrayList of Booleans.
+     * @return The Geohash in binary form, as an ArrayList of Booleans.
      */
     private static ArrayList<Boolean> getBits(String hash) {
         hash = hash.toLowerCase();

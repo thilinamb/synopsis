@@ -100,6 +100,10 @@ public class Vertex implements ByteSerializable {
         return edges.get(label);
     }
 
+    public Vertex getFirstNeighbor() {
+        return edges.firstEntry().getValue();
+    }
+
     /**
      * Retrieves the {@link NavigableMap} of neighboring vertices less than the
      * specified value.
@@ -155,7 +159,8 @@ public class Vertex implements ByteSerializable {
      *     range
      */
     public NavigableMap<Feature, Vertex> getNeighborsInRange(
-            Feature from, boolean fromInclusive, Feature to, boolean toInclusive) {
+            Feature from, boolean fromInclusive,
+            Feature to, boolean toInclusive) {
 
         return edges.subMap(from, fromInclusive, to, toInclusive);
     }
@@ -184,19 +189,60 @@ public class Vertex implements ByteSerializable {
 
     /**
      * Connnects two vertices.  If this vertex is already connected to the
-     * provided vertex label, then the already-connected vertex is returned.
+     * provided vertex label (based on value), then the already-connected vertex
+     * is returned and its DataContainer will be merged with the vertex passed
+     * to this method.
      *
      * @param vertex The vertex to connect to.
      * @return Connected vertex.
      */
-    public Vertex connect(Vertex v) {
+    protected Vertex connect(Vertex v) {
+        return connect(v, false, null);
+    }
+
+    /**
+     * Connnects two vertices.  If this vertex is already connected to the
+     * provided vertex label (based on value), then the already-connected vertex
+     * is returned and its DataContainer will be merged with the vertex passed
+     * to this method.
+     *
+     * @param vertex The vertex to connect to.
+     * @param overwriteData If set to true, any DataContainers in the
+     *     destination vertex will be overwritten instead of merged.
+     * @return Connected vertex.
+     */
+    protected Vertex connect(Vertex v, boolean overwriteData) {
+        return connect(v, overwriteData, null);
+    }
+
+    /**
+     * Connnects two vertices.  If this vertex is already connected to the
+     * provided vertex label (based on value), then the already-connected vertex
+     * is returned and its DataContainer will be merged with the vertex passed
+     * to this method.
+     *
+     * @param vertex The vertex to connect to.
+     * @param overwriteData If set to true, any DataContainers in the
+     *     destination vertex will be overwritten instead of merged.
+     * @param metrics A {@link GraphMetrics} instance to update as the connect
+     *     operation is carred out.
+     * @return Connected vertex.
+     */
+    protected Vertex connect(
+            Vertex v, boolean overwriteData, GraphMetrics metrics) {
         Feature label = v.getLabel();
         Vertex neighbor = getNeighbor(label);
         if (neighbor == null) {
             edges.put(label, v);
+            if (metrics != null) {
+                metrics.addVertex();
+                if (v.hasData()) {
+                    metrics.addLeaf();
+                }
+            }
             return v;
         } else {
-            if (neighbor.hasData()) {
+            if (neighbor.hasData() && overwriteData == false) {
                 DataContainer container = neighbor.getData();
                 container.merge(v.getData());
             } else {
@@ -215,13 +261,28 @@ public class Vertex implements ByteSerializable {
     }
 
     /**
-     * Add and connect a collection of vertices in the form of a traversal path.
+     * Add and connect a collection of vertices in the form of a traversal path,
+     * starting with this vertex.
+     *
+     * @param path Collection of vertices to connect
      */
     public void addPath(Iterator<Vertex> path) {
+        addPath(path, null);
+    }
+
+    /**
+     * Add and connect a collection of vertices in the form of a traversal path,
+     * starting with this vertex.
+     *
+     * @param path Collection of vertices to connect
+     * @param metrics A {@link GraphMetrics} instance to populate as the path is
+     *     added.
+     */
+    public void addPath(Iterator<Vertex> path, GraphMetrics metrics) {
         if (path.hasNext()) {
             Vertex vertex = path.next();
-            Vertex edge = connect(vertex);
-            edge.addPath(path);
+            Vertex connection = connect(vertex, false, metrics);
+            connection.addPath(path, metrics);
         }
     }
 
@@ -240,6 +301,10 @@ public class Vertex implements ByteSerializable {
         return data;
     }
 
+    /**
+     * Retrieves whether or not this vertex has an associated
+     * {@link DataContainer}.
+     */
     public boolean hasData() {
         return data != null;
     }
@@ -302,18 +367,19 @@ public class Vertex implements ByteSerializable {
 
     @Deserialize
     public Vertex(SerializationInputStream in)
-    throws IOException {
-        try {
-            this.label = new Feature(in);
-            this.data = new DataContainer(in);
-        } catch (SerializationException e) {
-            e.printStackTrace();
-        }
+    throws IOException, SerializationException {
+        this(in, null);
+    }
+
+    public Vertex(SerializationInputStream in, GraphMetrics metrics)
+    throws IOException, SerializationException {
+        this.label = new Feature(in);
+        this.data = new DataContainer(in);
 
         int neighbors = in.readInt();
         for (int i = 0; i < neighbors; ++i) {
             Vertex v = new Vertex(in);
-            this.connect(v);
+            this.connect(v, false, metrics);
         }
     }
 
@@ -330,5 +396,4 @@ public class Vertex implements ByteSerializable {
             v.serialize(out);
         }
     }
-
 }
