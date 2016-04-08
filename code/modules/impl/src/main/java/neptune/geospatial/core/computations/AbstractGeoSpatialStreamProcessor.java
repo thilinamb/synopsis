@@ -223,7 +223,7 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
                         (byte) 1, serializedState);
                 writeToStream(Constants.Streams.STATE_REPLICA_STREAM, stateReplicationMessage);
                 tsLastStateReplication = currentTs;
-                if(logger.isDebugEnabled()){
+                if (logger.isDebugEnabled()) {
                     logger.debug(String.format("[%s] state was replicated.", getInstanceIdentifier()));
                 }
             }
@@ -559,6 +559,18 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
             }
         } catch (DatasetException e) {
             e.printStackTrace();
+        }
+    }
+
+    public void registerDefaultTopic(Topic topic) throws StreamingDatasetException {
+        try {
+            this.getDefaultStreamDataset().addInputStream(topic, this.getInstanceIdentifier());
+            // add the incoming stream type at the destination.
+            this.incomingStreamTypes.put(topic.toString(), StateReplicationMessage.class.getName());
+            this.identifierMap.put(Integer.parseInt(topic.toString()), Constants.Streams.STATE_REPLICA_STREAM);
+        } catch (DatasetException e) {
+            logger.error(e.getMessage(), e);
+            throw new StreamingDatasetException(e.getMessage(), e);
         }
     }
 }

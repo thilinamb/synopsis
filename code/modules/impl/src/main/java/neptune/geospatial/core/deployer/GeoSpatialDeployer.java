@@ -107,6 +107,7 @@ public class GeoSpatialDeployer extends JobDeployer {
     private Map<String, Operation> computationIdToObjectMap = new HashMap<>();
     private Map<String, String> niControlToDataEndPoints = new HashMap<>();
     private Map<String, Topic> stateReplicationOpPlacements = new HashMap<>();
+    private Map<String, Topic> resourceEndpointToTopics = new HashMap<>();
     private List<ScaleOutResponse> pendingDeployments = new ArrayList<>();
     private String jobId;
     private DeployerConfig deployerConfig;
@@ -121,6 +122,7 @@ public class GeoSpatialDeployer extends JobDeployer {
             // deploy state replica computations at each resource
             deployStateReplicaOperators(jobId);
         }
+        AbstractGeoSpatialStreamProcessor original = null;
         // shuffle operations
         List<Operation> opList = Arrays.asList(operations);
         //Collections.shuffle(opList);
@@ -143,8 +145,37 @@ public class GeoSpatialDeployer extends JobDeployer {
                     // configure state replication
                     if (faultToleranceEnabled && op instanceof AbstractGeoSpatialStreamProcessor) {
                         configureReplicationStreams((AbstractGeoSpatialStreamProcessor) op);
+                        if (original == null) {
+                            original = (AbstractGeoSpatialStreamProcessor) op;
+                        }
                     }
                 }
+
+                // deploy an empty computation at every node, so that it can take over if the primary fails
+                if (faultToleranceEnabled && original != null) {
+                    for (ResourceEndpoint resourceEndpoint : resourceEndpoints) {
+                        try {
+                            // copy the minimal state
+                            AbstractGeoSpatialStreamProcessor clone = original.getClass().newInstance();
+                            original.createMinimalClone(clone);
+                            // create incoming topics
+                            Topic topic = deployGeoSpatialProcessor(resourceEndpoint.getDataEndpoint(), clone);
+                            if (topic != null) {
+                                resourceEndpointToTopics.put(resourceEndpoint.getDataEndpoint(), topic);
+                            }
+                            if (logger.isDebugEnabled()) {
+                                logger.debug(String.format("An additional computation is deployed on %s",
+                                        resourceEndpoint.getDataEndpoint()));
+                            }
+                        } catch (Exception e) {
+                            String errMsg = "Error deploying additional computation at resource %s" +
+                                    resourceEndpoint.getDataEndpoint();
+                            logger.error(errMsg, e);
+                            throw new DeploymentException(errMsg, e);
+                        }
+                    }
+                }
+
                 // send the deployment messages
                 for (Map.Entry<Operation, String> entry : assignments.entrySet()) {
                     deployOperation(jobId, entry.getValue(), entry.getKey());
@@ -197,6 +228,23 @@ public class GeoSpatialDeployer extends JobDeployer {
                 throw new DeploymentException(e.getMessage(), e);
             }
         }
+    }
+
+    private Topic deployGeoSpatialProcessor(String endpoint, StreamProcessor clone)
+            throws CommunicationsException, DeploymentException {
+        ZooKeeper zk = ZooKeeperAgent.getInstance().getZooKeeperInstance();
+        Topic topic;
+        try {
+            int topicId = ZooKeeperUtils.getNextSequenceNumber(zk);
+            topic = new StringTopic(Integer.toString(topicId));
+            ((AbstractGeoSpatialStreamProcessor) clone).registerDefaultTopic(topic);
+            // write the assignments to ZooKeeper
+            ZooKeeperUtils.createDirectory(zk, Constants.ZK_ZNODE_OP_ASSIGNMENTS + "/" + clone.getInstanceIdentifier(),
+                    endpoint.getBytes(), CreateMode.PERSISTENT);
+        } catch (KeeperException | InterruptedException | StreamingDatasetException e) {
+            throw new DeploymentException(e.getMessage(), e);
+        }
+        return topic;
     }
 
     private ResourceEndpoint nextResource(Operation op) {
