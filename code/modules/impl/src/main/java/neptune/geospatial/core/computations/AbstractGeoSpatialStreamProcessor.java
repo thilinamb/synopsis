@@ -549,6 +549,7 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
                 outGoingStreamTypes.put(fqStreamId, streamType);
                 outGoingStreamTypes.put(topic.toString(), streamType);
             }
+
             StreamDisseminationMetadata streamDisseminationMetadata = new StreamDisseminationMetadata(new SendToAllPartitioner(), topics);
             if (metadataRegistry.containsKey(Constants.Streams.STATE_REPLICA_STREAM)) {
                 metadataRegistry.get(Constants.Streams.STATE_REPLICA_STREAM).add(streamDisseminationMetadata);
@@ -572,5 +573,16 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
             logger.error(e.getMessage(), e);
             throw new StreamingDatasetException(e.getMessage(), e);
         }
+    }
+
+    /**
+     * Returns incoming stream topics.
+     * Used by the deployer initially to figure out the incoming streams
+     * to create the replication topic tree in zk.
+     *
+     * @return Collection of incoming stream topics
+     */
+    public Collection<Topic> getIncomingTopics(){
+        return this.getDefaultStreamDataset().getInputStreams();
     }
 }
