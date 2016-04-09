@@ -22,4 +22,8 @@ public class Constants {
     public class Operators {
         public static final String STATE_REPLICA_PROCESSOR_NAME = "state-replica-processor";
     }
+
+    public class ZNodes {
+        public static final String ZNODE_BACKUP_TOPICS = "/ft-backup-topics";
+    }
 }
