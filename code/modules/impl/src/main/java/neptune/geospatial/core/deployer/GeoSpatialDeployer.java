@@ -144,7 +144,10 @@ public class GeoSpatialDeployer extends JobDeployer {
                             resourceEndpoint.getDataEndpoint().getBytes(), CreateMode.PERSISTENT);
                     // configure state replication
                     if (faultToleranceEnabled && op instanceof AbstractGeoSpatialStreamProcessor) {
-                        configureReplicationStreams((AbstractGeoSpatialStreamProcessor) op);
+                        AbstractGeoSpatialStreamProcessor geoSpatialStreamProcessor = (AbstractGeoSpatialStreamProcessor) op;
+                        configureReplicationStreams(geoSpatialStreamProcessor);
+                        resourceEndpointToTopics.put(resourceEndpoint.getDataEndpoint(),
+                                geoSpatialStreamProcessor.getDefaultGeoSpatialStream());
                         if (original == null) {
                             original = (AbstractGeoSpatialStreamProcessor) op;
                         }
@@ -154,24 +157,26 @@ public class GeoSpatialDeployer extends JobDeployer {
                 // deploy an empty computation at every node, so that it can take over if the primary fails
                 if (faultToleranceEnabled && original != null) {
                     for (ResourceEndpoint resourceEndpoint : resourceEndpoints) {
-                        try {
-                            // copy the minimal state
-                            AbstractGeoSpatialStreamProcessor clone = original.getClass().newInstance();
-                            original.createMinimalClone(clone);
-                            // create incoming topics
-                            Topic topic = deployGeoSpatialProcessor(resourceEndpoint.getDataEndpoint(), clone);
-                            if (topic != null) {
-                                resourceEndpointToTopics.put(resourceEndpoint.getDataEndpoint(), topic);
+                        if (!resourceEndpointToTopics.containsKey(resourceEndpoint.getDataEndpoint())) {
+                            try {
+                                // copy the minimal state
+                                AbstractGeoSpatialStreamProcessor clone = original.getClass().newInstance();
+                                original.createMinimalClone(clone);
+                                // create incoming topics
+                                Topic topic = deployGeoSpatialProcessor(resourceEndpoint.getDataEndpoint(), clone);
+                                if (topic != null) {
+                                    resourceEndpointToTopics.put(resourceEndpoint.getDataEndpoint(), topic);
+                                }
+                                if (logger.isDebugEnabled()) {
+                                    logger.debug(String.format("An additional computation is deployed on %s",
+                                            resourceEndpoint.getDataEndpoint()));
+                                }
+                            } catch (Exception e) {
+                                String errMsg = "Error deploying additional computation at resource %s" +
+                                        resourceEndpoint.getDataEndpoint();
+                                logger.error(errMsg, e);
+                                throw new DeploymentException(errMsg, e);
                             }
-                            if (logger.isDebugEnabled()) {
-                                logger.debug(String.format("An additional computation is deployed on %s",
-                                        resourceEndpoint.getDataEndpoint()));
-                            }
-                        } catch (Exception e) {
-                            String errMsg = "Error deploying additional computation at resource %s" +
-                                    resourceEndpoint.getDataEndpoint();
-                            logger.error(errMsg, e);
-                            throw new DeploymentException(errMsg, e);
                         }
                     }
                 }

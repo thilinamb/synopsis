@@ -576,13 +576,15 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
     }
 
     /**
-     * Returns incoming stream topics.
+     * Returns the default incoming geo-spatial stream topic.
      * Used by the deployer initially to figure out the incoming streams
      * to create the replication topic tree in zk.
      *
-     * @return Collection of incoming stream topics
+     * @return  Default incoming geo spatial stream topic
      */
-    public Collection<Topic> getIncomingTopics(){
-        return this.getDefaultStreamDataset().getInputStreams();
+    public Topic getDefaultGeoSpatialStream(){
+        List<Topic> topics = new ArrayList<>();
+        topics.addAll(this.getDefaultStreamDataset().getInputStreams());
+        return topics.get(0);
     }
 }
