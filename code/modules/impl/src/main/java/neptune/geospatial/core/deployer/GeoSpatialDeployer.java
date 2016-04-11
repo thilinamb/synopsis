@@ -408,8 +408,10 @@ public class GeoSpatialDeployer extends JobDeployer {
 
     private void createZKBackupProcessorMap(Map<Operation, String> assignments) throws DeploymentException {
         try {
-            ZooKeeperUtils.createDirectory(zk, neptune.geospatial.graph.Constants.ZNodes.ZNODE_BACKUP_TOPICS, null,
-                    CreateMode.PERSISTENT);
+            if (!ZooKeeperUtils.directoryExists(zk, neptune.geospatial.graph.Constants.ZNodes.ZNODE_BACKUP_TOPICS)) {
+                ZooKeeperUtils.createDirectory(zk, neptune.geospatial.graph.Constants.ZNodes.ZNODE_BACKUP_TOPICS, null,
+                        CreateMode.PERSISTENT);
+            }
             for (Map.Entry<Operation, String> entry : assignments.entrySet()) {
                 Operation op = entry.getKey();
                 if (op instanceof AbstractGeoSpatialStreamProcessor) {
