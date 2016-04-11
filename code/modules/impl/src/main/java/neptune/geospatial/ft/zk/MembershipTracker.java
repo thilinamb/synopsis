@@ -15,23 +15,45 @@ import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.ZooKeeper;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 /**
- * Keeps a list of outgoing edges from the current node.
+ * Keeps a current list of cluster members and notify the listeners about membership changes.
+ * Currently it only notifies about members who had left the cluster.
+ * <p>
+ * Implemented as a singleton for each Resource. It is expensive to maintain zk clients for every computation.
  *
  * @author Thilina Buddhika
  */
 public class MembershipTracker implements AsyncCallback.ChildrenCallback {
 
+    private static MembershipTracker instance;
+
     private Logger logger = Logger.getLogger(MembershipTracker.class);
     private final ZooKeeper zk;
     private ZKResourceWatcher watcher;
     private List<String> members;
+    private List<MembershipChangeListener> listeners = new ArrayList<>();
 
-    public MembershipTracker() throws CommunicationsException {
+    private MembershipTracker() throws CommunicationsException {
         zk = ZooKeeperAgent.getInstance().getZooKeeperInstance();
         getAvailableWorkers();
+    }
+
+    public static MembershipTracker getInstance() throws CommunicationsException {
+        if (instance == null) {
+            synchronized (MembershipTracker.class) {
+                if (instance == null) {
+                    instance = new MembershipTracker();
+                }
+            }
+        }
+        return instance;
+    }
+
+    public void registerListener(MembershipChangeListener listener) {
+        listeners.add(listener);
     }
 
     void getAvailableWorkers() {
@@ -60,8 +82,11 @@ public class MembershipTracker implements AsyncCallback.ChildrenCallback {
                     lostProcesses.remove(member);
                 }
             }
-            if (lostProcesses.size() > 0) {
+            if (lostProcesses.size() > 0 && listeners.size() > 0) {
                 // notify listeners
+                for (MembershipChangeListener listener : listeners) {
+                    listener.membershipChanged(Collections.unmodifiableList(lostProcesses));
+                }
             }
         }
     }

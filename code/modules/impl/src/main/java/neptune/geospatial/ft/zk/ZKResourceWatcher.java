@@ -1,7 +1,6 @@
 package neptune.geospatial.ft.zk;
 
 import ds.granules.util.Constants;
-import neptune.geospatial.ft.OutgoingEdgeCache;
 import org.apache.zookeeper.WatchedEvent;
 import org.apache.zookeeper.Watcher;
 
@@ -12,9 +11,9 @@ import org.apache.zookeeper.Watcher;
  */
 public class ZKResourceWatcher implements Watcher {
 
-    private final OutgoingEdgeCache edgeCache;
+    private final MembershipTracker edgeCache;
 
-    public ZKResourceWatcher(OutgoingEdgeCache edgeCache) {
+    public ZKResourceWatcher(MembershipTracker edgeCache) {
         this.edgeCache = edgeCache;
     }
 
