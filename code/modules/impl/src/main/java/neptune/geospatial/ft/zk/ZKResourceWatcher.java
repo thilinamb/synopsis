@@ -1,6 +1,7 @@
-package neptune.geospatial.ft;
+package neptune.geospatial.ft.zk;
 
 import ds.granules.util.Constants;
+import neptune.geospatial.ft.OutgoingEdgeCache;
 import org.apache.zookeeper.WatchedEvent;
 import org.apache.zookeeper.Watcher;
 
@@ -21,7 +22,7 @@ public class ZKResourceWatcher implements Watcher {
     public void process(WatchedEvent watchedEvent) {
         if (watchedEvent.getType() == Event.EventType.NodeChildrenChanged) {
             if (watchedEvent.getPath().equals(Constants.ZK_ZNODE_GROUP)) {
-                edgeCache.nodesChanged();
+                edgeCache.getAvailableWorkers();
             }
         }
     }
