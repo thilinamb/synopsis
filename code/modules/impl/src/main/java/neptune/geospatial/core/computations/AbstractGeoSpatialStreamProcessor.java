@@ -4,6 +4,7 @@ package neptune.geospatial.core.computations;
 import com.hazelcast.core.HazelcastInstance;
 import ds.funnel.data.format.FormatReader;
 import ds.funnel.topic.Topic;
+import ds.granules.communication.direct.ZooKeeperAgent;
 import ds.granules.communication.direct.control.ControlMessage;
 import ds.granules.communication.direct.control.SendUtility;
 import ds.granules.dataset.DatasetException;
@@ -35,6 +36,7 @@ import neptune.geospatial.hazelcast.HazelcastException;
 import neptune.geospatial.partitioner.GeoHashPartitioner;
 import neptune.geospatial.util.Mutex;
 import org.apache.log4j.Logger;
+import org.apache.zookeeper.KeeperException;
 
 import java.io.IOException;
 import java.util.*;
@@ -603,6 +605,21 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
             }
         } catch (NIException e) {
             logger.error("Error acquiring the Resource instance.", e);
+        }
+    }
+
+    public void populateBackupTopicsPerStream(String stream) throws ScalingException {
+        if (faultToleranceEnabled) {
+            try {
+                processBackupTopicPerStream(ZooKeeperAgent.getInstance().getZooKeeperInstance(),
+                        getInstanceIdentifier(), stream, metadataRegistry, topicLocations);
+                if (logger.isDebugEnabled()) {
+                    logger.debug(String.format("[%s] Backup topics are populated for the new outgoing stream: %s",
+                            getInstanceIdentifier(), stream));
+                }
+            } catch (KeeperException | InterruptedException | CommunicationsException e) {
+                throw new ScalingException("Error updating backup topics for newly deployed child node.", e);
+            }
         }
     }
 }
