@@ -2,6 +2,7 @@ package neptune.geospatial.core.computations;
 
 
 import com.hazelcast.core.HazelcastInstance;
+import ds.funnel.data.format.FormatReader;
 import ds.funnel.topic.Topic;
 import ds.granules.communication.direct.control.ControlMessage;
 import ds.granules.communication.direct.control.SendUtility;
@@ -24,6 +25,8 @@ import neptune.geospatial.core.protocol.processors.StateTransferMsgProcessor;
 import neptune.geospatial.core.protocol.processors.scalein.*;
 import neptune.geospatial.core.protocol.processors.scalout.*;
 import neptune.geospatial.core.resource.ManagedResource;
+import neptune.geospatial.ft.BackupTopicInfo;
+import neptune.geospatial.ft.FaultTolerantStreamBase;
 import neptune.geospatial.ft.StateReplicationMessage;
 import neptune.geospatial.graph.Constants;
 import neptune.geospatial.graph.messages.GeoHashIndexedRecord;
@@ -47,7 +50,7 @@ import java.util.concurrent.atomic.AtomicLong;
  *
  * @author Thilina Buddhika
  */
-public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor {
+public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor implements FaultTolerantStreamBase {
 
     private Logger logger = Logger.getLogger(AbstractGeoSpatialStreamProcessor.class.getName());
     private static final String OUTGOING_STREAM_BASE_ID = "out-going";
@@ -74,6 +77,7 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
     private boolean faultToleranceEnabled;
     private long tsLastStateReplication = -1;
     private long stateReplicationInterval;
+    private Map<String, List<BackupTopicInfo>> topicLocations = new HashMap<>();
 
     /**
      * Implement the specific business logic to process each
@@ -580,11 +584,25 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
      * Used by the deployer initially to figure out the incoming streams
      * to create the replication topic tree in zk.
      *
-     * @return  Default incoming geo spatial stream topic
+     * @return Default incoming geo spatial stream topic
      */
-    public Topic getDefaultGeoSpatialStream(){
+    public Topic getDefaultGeoSpatialStream() {
         List<Topic> topics = new ArrayList<>();
         topics.addAll(this.getDefaultStreamDataset().getInputStreams());
         return topics.get(0);
+    }
+
+    @Override
+    protected void deserializeMemberVariables(FormatReader formatReader) {
+        // Hack: since Granules does not reinitialize operators after deploying
+        // we need a way to read the backup topics from the zk tree just after the deployment.
+        // doing it lazily is expensive.
+        try {
+            if (ManagedResource.getInstance().isFaultToleranceEnabled()) {
+                this.topicLocations = this.populateBackupTopicMap(getInstanceIdentifier(), metadataRegistry);
+            }
+        } catch (NIException e) {
+            logger.error("Error acquiring the Resource instance.", e);
+        }
     }
 }

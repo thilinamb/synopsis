@@ -1,8 +1,12 @@
 package neptune.geospatial.benchmarks.dynamicscaling;
 
 import com.hazelcast.core.IQueue;
+import ds.funnel.data.format.FormatReader;
+import ds.granules.neptune.interfere.core.NIException;
 import ds.granules.streaming.core.exception.StreamingDatasetException;
 import neptune.geospatial.benchmarks.util.SineCurveLoadProfiler;
+import neptune.geospatial.core.resource.ManagedResource;
+import neptune.geospatial.ft.FaultTolerantStreamBase;
 import neptune.geospatial.graph.Constants;
 import neptune.geospatial.graph.messages.GeoHashIndexedRecord;
 import neptune.geospatial.graph.operators.NOAADataIngester;
@@ -18,7 +22,7 @@ import java.util.concurrent.atomic.AtomicLong;
 /**
  * @author Thilina Buddhika
  */
-public class ThrottledStreamIngester extends NOAADataIngester {
+public class ThrottledStreamIngester extends NOAADataIngester implements FaultTolerantStreamBase {
 
     private Logger logger = Logger.getLogger(ThrottledStreamIngester.class);
 
@@ -39,9 +43,9 @@ public class ThrottledStreamIngester extends NOAADataIngester {
 
     @Override
     public void emit() throws StreamingDatasetException {
-        if(tsLastEmitted == -1){
+        if (tsLastEmitted == -1) {
             try {
-                Thread.sleep(20*1000);
+                Thread.sleep(20 * 1000);
                 logger.debug("Initial sleep period is over. Starting to emit messages.");
             } catch (InterruptedException ignore) {
 
@@ -54,13 +58,13 @@ public class ThrottledStreamIngester extends NOAADataIngester {
             long sentCount = counter.incrementAndGet();
             long now = System.currentTimeMillis();
 
-            if(tsLastEmitted == -1){
+            if (tsLastEmitted == -1) {
                 tsLastEmitted = now;
                 // register a listener for scaling in and out
                 registerListener();
-            } else if (now - tsLastEmitted > 1000){
+            } else if (now - tsLastEmitted > 1000) {
                 try {
-                    bufferedWriter.write(now + "," + sentCount * 1000.0/(now - tsLastEmitted) + "\n");
+                    bufferedWriter.write(now + "," + sentCount * 1000.0 / (now - tsLastEmitted) + "\n");
                     bufferedWriter.flush();
                     tsLastEmitted = now;
                     counter.set(0);
@@ -76,7 +80,7 @@ public class ThrottledStreamIngester extends NOAADataIngester {
         }
     }
 
-    private void registerListener(){
+    private void registerListener() {
         try {
             IQueue<Integer> scalingMonitorQueue = HazelcastClientInstanceHolder.getInstance().
                     getHazelcastClientInstance().getQueue("scaling-monitor");
@@ -84,6 +88,20 @@ public class ThrottledStreamIngester extends NOAADataIngester {
                     true);
         } catch (HazelcastException e) {
             e.printStackTrace();
+        }
+    }
+
+    @Override
+    protected void deserializeMemberVariables(FormatReader formatReader) {
+        // Hack: since Granules does not reinitialize operators after deploying
+        // we need a way to read the backup topics from the zk tree just after the deployment.
+        // doing it lazily is expensive.
+        try {
+            if (ManagedResource.getInstance().isFaultToleranceEnabled()) {
+                populateBackupTopicMap(getInstanceIdentifier(), metadataRegistry);
+            }
+        } catch (NIException e) {
+            logger.error("Error acquiring the Resource instance.", e);
         }
     }
 }
