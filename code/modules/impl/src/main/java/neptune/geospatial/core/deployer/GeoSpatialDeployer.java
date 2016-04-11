@@ -351,12 +351,14 @@ public class GeoSpatialDeployer extends JobDeployer {
             }
             currentComp.addStreamConsumer(new StringTopic(scaleOutReq.getTopic()), clone, scaleOutReq.getStreamId(),
                     scaleOutReq.getStreamType());
-            // initialize the state replication streams for the new computation
-            if (faultToleranceEnabled && clone instanceof AbstractGeoSpatialStreamProcessor) {
-                configureReplicationStreams((AbstractGeoSpatialStreamProcessor) clone);
-            }
             // deploy
             ResourceEndpoint resourceEndpoint = nextResource(clone);
+            // initialize the state replication streams for the new computation
+            if (faultToleranceEnabled && clone instanceof AbstractGeoSpatialStreamProcessor) {
+                AbstractGeoSpatialStreamProcessor streamProcessor = (AbstractGeoSpatialStreamProcessor) clone;
+                configureReplicationStreams(streamProcessor);
+                createBackupTopicZNode(streamProcessor, resourceEndpoint.getDataEndpoint());
+            }
             // write the assignments to ZooKeeper
             ZooKeeperUtils.createDirectory(zk, Constants.ZK_ZNODE_OP_ASSIGNMENTS + "/" +
                             clone.getInstanceIdentifier(),
@@ -415,31 +417,36 @@ public class GeoSpatialDeployer extends JobDeployer {
             for (Map.Entry<Operation, String> entry : assignments.entrySet()) {
                 Operation op = entry.getKey();
                 if (op instanceof AbstractGeoSpatialStreamProcessor) {
-                    Topic defaultGSSTopic = ((AbstractGeoSpatialStreamProcessor) op).getDefaultGeoSpatialStream();
-                    if (backupTopicMap.containsKey(defaultGSSTopic)) {
-                        BackupTopic[] backupTopics = backupTopicMap.get(defaultGSSTopic);
-                        String backupNodePath = neptune.geospatial.graph.Constants.ZNodes.ZNODE_BACKUP_TOPICS + "/" +
-                                defaultGSSTopic.toString();
-                        ZooKeeperUtils.createDirectory(zk, backupNodePath, null, CreateMode.PERSISTENT);
-                        for (BackupTopic backupTopic : backupTopics) {
-                            Topic processorTopic = resourceEndpointToTopics.get(backupTopic.resourceEndpoint);
-                            String childNodePath = backupNodePath + "/" + processorTopic.toString();
-                            ZooKeeperUtils.createDirectory(zk, childNodePath, backupTopic.resourceEndpoint.getBytes(),
-                                    CreateMode.PERSISTENT);
-                            if (logger.isDebugEnabled()) {
-                                logger.debug(String.format("ZK Backup Node tree updated. Topic: %s [%s], " +
-                                                "Backup Node: %s [%s]", defaultGSSTopic, entry.getValue(),
-                                        processorTopic, backupTopic.resourceEndpoint));
-                            }
-                        }
-                    } else {
-                        logger.error("No backup topics found for " + defaultGSSTopic);
-                    }
+                    createBackupTopicZNode((AbstractGeoSpatialStreamProcessor) op, entry.getValue());
                 }
             }
         } catch (KeeperException | InterruptedException e) {
             logger.error("Error creating Zookeeper backup node tree.", e);
             throw new DeploymentException("Error creating Zookeeper backup node tree.", e);
+        }
+    }
+
+    private void createBackupTopicZNode(AbstractGeoSpatialStreamProcessor processor, String resourceEndpoint)
+            throws KeeperException, InterruptedException {
+        Topic defaultGSSTopic = processor.getDefaultGeoSpatialStream();
+        if (backupTopicMap.containsKey(defaultGSSTopic)) {
+            BackupTopic[] backupTopics = backupTopicMap.get(defaultGSSTopic);
+            String backupNodePath = neptune.geospatial.graph.Constants.ZNodes.ZNODE_BACKUP_TOPICS + "/" +
+                    defaultGSSTopic.toString();
+            ZooKeeperUtils.createDirectory(zk, backupNodePath, null, CreateMode.PERSISTENT);
+            for (BackupTopic backupTopic : backupTopics) {
+                Topic processorTopic = resourceEndpointToTopics.get(backupTopic.resourceEndpoint);
+                String childNodePath = backupNodePath + "/" + processorTopic.toString();
+                ZooKeeperUtils.createDirectory(zk, childNodePath, backupTopic.resourceEndpoint.getBytes(),
+                        CreateMode.PERSISTENT);
+                if (logger.isDebugEnabled()) {
+                    logger.debug(String.format("ZK Backup Node tree updated. Topic: %s [%s], " +
+                                    "Backup Node: %s [%s]", defaultGSSTopic, resourceEndpoint,
+                            processorTopic, backupTopic.resourceEndpoint));
+                }
+            }
+        } else {
+            logger.error("No backup topics found for " + defaultGSSTopic);
         }
     }
 }
