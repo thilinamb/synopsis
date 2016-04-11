@@ -3,6 +3,7 @@ package neptune.geospatial.core.computations;
 
 import com.hazelcast.core.HazelcastInstance;
 import ds.funnel.data.format.FormatReader;
+import ds.funnel.data.format.FormatWriter;
 import ds.funnel.topic.Topic;
 import ds.granules.communication.direct.ZooKeeperAgent;
 import ds.granules.communication.direct.control.ControlMessage;
@@ -29,6 +30,7 @@ import neptune.geospatial.core.resource.ManagedResource;
 import neptune.geospatial.ft.BackupTopicInfo;
 import neptune.geospatial.ft.FaultTolerantStreamBase;
 import neptune.geospatial.ft.StateReplicationMessage;
+import neptune.geospatial.ft.TopicInfo;
 import neptune.geospatial.graph.Constants;
 import neptune.geospatial.graph.messages.GeoHashIndexedRecord;
 import neptune.geospatial.hazelcast.HazelcastClientInstanceHolder;
@@ -75,11 +77,12 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
     // protocol processors
     private Map<Integer, ProtocolProcessor> protocolProcessors = new HashMap<>();
 
-    // fault tolerance related configurations
+    // fault tolerance related attributes
     private boolean faultToleranceEnabled;
     private long tsLastStateReplication = -1;
     private long stateReplicationInterval;
     private Map<String, List<BackupTopicInfo>> topicLocations = new HashMap<>();
+    private TopicInfo[] replicationStreamTopics;
 
     /**
      * Implement the specific business logic to process each
@@ -596,11 +599,17 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
 
     @Override
     protected void deserializeMemberVariables(FormatReader formatReader) {
-        // Hack: since Granules does not reinitialize operators after deploying
-        // we need a way to read the backup topics from the zk tree just after the deployment.
-        // doing it lazily is expensive.
         try {
             if (ManagedResource.getInstance().isFaultToleranceEnabled()) {
+                this.replicationStreamTopics = new TopicInfo[formatReader.readInt()];
+                for (int i = 0; i < this.replicationStreamTopics.length; i++) {
+                    TopicInfo topicInfo = new TopicInfo();
+                    topicInfo.unmarshall(formatReader);
+                    this.replicationStreamTopics[i] = topicInfo;
+                }
+                // Hack: since Granules does not reinitialize operators after deploying
+                // we need a way to read the backup topics from the zk tree just after the deployment.
+                // doing it lazily is expensive.
                 this.topicLocations = this.populateBackupTopicMap(getInstanceIdentifier(), metadataRegistry);
             }
         } catch (NIException e) {
@@ -619,6 +628,20 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
                 }
             } catch (KeeperException | InterruptedException | CommunicationsException e) {
                 throw new ScalingException("Error updating backup topics for newly deployed child node.", e);
+            }
+        }
+    }
+
+    public void setReplicationStreamTopics(TopicInfo[] replicationStreamTopics) {
+        this.replicationStreamTopics = replicationStreamTopics;
+    }
+
+    @Override
+    protected void serializedMemberVariables(FormatWriter formatWriter) {
+        if (this.replicationStreamTopics != null) {
+            formatWriter.writeInt(this.replicationStreamTopics.length);
+            for (TopicInfo topicInfo : this.replicationStreamTopics) {
+                topicInfo.marshall(formatWriter);
             }
         }
     }

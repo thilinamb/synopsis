@@ -38,6 +38,7 @@ import neptune.geospatial.core.protocol.msg.scaleout.ScaleOutRequest;
 import neptune.geospatial.core.protocol.msg.scaleout.ScaleOutResponse;
 import neptune.geospatial.core.resource.ManagedResource;
 import neptune.geospatial.ft.StateReplicaProcessor;
+import neptune.geospatial.ft.TopicInfo;
 import org.apache.log4j.Logger;
 import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.KeeperException;
@@ -95,31 +96,19 @@ public class GeoSpatialDeployer extends JobDeployer {
         }
     }
 
-    private class BackupTopic {
-        private Topic stateReplicationTopic;
-        private String resourceEndpoint;
-
-        private BackupTopic(Topic stateReplicationTopic, String resourceEndpoint) {
-            this.stateReplicationTopic = stateReplicationTopic;
-            this.resourceEndpoint = resourceEndpoint;
-        }
-    }
-
     private static final Logger logger = Logger.getLogger(GeoSpatialDeployer.class);
     private static final String DEPLOYER_CONFIG_PATH = "deployer-config";
 
     private CountDownLatch initializationLatch = new CountDownLatch(2);
     private static GeoSpatialDeployer instance;
-    private Map<String, String> niOpAssignments = new HashMap<>();
     private Map<String, Operation> computationIdToObjectMap = new HashMap<>();
-    private Map<String, String> niControlToDataEndPoints = new HashMap<>();
     private Map<String, Topic> stateReplicationOpPlacements = new HashMap<>();
     private Map<String, Topic> resourceEndpointToTopics = new HashMap<>();
     private List<ScaleOutResponse> pendingDeployments = new ArrayList<>();
     private String jobId;
     private DeployerConfig deployerConfig;
     private boolean faultToleranceEnabled;
-    private Map<Topic, BackupTopic[]> backupTopicMap = new HashMap<>();
+    private Map<Topic, TopicInfo[]> stateReplicationTopics = new HashMap<>();
 
     @Override
     public ProgressTracker deployOperations(Operation[] operations) throws
@@ -144,9 +133,7 @@ public class GeoSpatialDeployer extends JobDeployer {
                     ResourceEndpoint resourceEndpoint = nextResource(op);
                     assignments.put(op, resourceEndpoint.getDataEndpoint());
                     String operatorId = op.getInstanceIdentifier();
-                    niOpAssignments.put(operatorId, resourceEndpoint.getControlEndpoint());
                     computationIdToObjectMap.put(operatorId, op);
-                    niControlToDataEndPoints.put(resourceEndpoint.getControlEndpoint(), resourceEndpoint.getDataEndpoint());
                     // write the assignments to ZooKeeper
                     ZooKeeperUtils.createDirectory(zk, Constants.ZK_ZNODE_OP_ASSIGNMENTS + "/" + operatorId,
                             resourceEndpoint.getDataEndpoint().getBytes(), CreateMode.PERSISTENT);
@@ -172,6 +159,7 @@ public class GeoSpatialDeployer extends JobDeployer {
                                 original.createMinimalClone(clone);
                                 // create incoming topics
                                 Topic topic = deployGeoSpatialProcessor(resourceEndpoint.getDataEndpoint(), clone);
+                                assignments.put(clone, resourceEndpoint.getDataEndpoint());
                                 if (topic != null) {
                                     resourceEndpointToTopics.put(resourceEndpoint.getDataEndpoint(), topic);
                                 }
@@ -214,11 +202,13 @@ public class GeoSpatialDeployer extends JobDeployer {
                 resourceEndpoints.get((lastAssigned + 2) % resourceEndpoints.size()).getDataEndpoint())};
         streamProcessor.deployStateReplicationStreams(topics);
         // keep track of the backup topics for later
-        BackupTopic[] backupTopics = {new BackupTopic(topics[0],
+        TopicInfo[] stateReplicationTopics = {new TopicInfo(topics[0],
                 resourceEndpoints.get((lastAssigned + 1) % resourceEndpoints.size()).getDataEndpoint()),
-                new BackupTopic(topics[1],
+                new TopicInfo(topics[1],
                         resourceEndpoints.get((lastAssigned + 2) % resourceEndpoints.size()).getDataEndpoint())};
-        backupTopicMap.put(streamProcessor.getDefaultGeoSpatialStream(), backupTopics);
+        this.stateReplicationTopics.put(streamProcessor.getDefaultGeoSpatialStream(), stateReplicationTopics);
+        // set the state replications stream topics
+        streamProcessor.setReplicationStreamTopics(stateReplicationTopics);
         if (logger.isDebugEnabled()) {
             logger.debug(String.format("State Replication Processors are deployed for %s in %s and %s",
                     streamProcessor.getInstanceIdentifier(),
@@ -365,7 +355,6 @@ public class GeoSpatialDeployer extends JobDeployer {
                     resourceEndpoint.getDataEndpoint().getBytes(), CreateMode.PERSISTENT);
             // deploy the operation in the chosen Granules resource
             computationIdToObjectMap.put(clone.getInstanceIdentifier(), clone);
-            niOpAssignments.put(clone.getInstanceIdentifier(), resourceEndpoint.getControlEndpoint());
             ack = new ScaleOutResponse(scaleOutReq.getMessageId(), computationId, scaleOutReq.getOriginEndpoint(), true,
                     clone.getInstanceIdentifier(), resourceEndpoint.getControlEndpoint());
             pendingDeployments.add(ack);
@@ -429,20 +418,20 @@ public class GeoSpatialDeployer extends JobDeployer {
     private void createBackupTopicZNode(AbstractGeoSpatialStreamProcessor processor, String resourceEndpoint)
             throws KeeperException, InterruptedException {
         Topic defaultGSSTopic = processor.getDefaultGeoSpatialStream();
-        if (backupTopicMap.containsKey(defaultGSSTopic)) {
-            BackupTopic[] backupTopics = backupTopicMap.get(defaultGSSTopic);
+        if (stateReplicationTopics.containsKey(defaultGSSTopic)) {
+            TopicInfo[] stateReplicationTopics = this.stateReplicationTopics.get(defaultGSSTopic);
             String backupNodePath = neptune.geospatial.graph.Constants.ZNodes.ZNODE_BACKUP_TOPICS + "/" +
                     defaultGSSTopic.toString();
             ZooKeeperUtils.createDirectory(zk, backupNodePath, null, CreateMode.PERSISTENT);
-            for (BackupTopic backupTopic : backupTopics) {
-                Topic processorTopic = resourceEndpointToTopics.get(backupTopic.resourceEndpoint);
+            for (TopicInfo stateReplicationTopic : stateReplicationTopics) {
+                Topic processorTopic = resourceEndpointToTopics.get(stateReplicationTopic.getResourceEndpoint());
                 String childNodePath = backupNodePath + "/" + processorTopic.toString();
-                ZooKeeperUtils.createDirectory(zk, childNodePath, backupTopic.resourceEndpoint.getBytes(),
+                ZooKeeperUtils.createDirectory(zk, childNodePath, stateReplicationTopic.getResourceEndpoint().getBytes(),
                         CreateMode.PERSISTENT);
                 if (logger.isDebugEnabled()) {
                     logger.debug(String.format("ZK Backup Node tree updated. Topic: %s [%s], " +
                                     "Backup Node: %s [%s]", defaultGSSTopic, resourceEndpoint,
-                            processorTopic, backupTopic.resourceEndpoint));
+                            processorTopic, stateReplicationTopic.getResourceEndpoint()));
                 }
             }
         } else {

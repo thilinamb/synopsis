@@ -1,5 +1,8 @@
 package neptune.geospatial.ft;
 
+import ds.funnel.data.format.FormatReader;
+import ds.funnel.data.format.FormatWriter;
+import ds.funnel.topic.StringTopic;
 import ds.funnel.topic.Topic;
 
 /**
@@ -15,6 +18,9 @@ public class TopicInfo{
         this.resourceEndpoint = resourceEndpoint;
     }
 
+    public TopicInfo() {
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -25,8 +31,26 @@ public class TopicInfo{
         return topic.equals(topicInfo.topic);
     }
 
+    public Topic getTopic() {
+        return topic;
+    }
+
+    public String getResourceEndpoint() {
+        return resourceEndpoint;
+    }
+
     @Override
     public int hashCode() {
         return topic.hashCode();
+    }
+
+    public void marshall(FormatWriter formatWriter){
+        formatWriter.writeString(topic.toString());
+        formatWriter.writeString(resourceEndpoint);
+    }
+
+    public void unmarshall(FormatReader formatReader){
+        this.topic = new StringTopic(formatReader.readString());
+        this.resourceEndpoint = formatReader.readString();
     }
 }
