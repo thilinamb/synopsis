@@ -15,5 +15,5 @@ public interface MembershipChangeListener {
      *
      * @param lostMembers An unmodifiable list of cluster resources who have left the cluster
      */
-    public void membershipChanged(List<String> lostMembers);
+    void membershipChanged(List<String> lostMembers);
 }
