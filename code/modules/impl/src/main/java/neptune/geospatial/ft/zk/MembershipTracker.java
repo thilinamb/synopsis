@@ -67,12 +67,26 @@ public class MembershipTracker implements AsyncCallback.ChildrenCallback {
         // very first invocation
         if (members == null) {
             members = new ArrayList<>();
+            if (logger.isDebugEnabled()) {
+                logger.debug("Started populating initial membership list...");
+            }
             for (String child : currentChildren) {
-                addMember(extractResourceEP(child));
+                String endpoint = extractResourceEP(child);
+                addMember(endpoint);
+                if (logger.isDebugEnabled()) {
+                    logger.debug(String.format("New member discovered. Endpoint: %s, Id: %s", endpoint, child));
+                }
+            }
+            if (logger.isDebugEnabled()) {
+                logger.debug("Finished populating initial membership list...");
             }
         } else {
             // membership has changed. One or more processes have left the cluster
             // we should find the processors who have left the cluster
+            if (logger.isDebugEnabled()) {
+                logger.debug(String.format("Membership has changed. Previous count: %d, Current count: %d",
+                        members.size(), currentChildren.size()));
+            }
             List<String> lostProcesses = members;
             members = new ArrayList<>();
             for (String child : currentChildren) {
@@ -83,6 +97,10 @@ public class MembershipTracker implements AsyncCallback.ChildrenCallback {
                 }
             }
             if (lostProcesses.size() > 0 && listeners.size() > 0) {
+                if (logger.isDebugEnabled()) {
+                    logger.debug(String.format("Notifying membership listeners. Registered listener count: %d, " +
+                            "Lost member count: %d", listeners.size(), lostProcesses.size()));
+                }
                 // notify listeners
                 for (MembershipChangeListener listener : listeners) {
                     listener.membershipChanged(Collections.unmodifiableList(lostProcesses));
