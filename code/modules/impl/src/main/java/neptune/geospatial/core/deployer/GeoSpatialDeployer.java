@@ -105,7 +105,7 @@ public class GeoSpatialDeployer extends JobDeployer implements MembershipChangeL
     private static GeoSpatialDeployer instance;
     private Map<String, Operation> computationIdToObjectMap = new HashMap<>();
     private Map<String, Topic> stateReplicationOpPlacements = new HashMap<>();
-    private Map<String, Topic> resourceEndpointToTopics = new HashMap<>();
+    private Map<String, Topic> resourceEndpointToDefaultTopicMap = new HashMap<>();
     private List<ScaleOutResponse> pendingDeployments = new ArrayList<>();
     private String jobId;
     private DeployerConfig deployerConfig;
@@ -143,7 +143,7 @@ public class GeoSpatialDeployer extends JobDeployer implements MembershipChangeL
                     if (faultToleranceEnabled && op instanceof AbstractGeoSpatialStreamProcessor) {
                         AbstractGeoSpatialStreamProcessor geoSpatialStreamProcessor = (AbstractGeoSpatialStreamProcessor) op;
                         configureReplicationStreams(geoSpatialStreamProcessor, lastAssigned - 1);
-                        resourceEndpointToTopics.put(resourceEndpoint.getDataEndpoint(),
+                        resourceEndpointToDefaultTopicMap.put(resourceEndpoint.getDataEndpoint(),
                                 geoSpatialStreamProcessor.getDefaultGeoSpatialStream());
                         if (original == null) {
                             original = (AbstractGeoSpatialStreamProcessor) op;
@@ -154,7 +154,7 @@ public class GeoSpatialDeployer extends JobDeployer implements MembershipChangeL
                 // deploy an empty computation at every node, so that it can take over if the primary fails
                 if (faultToleranceEnabled && original != null) {
                     for (ResourceEndpoint resourceEndpoint : resourceEndpoints) {
-                        if (!resourceEndpointToTopics.containsKey(resourceEndpoint.getDataEndpoint())) {
+                        if (!resourceEndpointToDefaultTopicMap.containsKey(resourceEndpoint.getDataEndpoint())) {
                             try {
                                 // copy the minimal state
                                 AbstractGeoSpatialStreamProcessor clone = original.getClass().newInstance();
@@ -164,7 +164,7 @@ public class GeoSpatialDeployer extends JobDeployer implements MembershipChangeL
                                 assignments.put(clone, resourceEndpoint.getDataEndpoint());
                                 configureReplicationStreams(clone, resourceEndpoints.indexOf(resourceEndpoint));
                                 if (topic != null) {
-                                    resourceEndpointToTopics.put(resourceEndpoint.getDataEndpoint(), topic);
+                                    resourceEndpointToDefaultTopicMap.put(resourceEndpoint.getDataEndpoint(), topic);
                                 }
                                 if (logger.isDebugEnabled()) {
                                     logger.debug(String.format("An additional computation is deployed on %s",
@@ -430,7 +430,7 @@ public class GeoSpatialDeployer extends JobDeployer implements MembershipChangeL
                     defaultGSSTopic.toString();
             ZooKeeperUtils.createDirectory(zk, backupNodePath, null, CreateMode.PERSISTENT);
             for (TopicInfo stateReplicationTopic : stateReplicationTopics) {
-                Topic processorTopic = resourceEndpointToTopics.get(stateReplicationTopic.getResourceEndpoint());
+                Topic processorTopic = resourceEndpointToDefaultTopicMap.get(stateReplicationTopic.getResourceEndpoint());
                 String childNodePath = backupNodePath + "/" + processorTopic.toString();
                 ZooKeeperUtils.createDirectory(zk, childNodePath, stateReplicationTopic.getResourceEndpoint().getBytes(),
                         CreateMode.PERSISTENT);
