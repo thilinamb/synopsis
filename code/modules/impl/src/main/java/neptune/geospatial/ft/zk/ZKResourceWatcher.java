@@ -10,13 +10,13 @@ import org.apache.zookeeper.Watcher;
  *
  * @author Thilina Buddhika
  */
-public class ZKResourceWatcher implements Watcher {
+class ZKResourceWatcher implements Watcher {
 
-    private final MembershipTracker edgeCache;
+    private final MembershipTracker membershipTracker;
     private final Logger logger = Logger.getLogger(ZKResourceWatcher.class);
 
-    public ZKResourceWatcher(MembershipTracker edgeCache) {
-        this.edgeCache = edgeCache;
+    ZKResourceWatcher(MembershipTracker membershipTracker) {
+        this.membershipTracker = membershipTracker;
     }
 
     @Override
@@ -26,7 +26,7 @@ public class ZKResourceWatcher implements Watcher {
                 logger.debug("Cluster membership has changed for path: " + watchedEvent.getPath());
             }
             if (watchedEvent.getPath().equals(Constants.ZK_ZNODE_GROUP)) {
-                edgeCache.getAvailableWorkers();
+                membershipTracker.getAvailableWorkers();
             }
         }
     }
