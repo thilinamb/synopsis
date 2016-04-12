@@ -14,9 +14,7 @@ import org.apache.zookeeper.AsyncCallback;
 import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.ZooKeeper;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
 
 /**
  * Keeps a current list of cluster members and notify the listeners about membership changes.
@@ -33,7 +31,7 @@ public class MembershipTracker implements AsyncCallback.ChildrenCallback {
     private Logger logger = Logger.getLogger(MembershipTracker.class);
     private final ZooKeeper zk;
     private ZKResourceWatcher watcher;
-    private List<String> members;
+    private Map<String, String> members;
     private List<MembershipChangeListener> listeners = new ArrayList<>();
 
     private MembershipTracker() throws CommunicationsException {
@@ -66,15 +64,15 @@ public class MembershipTracker implements AsyncCallback.ChildrenCallback {
     private synchronized void processClusterChanges(List<String> currentChildren) throws FTException {
         // very first invocation
         if (members == null) {
-            members = new ArrayList<>();
+            members = new HashMap<>();
             if (logger.isDebugEnabled()) {
                 logger.debug("Started populating initial membership list...");
             }
-            for (String child : currentChildren) {
-                String endpoint = extractResourceEP(child);
-                addMember(endpoint);
+            for (String id : currentChildren) {
+                String endpoint = extractResourceEP(id);
+                addMember(id, endpoint);
                 if (logger.isDebugEnabled()) {
-                    logger.debug(String.format("New member discovered. Endpoint: %s, Id: %s", endpoint, child));
+                    logger.debug(String.format("New member discovered. Endpoint: %s, Id: %s", endpoint, id));
                 }
             }
             if (logger.isDebugEnabled()) {
@@ -87,23 +85,22 @@ public class MembershipTracker implements AsyncCallback.ChildrenCallback {
                 logger.debug(String.format("Membership has changed. Previous count: %d, Current count: %d",
                         members.size(), currentChildren.size()));
             }
-            List<String> lostProcesses = members;
-            members = new ArrayList<>();
-            for (String child : currentChildren) {
-                String member = extractResourceEP(child);
-                addMember(member);
-                if (lostProcesses.contains(member)) {
-                    lostProcesses.remove(member);
-                }
+            Map<String, String> prevMembers = members;
+            members = new HashMap<>();
+            for (String id : currentChildren) {
+                addMember(id, prevMembers.get(id));
+                prevMembers.remove(id);
             }
-            if (lostProcesses.size() > 0 && listeners.size() > 0) {
+            if (prevMembers.size() > 0 && listeners.size() > 0) {
                 if (logger.isDebugEnabled()) {
                     logger.debug(String.format("Notifying membership listeners. Registered listener count: %d, " +
-                            "Lost member count: %d", listeners.size(), lostProcesses.size()));
+                            "Lost member count: %d", listeners.size(), prevMembers.size()));
                 }
+                List<String> lostNodes = new ArrayList<>(prevMembers.size());
+                lostNodes.addAll(prevMembers.values());
                 // notify listeners
                 for (MembershipChangeListener listener : listeners) {
-                    listener.membershipChanged(Collections.unmodifiableList(lostProcesses));
+                    listener.membershipChanged(Collections.unmodifiableList(lostNodes));
                 }
             }
         }
@@ -141,9 +138,9 @@ public class MembershipTracker implements AsyncCallback.ChildrenCallback {
         return null;
     }
 
-    private void addMember(String member) {
-        if (member != null && !members.contains(member)) {
-            members.add(member);
+    private void addMember(String id, String endpoint) {
+        if (id != null && !members.containsKey(id)) {
+            members.put(id, endpoint);
         }
     }
 }
