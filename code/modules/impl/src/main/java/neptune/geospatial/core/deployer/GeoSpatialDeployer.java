@@ -140,7 +140,7 @@ public class GeoSpatialDeployer extends JobDeployer {
                     // configure state replication
                     if (faultToleranceEnabled && op instanceof AbstractGeoSpatialStreamProcessor) {
                         AbstractGeoSpatialStreamProcessor geoSpatialStreamProcessor = (AbstractGeoSpatialStreamProcessor) op;
-                        configureReplicationStreams(geoSpatialStreamProcessor);
+                        configureReplicationStreams(geoSpatialStreamProcessor, lastAssigned - 1);
                         resourceEndpointToTopics.put(resourceEndpoint.getDataEndpoint(),
                                 geoSpatialStreamProcessor.getDefaultGeoSpatialStream());
                         if (original == null) {
@@ -160,6 +160,7 @@ public class GeoSpatialDeployer extends JobDeployer {
                                 // create incoming topics
                                 Topic topic = deployGeoSpatialProcessor(resourceEndpoint.getDataEndpoint(), clone);
                                 assignments.put(clone, resourceEndpoint.getDataEndpoint());
+                                configureReplicationStreams(clone, resourceEndpoints.indexOf(resourceEndpoint));
                                 if (topic != null) {
                                     resourceEndpointToTopics.put(resourceEndpoint.getDataEndpoint(), topic);
                                 }
@@ -195,17 +196,17 @@ public class GeoSpatialDeployer extends JobDeployer {
         return null;
     }
 
-    private void configureReplicationStreams(AbstractGeoSpatialStreamProcessor streamProcessor) {
+    private void configureReplicationStreams(AbstractGeoSpatialStreamProcessor streamProcessor, int location) {
         Topic[] topics = new Topic[]{stateReplicationOpPlacements.get(
-                resourceEndpoints.get((lastAssigned + 1) % resourceEndpoints.size()).getDataEndpoint())
+                resourceEndpoints.get((location + 1) % resourceEndpoints.size()).getDataEndpoint())
                 , stateReplicationOpPlacements.get(
-                resourceEndpoints.get((lastAssigned + 2) % resourceEndpoints.size()).getDataEndpoint())};
+                resourceEndpoints.get((location + 2) % resourceEndpoints.size()).getDataEndpoint())};
         streamProcessor.deployStateReplicationStreams(topics);
         // keep track of the backup topics for later
         TopicInfo[] stateReplicationTopics = {new TopicInfo(topics[0],
-                resourceEndpoints.get((lastAssigned + 1) % resourceEndpoints.size()).getDataEndpoint()),
+                resourceEndpoints.get((location + 1) % resourceEndpoints.size()).getDataEndpoint()),
                 new TopicInfo(topics[1],
-                        resourceEndpoints.get((lastAssigned + 2) % resourceEndpoints.size()).getDataEndpoint())};
+                        resourceEndpoints.get((location + 2) % resourceEndpoints.size()).getDataEndpoint())};
         this.stateReplicationTopics.put(streamProcessor.getDefaultGeoSpatialStream(), stateReplicationTopics);
         // set the state replications stream topics
         streamProcessor.setReplicationStreamTopics(stateReplicationTopics);
@@ -346,7 +347,7 @@ public class GeoSpatialDeployer extends JobDeployer {
             // initialize the state replication streams for the new computation
             if (faultToleranceEnabled && clone instanceof AbstractGeoSpatialStreamProcessor) {
                 AbstractGeoSpatialStreamProcessor streamProcessor = (AbstractGeoSpatialStreamProcessor) clone;
-                configureReplicationStreams(streamProcessor);
+                configureReplicationStreams(streamProcessor, lastAssigned - 1);
                 createBackupTopicZNode(streamProcessor, resourceEndpoint.getDataEndpoint());
             }
             // write the assignments to ZooKeeper
