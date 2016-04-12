@@ -115,7 +115,7 @@ public class MembershipTracker implements AsyncCallback.ChildrenCallback {
             byte[] bytes = ZooKeeperUtils.readZNodeData(zk, Constants.ZK_ZNODE_GROUP + "/" + node);
             if (bytes != null) {
                 String endPointData = new String(bytes);
-                return endPointData.substring(endPointData.lastIndexOf(":") + 1, endPointData.length());
+                return endPointData.substring(0, endPointData.lastIndexOf(":"));
             }
         } catch (KeeperException | InterruptedException e) {
             throw new FTException("Error reading child node " + node, e);
