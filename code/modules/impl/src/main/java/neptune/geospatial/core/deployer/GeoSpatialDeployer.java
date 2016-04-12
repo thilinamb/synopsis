@@ -39,6 +39,8 @@ import neptune.geospatial.core.protocol.msg.scaleout.ScaleOutResponse;
 import neptune.geospatial.core.resource.ManagedResource;
 import neptune.geospatial.ft.StateReplicaProcessor;
 import neptune.geospatial.ft.TopicInfo;
+import neptune.geospatial.ft.zk.MembershipChangeListener;
+import neptune.geospatial.ft.zk.MembershipTracker;
 import org.apache.log4j.Logger;
 import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.KeeperException;
@@ -55,7 +57,7 @@ import java.util.concurrent.CountDownLatch;
  *
  * @author Thilina Buddhika
  */
-public class GeoSpatialDeployer extends JobDeployer {
+public class GeoSpatialDeployer extends JobDeployer implements MembershipChangeListener {
 
     private class CtrlMessageEndpoint implements Runnable {
 
@@ -295,6 +297,9 @@ public class GeoSpatialDeployer extends JobDeployer {
             faultToleranceEnabled = Boolean.parseBoolean(streamingProperties.getProperty(ManagedResource.ENABLE_FAULT_TOLERANCE));
         }
         logger.info("Fault Tolerance Enabled: " + faultToleranceEnabled);
+        if (faultToleranceEnabled) {
+            MembershipTracker.getInstance().registerListener(this);
+        }
         super.initialize(streamingProperties);
         initializationCompleted();
     }
@@ -438,5 +443,10 @@ public class GeoSpatialDeployer extends JobDeployer {
         } else {
             logger.error("No backup topics found for " + defaultGSSTopic);
         }
+    }
+
+    @Override
+    public void membershipChanged(List<String> lostMembers) {
+        
     }
 }
