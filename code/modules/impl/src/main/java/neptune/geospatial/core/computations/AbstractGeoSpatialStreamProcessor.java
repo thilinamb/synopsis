@@ -31,6 +31,9 @@ import neptune.geospatial.ft.BackupTopicInfo;
 import neptune.geospatial.ft.FaultTolerantStreamBase;
 import neptune.geospatial.ft.StateReplicationMessage;
 import neptune.geospatial.ft.TopicInfo;
+import neptune.geospatial.ft.protocol.StateReplLvlIncreaseMsgProcessor;
+import neptune.geospatial.ft.zk.MembershipChangeListener;
+import neptune.geospatial.ft.zk.MembershipTracker;
 import neptune.geospatial.graph.Constants;
 import neptune.geospatial.graph.messages.GeoHashIndexedRecord;
 import neptune.geospatial.hazelcast.HazelcastClientInstanceHolder;
@@ -54,7 +57,8 @@ import java.util.concurrent.atomic.AtomicLong;
  *
  * @author Thilina Buddhika
  */
-public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor implements FaultTolerantStreamBase {
+public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor implements FaultTolerantStreamBase,
+        MembershipChangeListener {
 
     private Logger logger = Logger.getLogger(AbstractGeoSpatialStreamProcessor.class.getName());
     private static final String OUTGOING_STREAM_BASE_ID = "out-going";
@@ -82,7 +86,7 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
     private long tsLastStateReplication = -1;
     private long stateReplicationInterval;
     private Map<String, List<BackupTopicInfo>> topicLocations = new HashMap<>();
-    private TopicInfo[] replicationStreamTopics;
+    private List<TopicInfo> replicationStreamTopics;
 
     /**
      * Implement the specific business logic to process each
@@ -542,6 +546,7 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
         protocolProcessors.put(ProtocolTypes.STATE_TRANSFER_MSG, new StateTransferMsgProcessor());
         protocolProcessors.put(ProtocolTypes.SCALE_IN_COMPLETE, new ScaleInCompleteMsgProcessor());
         protocolProcessors.put(ProtocolTypes.SCALE_IN_COMPLETE_ACK, new ScaleInCompleteAckProcessor());
+        protocolProcessors.put(ProtocolTypes.STATE_REPL_LEVEL_INCREASE, new StateReplLvlIncreaseMsgProcessor());
     }
 
     /**
@@ -601,19 +606,23 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
     protected void deserializeMemberVariables(FormatReader formatReader) {
         try {
             if (ManagedResource.getInstance().isFaultToleranceEnabled()) {
-                this.replicationStreamTopics = new TopicInfo[formatReader.readInt()];
-                for (int i = 0; i < this.replicationStreamTopics.length; i++) {
+                int replicationElementCount = formatReader.readInt();
+                this.replicationStreamTopics = new ArrayList<>();
+                for (int i = 0; i < replicationElementCount; i++) {
                     TopicInfo topicInfo = new TopicInfo();
                     topicInfo.unmarshall(formatReader);
-                    this.replicationStreamTopics[i] = topicInfo;
+                    this.replicationStreamTopics.add(topicInfo);
                 }
                 // Hack: since Granules does not reinitialize operators after deploying
                 // we need a way to read the backup topics from the zk tree just after the deployment.
                 // doing it lazily is expensive.
                 this.topicLocations = this.populateBackupTopicMap(getInstanceIdentifier(), metadataRegistry);
+                MembershipTracker.getInstance().registerListener(this);
             }
         } catch (NIException e) {
             logger.error("Error acquiring the Resource instance.", e);
+        } catch (CommunicationsException e) {
+            logger.error("Error registering for cluster memberhsip changes.", e);
         }
     }
 
@@ -632,17 +641,108 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
         }
     }
 
-    public void setReplicationStreamTopics(TopicInfo[] replicationStreamTopics) {
+    public void setReplicationStreamTopics(List<TopicInfo> replicationStreamTopics) {
         this.replicationStreamTopics = replicationStreamTopics;
     }
 
     @Override
     protected void serializedMemberVariables(FormatWriter formatWriter) {
         if (this.replicationStreamTopics != null) {
-            formatWriter.writeInt(this.replicationStreamTopics.length);
+            formatWriter.writeInt(this.replicationStreamTopics.size());
             for (TopicInfo topicInfo : this.replicationStreamTopics) {
                 topicInfo.marshall(formatWriter);
             }
         }
     }
+
+    @Override
+    public void membershipChanged(List<String> lostMembers) {
+        boolean updateTopicLocations = false;
+        List<TopicInfo> currentStateReplicationTopics = new ArrayList<>();
+        for (String lostMember : lostMembers) {
+            if (logger.isDebugEnabled()) {
+                logger.debug(String.format("[%s] Processing the lost node: %s", getInstanceIdentifier(), lostMember));
+            }
+            // check if a node that hosts an out-going topic has left the cluster
+            if (topicLocations.containsKey(lostMember)) {
+                // get the list of all topics that was running on the lost node
+                if (logger.isDebugEnabled()) {
+                    logger.debug(String.format("[%s] Current node is affected by the lost node. Lost node: %s, " +
+                                    "Number of affected topics: %d", getInstanceIdentifier(), lostMember,
+                            topicLocations.get(lostMember).size()));
+                }
+                List<BackupTopicInfo> affectedTopics = topicLocations.get(lostMember);
+                for (BackupTopicInfo backupTopicInfo : affectedTopics) {
+                    String stream = backupTopicInfo.getStream();
+                    Topic primary = backupTopicInfo.getPrimary();
+                    // get the corresponding out going topics
+                    List<StreamDisseminationMetadata> metadataList = metadataRegistry.get(stream);
+                    for (StreamDisseminationMetadata metadata : metadataList) {
+                        for (int i = 0; i < metadata.topics.length; i++) {
+                            Topic outGoingTopic = metadata.topics[i];
+                            // if any of the out-going topics are equal to the primary
+                            if (outGoingTopic.equals(primary)) {
+                                // pick a secondary and set as the primary
+                                TopicInfo chosenForPrimary = backupTopicInfo.getBackups().get(0);
+                                metadata.topics[i] = chosenForPrimary.getTopic();
+                                if (logger.isDebugEnabled()) {
+                                    logger.debug(String.format("[%s] Repairing the primary: " +
+                                                    "Original: %s, New topic: %s, New topic location: %s",
+                                            getInstanceIdentifier(), outGoingTopic.toString(),
+                                            chosenForPrimary.getTopic(), chosenForPrimary.getResourceEndpoint()));
+                                }
+                            }
+                        }
+                    }
+                }
+                updateTopicLocations = true;
+            }
+            for (TopicInfo stateReplicaProcessor : replicationStreamTopics) {
+                if (stateReplicaProcessor.getResourceEndpoint().equals(lostMember)) {
+                    if (logger.isDebugEnabled()) {
+                        logger.debug(String.format("[%s] A state replication processor is affected. " +
+                                "State Replication Topic: %s", getInstanceIdentifier(), stateReplicaProcessor.getTopic()));
+                    }
+                    List<StreamDisseminationMetadata> metadataList = metadataRegistry.get(Constants.Streams.STATE_REPLICA_STREAM);
+                    // one of the replicas has failed. Increase the replica level.
+                    if (metadataList != null) {
+                        for (StreamDisseminationMetadata metadata : metadataList) {
+                            List<Topic> validTopics = new ArrayList<>();
+                            for (Topic replicationTopic : metadata.topics) {
+                                if (!replicationTopic.equals(stateReplicaProcessor.getTopic())) {
+                                    validTopics.add(replicationTopic);
+                                } else {
+                                    if (logger.isDebugEnabled()) {
+                                        logger.debug(String.format("[%s] " +
+                                                        "Replication topic on the lost node was removed. Topic: %s",
+                                                getInstanceIdentifier(), replicationTopic.toString()));
+                                    }
+                                }
+                            }
+                            if (validTopics.size() < metadata.topics.length) {
+                                metadata.topics = validTopics.toArray(new Topic[validTopics.size()]);
+                            }
+                        }
+                    }
+                } else {
+                    currentStateReplicationTopics.add(stateReplicaProcessor);
+                }
+            }
+        }
+        // update the current replication topics
+        replicationStreamTopics = currentStateReplicationTopics;
+        if (logger.isDebugEnabled()) {
+            logger.debug(String.format("[%s] Current replication processor count: %d", getInstanceIdentifier(),
+                    replicationStreamTopics.size()));
+        }
+        // it is required to repopulate the backup nodes list
+        if (updateTopicLocations) {
+            populateBackupTopicMap(this.getInstanceIdentifier(), metadataRegistry);
+            if (logger.isDebugEnabled()) {
+                logger.debug(String.format("[%s] BackupTopicMap is updated.", getInstanceIdentifier()));
+            }
+        }
+    }
+
+    
 }
