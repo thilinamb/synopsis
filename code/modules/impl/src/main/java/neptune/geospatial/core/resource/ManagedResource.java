@@ -31,10 +31,7 @@ import org.apache.log4j.Logger;
 import java.io.File;
 import java.io.IOException;
 import java.util.*;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -109,6 +106,17 @@ public class ManagedResource {
     private class ComputationMonitor implements Runnable {
         @Override
         public void run() {
+            // terminate the monitoring task after the active scaling period is elapsed, if it's set.
+            if (enableFaultTolerance && activeScalingPeriod > 0) {
+                long now = System.currentTimeMillis();
+                if (tsActiveScalingStarted == 0) {
+                    tsActiveScalingStarted = now;
+                } else if ((now - tsActiveScalingStarted) >= activeScalingPeriod) {
+                    logger.info("Active Scaling Period is elapsed. Terminating the monitoring task.");
+                    future.cancel(false);
+                    return;
+                }
+            }
             if (logger.isDebugEnabled()) {
                 logger.debug("Monitoring thread is executing.");
             }
@@ -148,6 +156,7 @@ public class ManagedResource {
     private static final String HAZELCAST_INTERFACE = "rivulet-hazelcast-interface";
     public static final String ENABLE_FAULT_TOLERANCE = "rivulet-enable-fault-tolerance";
     private static final String STATE_REPLICATION_INTERVAL = "rivulet-state-replication-interval";
+    public static final String ACTIVE_SCALING_PERIOD = "rivulet-scaling-period-in-mins";
 
     // default values
     private int monitoredBackLogLength;
@@ -164,6 +173,9 @@ public class ManagedResource {
 
     private boolean enableFaultTolerance = false;
     private long stateReplicationInterval = 2000;
+    private long activeScalingPeriod;
+    private long tsActiveScalingStarted;
+    private ScheduledFuture future;
 
     private ManagedResource(Properties inProps, int numOfThreads) throws CommunicationsException {
         Resource resource = new Resource(inProps, numOfThreads);
@@ -196,7 +208,7 @@ public class ManagedResource {
                 monitoredBackLogLength = startupProps.containsKey(MONITORED_BACKLOG_HISTORY_LENGTH) ?
                         Integer.parseInt(startupProps.getProperty(MONITORED_BACKLOG_HISTORY_LENGTH)) : 5;
                 // start the computation monitor thread
-                monitoringService.scheduleWithFixedDelay(new ComputationMonitor(), 0, monitoringPeriod,
+                future = monitoringService.scheduleWithFixedDelay(new ComputationMonitor(), 0, monitoringPeriod,
                         TimeUnit.MILLISECONDS);
                 logger.info(String.format("Scale-in Threshold: %d, Scale-out Threshold: %d, " +
                                 "Monitoring Period: %d (ms), Monitored Backlog History Length: %d", scaleInThreshold,
@@ -208,9 +220,11 @@ public class ManagedResource {
             if (enableFaultTolerance) {
                 stateReplicationInterval = startupProps.containsKey(STATE_REPLICATION_INTERVAL) ?
                         Long.parseLong(startupProps.getProperty(STATE_REPLICATION_INTERVAL)) : 2000;
+                activeScalingPeriod = startupProps.containsKey(ACTIVE_SCALING_PERIOD) ?
+                        Integer.parseInt(startupProps.getProperty(ACTIVE_SCALING_PERIOD)) * 60 * 1000 : -1;
             }
 
-            logger.info("Fault tolerance enabled: " + enableFaultTolerance);
+            logger.info(String.format("Fault tolerance enabled: %b, Active Scaling Period: %d", enableFaultTolerance, activeScalingPeriod));
 
             initializeHazelcast(startupProps);
             // register callback to receive deployment acks.
