@@ -110,7 +110,7 @@ public class GeoSpatialDeployer extends JobDeployer implements MembershipChangeL
     private String jobId;
     private DeployerConfig deployerConfig;
     private boolean faultToleranceEnabled;
-    private Map<Topic, TopicInfo[]> stateReplicationTopics = new HashMap<>();
+    private Map<TopicInfo, TopicInfo[]> stateReplicationTopics = new HashMap<>();
 
     @Override
     public ProgressTracker deployOperations(Operation[] operations) throws
@@ -209,7 +209,8 @@ public class GeoSpatialDeployer extends JobDeployer implements MembershipChangeL
                 resourceEndpoints.get((location + 1) % resourceEndpoints.size()).getDataEndpoint()),
                 new TopicInfo(topics[1],
                         resourceEndpoints.get((location + 2) % resourceEndpoints.size()).getDataEndpoint())};
-        this.stateReplicationTopics.put(streamProcessor.getDefaultGeoSpatialStream(), stateReplicationTopics);
+        this.stateReplicationTopics.put(new TopicInfo(streamProcessor.getDefaultGeoSpatialStream(),
+                resourceEndpoints.get(location).getDataEndpoint()), stateReplicationTopics);
         // set the state replications stream topics
         streamProcessor.setReplicationStreamTopics(stateReplicationTopics);
         if (logger.isDebugEnabled()) {
@@ -424,8 +425,9 @@ public class GeoSpatialDeployer extends JobDeployer implements MembershipChangeL
     private void createBackupTopicZNode(AbstractGeoSpatialStreamProcessor processor, String resourceEndpoint)
             throws KeeperException, InterruptedException {
         Topic defaultGSSTopic = processor.getDefaultGeoSpatialStream();
-        if (stateReplicationTopics.containsKey(defaultGSSTopic)) {
-            TopicInfo[] stateReplicationTopics = this.stateReplicationTopics.get(defaultGSSTopic);
+        TopicInfo defaultTopicInfo = new TopicInfo(defaultGSSTopic, resourceEndpoint);
+        if (stateReplicationTopics.containsKey(defaultTopicInfo)) {
+            TopicInfo[] stateReplicationTopics = this.stateReplicationTopics.get(defaultTopicInfo);
             String backupNodePath = neptune.geospatial.graph.Constants.ZNodes.ZNODE_BACKUP_TOPICS + "/" +
                     defaultGSSTopic.toString();
             ZooKeeperUtils.createDirectory(zk, backupNodePath, null, CreateMode.PERSISTENT);
