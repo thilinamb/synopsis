@@ -15,13 +15,13 @@ import java.io.IOException;
 public class StateReplicationLevelIncreaseMsg extends ControlMessage {
 
     private String targetComputation;
-    private String previousTopic;
+    private String newLocation;
     private String newTopic;
 
-    public StateReplicationLevelIncreaseMsg(String targetComputation, String previousTopic, String newTopic) {
+    public StateReplicationLevelIncreaseMsg(String targetComputation, String newLocation, String newTopic) {
         super(ProtocolTypes.STATE_REPL_LEVEL_INCREASE);
         this.targetComputation = targetComputation;
-        this.previousTopic = previousTopic;
+        this.newLocation = newLocation;
         this.newTopic = newTopic;
     }
 
@@ -32,14 +32,14 @@ public class StateReplicationLevelIncreaseMsg extends ControlMessage {
     @Override
     public void readValues(DataInputStream dataInputStream) throws IOException {
         this.targetComputation = dataInputStream.readUTF();
-        this.previousTopic = dataInputStream.readUTF();
+        this.newLocation = dataInputStream.readUTF();
         this.newTopic = dataInputStream.readUTF();
     }
 
     @Override
     public void writeValues(DataOutputStream dataOutputStream) throws IOException {
         dataOutputStream.writeUTF(this.targetComputation);
-        dataOutputStream.writeUTF(this.previousTopic);
+        dataOutputStream.writeUTF(this.newLocation);
         dataOutputStream.writeUTF(this.newTopic);
     }
 
@@ -47,8 +47,8 @@ public class StateReplicationLevelIncreaseMsg extends ControlMessage {
         return targetComputation;
     }
 
-    public String getPreviousTopic() {
-        return previousTopic;
+    public String getNewLocation() {
+        return newLocation;
     }
 
     public String getNewTopic() {

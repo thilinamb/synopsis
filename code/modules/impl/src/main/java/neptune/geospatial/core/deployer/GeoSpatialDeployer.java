@@ -39,8 +39,10 @@ import neptune.geospatial.core.protocol.msg.scaleout.ScaleOutResponse;
 import neptune.geospatial.core.resource.ManagedResource;
 import neptune.geospatial.ft.StateReplicaProcessor;
 import neptune.geospatial.ft.TopicInfo;
+import neptune.geospatial.ft.protocol.StateReplicationLevelIncreaseMsg;
 import neptune.geospatial.ft.zk.MembershipChangeListener;
 import neptune.geospatial.ft.zk.MembershipTracker;
+import neptune.geospatial.util.RivuletUtil;
 import org.apache.log4j.Logger;
 import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.KeeperException;
@@ -212,7 +214,7 @@ public class GeoSpatialDeployer extends JobDeployer implements MembershipChangeL
         this.stateReplicationTopics.put(new TopicInfo(streamProcessor.getDefaultGeoSpatialStream(),
                 resourceEndpoints.get(location).getDataEndpoint()), stateReplicationTopics);
         // set the state replications stream topics
-        streamProcessor.setReplicationStreamTopics(stateReplicationTopics);
+        streamProcessor.setReplicationStreamTopics(Arrays.asList(stateReplicationTopics));
         if (logger.isDebugEnabled()) {
             logger.debug(String.format("State Replication Processors are deployed for %s in %s and %s",
                     streamProcessor.getInstanceIdentifier(),
@@ -496,9 +498,21 @@ public class GeoSpatialDeployer extends JobDeployer implements MembershipChangeL
                                     newBackupProcessorTopic.toString(), newLocation));
                         }
                         // send a message to the computation with new state replication topic info
-
+                        String targetComputation = RivuletUtil.getResourceEndpointForTopic(zk, gsProcessorTopicInfo.getTopic());
+                        StateReplicationLevelIncreaseMsg repLevelIncreaseMsg = new StateReplicationLevelIncreaseMsg(targetComputation,
+                                newLocation, newStateReplicationTopic.toString());
+                        SendUtility.sendControlMessage(repIndex.get(primaryLoc).getControlEndpoint(), repLevelIncreaseMsg);
+                        if (logger.isDebugEnabled()) {
+                            logger.debug(String.format("Sent a StateReplicationLevelIncreaseMsg to %s. " +
+                                            "Old topic: %s New topic: %s", repIndex.get(primaryLoc).getControlEndpoint(),
+                                    stateReplicationTopic.getTopic().toString(),
+                                    newStateReplicationTopic.toString()));
+                        }
                     } catch (InterruptedException | KeeperException e) {
-                        logger.error("Error deleting obsolete replica topic from Zookeeper.", e);
+                        logger.error("Error updating replication topic in Zookeeper.", e);
+                    } catch (CommunicationsException | IOException e) {
+                        logger.error("Error sending StateReplicationLevelIncreaseMsg message to " +
+                                repIndex.get(primaryLoc).getControlEndpoint());
                     }
                 }
             }

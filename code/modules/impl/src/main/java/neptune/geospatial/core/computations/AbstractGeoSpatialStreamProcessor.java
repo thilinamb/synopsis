@@ -744,5 +744,35 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
         }
     }
 
-    
+    public void addNewStateReplicationTopic(Topic topic, String newLocation) {
+        TopicInfo topicInfo = new TopicInfo(topic, newLocation);
+        if (replicationStreamTopics.contains(topicInfo)) {
+            logger.error(String.format("[%s] Duplicate state replication topic detected. Topic: %s, Location: %s",
+                    getInstanceIdentifier(), topic, newLocation));
+            return;
+        }
+        replicationStreamTopics.add(topicInfo);
+        if (logger.isDebugEnabled()) {
+            logger.debug(String.format("[%s] Added new stare replication topic. Topic: %s, New Location: %s",
+                    getInstanceIdentifier(), topic, newLocation));
+        }
+        // update the meta data registry
+        List<StreamDisseminationMetadata> metadataList = metadataRegistry.get(Constants.Streams.STATE_REPLICA_STREAM);
+        if (metadataList != null) {
+            for (StreamDisseminationMetadata metadata : metadataList) {
+                List<Topic> replicationTopics = Arrays.asList(metadata.topics);
+                if (!replicationTopics.contains(topic)) {
+                    replicationTopics.add(topic);
+                    metadata.topics = replicationTopics.toArray(new Topic[replicationTopics.size()]);
+                    if(logger.isDebugEnabled()){
+                        logger.debug(String.format("[%s] Updated stream dissemination " +
+                                "metadata with new replication topic. Topic: %s", getInstanceIdentifier(), topic));
+                    }
+                } else {
+                    logger.error(String.format("[%s] Duplicate state replication topic detected. Topic: %s, Location: %s",
+                            getInstanceIdentifier(), topic, newLocation));
+                }
+            }
+        }
+    }
 }
