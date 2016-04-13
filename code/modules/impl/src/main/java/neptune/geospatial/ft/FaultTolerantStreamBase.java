@@ -93,10 +93,10 @@ public interface FaultTolerantStreamBase {
                 }
                 // it is possible that single resource endpoints host multiple topics
                 if (topicLocations.containsKey(resourceEP)) {
-                    topicLocations.get(resourceEP).add(new BackupTopicInfo(topic, backupTopics));
+                    topicLocations.get(resourceEP).add(new BackupTopicInfo(stream, topic, backupTopics));
                 } else {
                     List<BackupTopicInfo> backupTopicList = new ArrayList<>();
-                    backupTopicList.add(new BackupTopicInfo(topic, backupTopics));
+                    backupTopicList.add(new BackupTopicInfo(stream, topic, backupTopics));
                     topicLocations.put(resourceEP, backupTopicList);
                 }
             }
