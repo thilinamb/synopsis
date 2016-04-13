@@ -6,6 +6,7 @@ import neptune.geospatial.core.protocol.ProtocolTypes;
 import neptune.geospatial.core.protocol.msg.*;
 import neptune.geospatial.core.protocol.msg.scalein.*;
 import neptune.geospatial.core.protocol.msg.scaleout.*;
+import neptune.geospatial.ft.protocol.StateReplicationLevelIncreaseMsg;
 import org.apache.log4j.Logger;
 
 /**
@@ -111,6 +112,14 @@ public class ResourceProtocolHandler extends AbstractProtocolHandler {
                     logger.debug("Received a ScaleInComplete for " + ack.getTargetComputation());
                 }
                 managedResource.dispatchControlMessage(ack.getTargetComputation(), ack);
+                break;
+            case ProtocolTypes.STATE_REPL_LEVEL_INCREASE:
+                StateReplicationLevelIncreaseMsg replIncreaseMsg = (StateReplicationLevelIncreaseMsg) ctrlMsg;
+                if (logger.isDebugEnabled()) {
+                    logger.debug("Received a state replication level increase message for " +
+                            replIncreaseMsg.getTargetComputation());
+                }
+                managedResource.dispatchControlMessage(replIncreaseMsg.getTargetComputation(), replIncreaseMsg);
                 break;
             default:
                 logger.warn("Unsupported message type: " + type);
