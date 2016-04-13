@@ -7,6 +7,7 @@ import ds.granules.exception.CommunicationsException;
 import ds.granules.streaming.core.StreamBase;
 import ds.granules.util.ZooKeeperUtils;
 import neptune.geospatial.graph.Constants;
+import neptune.geospatial.util.RivuletUtil;
 import org.apache.log4j.Logger;
 import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.ZooKeeper;
@@ -43,21 +44,6 @@ public interface FaultTolerantStreamBase {
         return topicLocations;
     }
 
-    default String getResourceEndpointForTopic(ZooKeeper zk, Topic topic) throws KeeperException, InterruptedException {
-        String topicPath = ds.granules.util.Constants.ZK_ZNODE_STREAMS + "/" + topic.toString();
-        List<String> subscribers = ZooKeeperUtils.getChildDirectories(zk, topicPath);
-        if (subscribers != null) {
-            // for the first subscriber, get their deployed locations -> there can be only one subscriber as per our scaling model
-            String subscriberId = subscribers.get(0).substring(
-                    subscribers.get(0).lastIndexOf("/") + 1, subscribers.get(0).length());
-            String zNodePath = ds.granules.util.Constants.ZK_ZNODE_OP_ASSIGNMENTS + "/" + subscriberId;
-            byte[] endPointData = ZooKeeperUtils.readZNodeData(zk, zNodePath);
-            return new String(endPointData);
-
-        }
-        return null;
-    }
-
     default void processBackupTopicPerStream(ZooKeeper zk, String instanceIdentifier,
                                              String stream,
                                              Map<String, List<StreamBase.StreamDisseminationMetadata>> metadataRegistry,
@@ -76,7 +62,7 @@ public interface FaultTolerantStreamBase {
             // for each topic, find the backup topics
             for (Topic topic : metadata.topics) {
                 // endpoint where the primary topic is running. We will be monitoring this topic
-                String resourceEP = getResourceEndpointForTopic(zk, topic);
+                String resourceEP = RivuletUtil.getResourceEndpointForTopic(zk, topic);
                 List<TopicInfo> backupTopics = new ArrayList<>();
                 // find the backup topics
                 String backupNodePath = neptune.geospatial.graph.Constants.ZNodes.ZNODE_BACKUP_TOPICS + "/" +
