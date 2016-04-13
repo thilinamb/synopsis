@@ -449,6 +449,95 @@ public class GeoSpatialDeployer extends JobDeployer implements MembershipChangeL
 
     @Override
     public void membershipChanged(List<String> lostMembers) {
-        
+        if (logger.isDebugEnabled()) {
+            logger.debug("Detected lost members. Evaluating under replicated nodes. Lost Node Count: " +
+                    lostMembers.size());
+        }
+        // first update the resource endpoint list
+        Map<String, ResourceEndpoint> repIndex = reIndexResourceList(lostMembers);
+        List<TopicInfo> toBeRemoved = new ArrayList<>();
+
+        for (Map.Entry<TopicInfo, TopicInfo[]> entry : stateReplicationTopics.entrySet()) {
+            TopicInfo gsProcessorTopicInfo = entry.getKey();
+            String primaryLoc = gsProcessorTopicInfo.getResourceEndpoint();
+            if (lostMembers.contains(primaryLoc)) {
+                toBeRemoved.add(gsProcessorTopicInfo);
+                continue;
+            }
+            TopicInfo[] stateReplicationTopics = entry.getValue();
+            for (int i = 0; i < stateReplicationTopics.length; i++) {
+                TopicInfo stateReplicationTopic = stateReplicationTopics[i];
+                String replicationEndpoint = stateReplicationTopic.getResourceEndpoint();
+                if (lostMembers.contains(replicationEndpoint)) {
+                    if (logger.isDebugEnabled()) {
+                        logger.debug(String.format("Detected a under replicated topic. " +
+                                        "Primary processor location: %s, Failed replication endpoint: %s",
+                                gsProcessorTopicInfo.getResourceEndpoint(), replicationEndpoint));
+                    }
+                    // update the zookeeper
+                    String invalidZKPath = neptune.geospatial.graph.Constants.ZNodes.ZNODE_BACKUP_TOPICS + "/" +
+                            gsProcessorTopicInfo.getTopic() + "/" + resourceEndpointToDefaultTopicMap.get(replicationEndpoint);
+                    try {
+                        zk.delete(invalidZKPath, -1);
+                        // find a new location
+                        int currentLocationIndex = resourceEndpoints.indexOf(repIndex.get(primaryLoc));
+                        String newLocation = getLocationForNextReplica(stateReplicationTopics, currentLocationIndex);
+                        Topic newStateReplicationTopic = stateReplicationOpPlacements.get(newLocation);
+                        Topic newBackupProcessorTopic = resourceEndpointToDefaultTopicMap.get(newLocation);
+                        TopicInfo newStateReplicationTopicInfo = new TopicInfo(newStateReplicationTopic, newLocation);
+                        stateReplicationTopics[i] = newStateReplicationTopicInfo;
+                        String newZkPath = neptune.geospatial.graph.Constants.ZNodes.ZNODE_BACKUP_TOPICS + "/" +
+                                gsProcessorTopicInfo.getTopic() + "/" + newBackupProcessorTopic.toString();
+                        ZooKeeperUtils.createDirectory(zk, newZkPath, newLocation.getBytes(),
+                                CreateMode.PERSISTENT);
+                        if (logger.isDebugEnabled()) {
+                            logger.info(String.format("Replication level increased. New State Replication Topic: %s " +
+                                            "New Processor Topic: %s New Location: %s", newStateReplicationTopic.toString(),
+                                    newBackupProcessorTopic.toString(), newLocation));
+                        }
+                        // send a message to the computation with new state replication topic info
+
+                    } catch (InterruptedException | KeeperException e) {
+                        logger.error("Error deleting obsolete replica topic from Zookeeper.", e);
+                    }
+                }
+            }
+        }
+        for (TopicInfo invalidItem : toBeRemoved) {
+            stateReplicationTopics.remove(invalidItem);
+            if (logger.isDebugEnabled()) {
+                logger.debug(String.format("Cleaning up topics from lost nodes. Topic: %s Endpoint: %s",
+                        invalidItem.getTopic(), invalidItem.getResourceEndpoint()));
+            }
+        }
+    }
+
+    private Map<String, ResourceEndpoint> reIndexResourceList(List<String> lostMembers) {
+        List<ResourceEndpoint> newResourceList = new ArrayList<>(resourceEndpoints.size() - lostMembers.size());
+        Map<String, ResourceEndpoint> index = new HashMap<>();
+        for (ResourceEndpoint endpoint : resourceEndpoints) {
+            if (!lostMembers.contains(endpoint.getDataEndpoint())) {
+                newResourceList.add(endpoint);
+                index.put(endpoint.getDataEndpoint(), endpoint);
+            } else if (logger.isDebugEnabled()) {
+                logger.debug(String.format("Lost Resource endpoint detected. data endpoint: %s", endpoint.getDataEndpoint()));
+            }
+        }
+        resourceEndpoints = newResourceList;
+        return index;
+    }
+
+    private String getLocationForNextReplica(TopicInfo[] currentTopics, int currentIndex) {
+        List<String> currentLocations = new ArrayList<>(currentTopics.length);
+        for (TopicInfo topicInfo : currentTopics) {
+            currentLocations.add(topicInfo.getResourceEndpoint());
+        }
+        // let's start with a new location with a reasonable chance, because we use a replication level of 2
+        int nextIndex = currentIndex + 2;
+        String nextLoc = resourceEndpoints.get((nextIndex) % resourceEndpoints.size()).getDataEndpoint();
+        while (currentLocations.contains(nextLoc)) {
+            nextLoc = resourceEndpoints.get((++nextIndex) % resourceEndpoints.size()).getDataEndpoint();
+        }
+        return nextLoc;
     }
 }
