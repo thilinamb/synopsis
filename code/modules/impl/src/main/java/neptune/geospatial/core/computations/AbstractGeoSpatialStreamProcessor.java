@@ -596,8 +596,8 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
         try {
             this.getDefaultStreamDataset().addInputStream(topic, this.getInstanceIdentifier());
             // add the incoming stream type at the destination.
-            this.incomingStreamTypes.put(topic.toString(), StateReplicationMessage.class.getName());
-            this.identifierMap.put(Integer.parseInt(topic.toString()), Constants.Streams.STATE_REPLICA_STREAM);
+            this.incomingStreamTypes.put(topic.toString(), GeoHashIndexedRecord.class.getName());
+            this.identifierMap.put(Integer.parseInt(topic.toString()), Constants.Streams.NOAA_DATA_STREAM);
         } catch (DatasetException e) {
             logger.error(e.getMessage(), e);
             throw new StreamingDatasetException(e.getMessage(), e);
