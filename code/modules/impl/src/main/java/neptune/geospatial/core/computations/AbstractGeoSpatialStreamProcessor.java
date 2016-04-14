@@ -281,6 +281,13 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
                 } catch (StreamingDatasetException e) {
                     logger.error("Error writing to stream to " + monitoredPrefix.getDestResourceCtrlEndpoint() + ":" +
                             monitoredPrefix.getDestComputationId());
+                    logger.debug("Waiting until a secondary is swapped with the primary.");
+                    try {
+                        this.wait();
+                    } catch (InterruptedException ignore) {
+
+                    }
+                    logger.debug("Resuming message processing after the swap is completed.");
                     throw e;
                 }
             }
@@ -670,67 +677,70 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
 
     @Override
     public void membershipChanged(List<String> lostMembers) {
-        boolean updateTopicLocations = false;
-        List<TopicInfo> currentStateReplicationTopics = new ArrayList<>();
-        for (String lostMember : lostMembers) {
-            if (logger.isDebugEnabled()) {
-                logger.debug(String.format("[%s] Processing the lost node: %s", getInstanceIdentifier(), lostMember));
-            }
-            // check if a node that hosts an out-going topic has left the cluster
-            if (topicLocations.containsKey(lostMember)) {
-                // get the list of all topics that was running on the lost node
+        synchronized (this) {
+            boolean updateTopicLocations = false;
+            List<TopicInfo> currentStateReplicationTopics = new ArrayList<>();
+            for (String lostMember : lostMembers) {
                 if (logger.isDebugEnabled()) {
-                    logger.debug(String.format("[%s] Current node is affected by the lost node. Lost node: %s, " +
-                                    "Number of affected topics: %d", getInstanceIdentifier(), lostMember,
-                            topicLocations.get(lostMember).size()));
+                    logger.debug(String.format("[%s] Processing the lost node: %s", getInstanceIdentifier(), lostMember));
                 }
-                switchToSecondary(topicLocations, lostMember, getInstanceIdentifier(), metadataRegistry);
-                updateTopicLocations = true;
-            }
-            for (TopicInfo stateReplicaProcessor : replicationStreamTopics) {
-                if (stateReplicaProcessor.getResourceEndpoint().equals(lostMember)) {
+                // check if a node that hosts an out-going topic has left the cluster
+                if (topicLocations.containsKey(lostMember)) {
+                    // get the list of all topics that was running on the lost node
                     if (logger.isDebugEnabled()) {
-                        logger.debug(String.format("[%s] A state replication processor is affected. " +
-                                "State Replication Topic: %s", getInstanceIdentifier(), stateReplicaProcessor.getTopic()));
+                        logger.debug(String.format("[%s] Current node is affected by the lost node. Lost node: %s, " +
+                                        "Number of affected topics: %d", getInstanceIdentifier(), lostMember,
+                                topicLocations.get(lostMember).size()));
                     }
-                    List<StreamDisseminationMetadata> metadataList = metadataRegistry.get(Constants.Streams.STATE_REPLICA_STREAM);
-                    // one of the replicas has failed. Increase the replica level.
-                    if (metadataList != null) {
-                        for (StreamDisseminationMetadata metadata : metadataList) {
-                            List<Topic> validTopics = new ArrayList<>();
-                            for (Topic replicationTopic : metadata.topics) {
-                                if (!replicationTopic.equals(stateReplicaProcessor.getTopic())) {
-                                    validTopics.add(replicationTopic);
-                                } else {
-                                    if (logger.isDebugEnabled()) {
-                                        logger.debug(String.format("[%s] " +
-                                                        "Replication topic on the lost node was removed. Topic: %s",
-                                                getInstanceIdentifier(), replicationTopic.toString()));
+                    switchToSecondary(topicLocations, lostMember, getInstanceIdentifier(), metadataRegistry);
+                    updateTopicLocations = true;
+                }
+                for (TopicInfo stateReplicaProcessor : replicationStreamTopics) {
+                    if (stateReplicaProcessor.getResourceEndpoint().equals(lostMember)) {
+                        if (logger.isDebugEnabled()) {
+                            logger.debug(String.format("[%s] A state replication processor is affected. " +
+                                    "State Replication Topic: %s", getInstanceIdentifier(), stateReplicaProcessor.getTopic()));
+                        }
+                        List<StreamDisseminationMetadata> metadataList = metadataRegistry.get(Constants.Streams.STATE_REPLICA_STREAM);
+                        // one of the replicas has failed. Increase the replica level.
+                        if (metadataList != null) {
+                            for (StreamDisseminationMetadata metadata : metadataList) {
+                                List<Topic> validTopics = new ArrayList<>();
+                                for (Topic replicationTopic : metadata.topics) {
+                                    if (!replicationTopic.equals(stateReplicaProcessor.getTopic())) {
+                                        validTopics.add(replicationTopic);
+                                    } else {
+                                        if (logger.isDebugEnabled()) {
+                                            logger.debug(String.format("[%s] " +
+                                                            "Replication topic on the lost node was removed. Topic: %s",
+                                                    getInstanceIdentifier(), replicationTopic.toString()));
+                                        }
                                     }
                                 }
-                            }
-                            if (validTopics.size() < metadata.topics.length) {
-                                metadata.topics = validTopics.toArray(new Topic[validTopics.size()]);
+                                if (validTopics.size() < metadata.topics.length) {
+                                    metadata.topics = validTopics.toArray(new Topic[validTopics.size()]);
+                                }
                             }
                         }
+                    } else {
+                        currentStateReplicationTopics.add(stateReplicaProcessor);
                     }
-                } else {
-                    currentStateReplicationTopics.add(stateReplicaProcessor);
                 }
             }
-        }
-        // update the current replication topics
-        replicationStreamTopics = currentStateReplicationTopics;
-        if (logger.isDebugEnabled()) {
-            logger.debug(String.format("[%s] Current replication processor count: %d", getInstanceIdentifier(),
-                    replicationStreamTopics.size()));
-        }
-        // it is required to repopulate the backup nodes list
-        if (updateTopicLocations) {
-            populateBackupTopicMap(this.getInstanceIdentifier(), metadataRegistry);
+            // update the current replication topics
+            replicationStreamTopics = currentStateReplicationTopics;
             if (logger.isDebugEnabled()) {
-                logger.debug(String.format("[%s] BackupTopicMap is updated.", getInstanceIdentifier()));
+                logger.debug(String.format("[%s] Current replication processor count: %d", getInstanceIdentifier(),
+                        replicationStreamTopics.size()));
             }
+            // it is required to repopulate the backup nodes list
+            if (updateTopicLocations) {
+                populateBackupTopicMap(this.getInstanceIdentifier(), metadataRegistry);
+                if (logger.isDebugEnabled()) {
+                    logger.debug(String.format("[%s] BackupTopicMap is updated.", getInstanceIdentifier()));
+                }
+            }
+            this.notifyAll();
         }
     }
 

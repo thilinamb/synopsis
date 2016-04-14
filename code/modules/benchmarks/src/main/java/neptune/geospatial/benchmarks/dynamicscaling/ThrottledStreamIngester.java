@@ -2,6 +2,7 @@ package neptune.geospatial.benchmarks.dynamicscaling;
 
 import com.hazelcast.core.IQueue;
 import ds.funnel.data.format.FormatReader;
+import ds.granules.exception.CommunicationsException;
 import ds.granules.neptune.interfere.core.NIException;
 import ds.granules.streaming.core.exception.StreamingDatasetException;
 import neptune.geospatial.benchmarks.util.SineCurveLoadProfiler;
@@ -9,6 +10,7 @@ import neptune.geospatial.core.resource.ManagedResource;
 import neptune.geospatial.ft.BackupTopicInfo;
 import neptune.geospatial.ft.FaultTolerantStreamBase;
 import neptune.geospatial.ft.zk.MembershipChangeListener;
+import neptune.geospatial.ft.zk.MembershipTracker;
 import neptune.geospatial.graph.Constants;
 import neptune.geospatial.graph.messages.GeoHashIndexedRecord;
 import neptune.geospatial.graph.operators.NOAADataIngester;
@@ -59,7 +61,19 @@ public class ThrottledStreamIngester extends NOAADataIngester implements FaultTo
         }
         GeoHashIndexedRecord record = nextRecord();
         if (record != null) {
-            writeToStream(Constants.Streams.NOAA_DATA_STREAM, record);
+            synchronized (this) {
+                try {
+                    writeToStream(Constants.Streams.NOAA_DATA_STREAM, record);
+                } catch (StreamingDatasetException e) {
+                    logger.error("Faulty downstream. Waiting till switching to a secondary topic.", e);
+                    try {
+                        this.wait();
+                    } catch (InterruptedException ignore) {
+
+                    }
+                    logger.debug("Resuming after swithcing to secondary topic.");
+                }
+            }
             countEmitted++;
             long sentCount = counter.incrementAndGet();
             long now = System.currentTimeMillis();
@@ -104,39 +118,44 @@ public class ThrottledStreamIngester extends NOAADataIngester implements FaultTo
         // doing it lazily is expensive.
         try {
             if (ManagedResource.getInstance().isFaultToleranceEnabled()) {
+                MembershipTracker.getInstance().registerListener(this);
                 this.topicLocations = populateBackupTopicMap(getInstanceIdentifier(), metadataRegistry);
             }
         } catch (NIException e) {
             logger.error("Error acquiring the Resource instance.", e);
+        } catch (CommunicationsException e) {
+            logger.error("Error registering membership listener.", e);
         }
     }
 
-
     @Override
     public void membershipChanged(List<String> lostMembers) {
-        boolean updateTopicLocations = false;
-        for (String lostMember : lostMembers) {
-            if (logger.isDebugEnabled()) {
-                logger.debug(String.format("[%s] Processing the lost node: %s", getInstanceIdentifier(), lostMember));
-            }
-            // check if a node that hosts an out-going topic has left the cluster
-            if (topicLocations.containsKey(lostMember)) {
-                // get the list of all topics that was running on the lost node
+        synchronized (this) {
+            boolean updateTopicLocations = false;
+            for (String lostMember : lostMembers) {
                 if (logger.isDebugEnabled()) {
-                    logger.debug(String.format("[%s] Current node is affected by the lost node. Lost node: %s, " +
-                                    "Number of affected topics: %d", getInstanceIdentifier(), lostMember,
-                            topicLocations.get(lostMember).size()));
+                    logger.debug(String.format("[%s] Processing the lost node: %s", getInstanceIdentifier(), lostMember));
                 }
-                switchToSecondary(topicLocations, lostMember, getInstanceIdentifier(), metadataRegistry);
-                updateTopicLocations = true;
+                // check if a node that hosts an out-going topic has left the cluster
+                if (topicLocations.containsKey(lostMember)) {
+                    // get the list of all topics that was running on the lost node
+                    if (logger.isDebugEnabled()) {
+                        logger.debug(String.format("[%s] Current node is affected by the lost node. Lost node: %s, " +
+                                        "Number of affected topics: %d", getInstanceIdentifier(), lostMember,
+                                topicLocations.get(lostMember).size()));
+                    }
+                    switchToSecondary(topicLocations, lostMember, getInstanceIdentifier(), metadataRegistry);
+                    updateTopicLocations = true;
+                }
             }
-        }
-        // it is required to repopulate the backup nodes list
-        if (updateTopicLocations) {
-            populateBackupTopicMap(this.getInstanceIdentifier(), metadataRegistry);
-            if (logger.isDebugEnabled()) {
-                logger.debug(String.format("[%s] BackupTopicMap is updated.", getInstanceIdentifier()));
+            // it is required to repopulate the backup nodes list
+            if (updateTopicLocations) {
+                populateBackupTopicMap(this.getInstanceIdentifier(), metadataRegistry);
+                if (logger.isDebugEnabled()) {
+                    logger.debug(String.format("[%s] BackupTopicMap is updated.", getInstanceIdentifier()));
+                }
             }
+            this.notifyAll();
         }
     }
 }
