@@ -6,7 +6,9 @@ import ds.granules.neptune.interfere.core.NIException;
 import ds.granules.streaming.core.exception.StreamingDatasetException;
 import neptune.geospatial.benchmarks.util.SineCurveLoadProfiler;
 import neptune.geospatial.core.resource.ManagedResource;
+import neptune.geospatial.ft.BackupTopicInfo;
 import neptune.geospatial.ft.FaultTolerantStreamBase;
+import neptune.geospatial.ft.zk.MembershipChangeListener;
 import neptune.geospatial.graph.Constants;
 import neptune.geospatial.graph.messages.GeoHashIndexedRecord;
 import neptune.geospatial.graph.operators.NOAADataIngester;
@@ -17,12 +19,15 @@ import org.apache.log4j.Logger;
 import java.io.BufferedWriter;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * @author Thilina Buddhika
  */
-public class ThrottledStreamIngester extends NOAADataIngester implements FaultTolerantStreamBase {
+public class ThrottledStreamIngester extends NOAADataIngester implements FaultTolerantStreamBase, MembershipChangeListener {
 
     private Logger logger = Logger.getLogger(ThrottledStreamIngester.class);
 
@@ -30,6 +35,7 @@ public class ThrottledStreamIngester extends NOAADataIngester implements FaultTo
     private AtomicLong counter = new AtomicLong(0);
     private long tsLastEmitted = -1;
     private BufferedWriter bufferedWriter;
+    private Map<String, List<BackupTopicInfo>> topicLocations = new HashMap<>();
 
     public ThrottledStreamIngester() {
         super();
@@ -98,10 +104,39 @@ public class ThrottledStreamIngester extends NOAADataIngester implements FaultTo
         // doing it lazily is expensive.
         try {
             if (ManagedResource.getInstance().isFaultToleranceEnabled()) {
-                populateBackupTopicMap(getInstanceIdentifier(), metadataRegistry);
+                this.topicLocations = populateBackupTopicMap(getInstanceIdentifier(), metadataRegistry);
             }
         } catch (NIException e) {
             logger.error("Error acquiring the Resource instance.", e);
+        }
+    }
+
+
+    @Override
+    public void membershipChanged(List<String> lostMembers) {
+        boolean updateTopicLocations = false;
+        for (String lostMember : lostMembers) {
+            if (logger.isDebugEnabled()) {
+                logger.debug(String.format("[%s] Processing the lost node: %s", getInstanceIdentifier(), lostMember));
+            }
+            // check if a node that hosts an out-going topic has left the cluster
+            if (topicLocations.containsKey(lostMember)) {
+                // get the list of all topics that was running on the lost node
+                if (logger.isDebugEnabled()) {
+                    logger.debug(String.format("[%s] Current node is affected by the lost node. Lost node: %s, " +
+                                    "Number of affected topics: %d", getInstanceIdentifier(), lostMember,
+                            topicLocations.get(lostMember).size()));
+                }
+                switchToSecondary(topicLocations, lostMember, getInstanceIdentifier(), metadataRegistry);
+                updateTopicLocations = true;
+            }
+        }
+        // it is required to repopulate the backup nodes list
+        if (updateTopicLocations) {
+            populateBackupTopicMap(this.getInstanceIdentifier(), metadataRegistry);
+            if (logger.isDebugEnabled()) {
+                logger.debug(String.format("[%s] BackupTopicMap is updated.", getInstanceIdentifier()));
+            }
         }
     }
 }

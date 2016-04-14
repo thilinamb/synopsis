@@ -102,4 +102,33 @@ public interface FaultTolerantStreamBase {
             }
         }
     }
+
+    default void switchToSecondary(Map<String, List<BackupTopicInfo>> topicLocations,
+                                   String lostMember, String instanceIdentifier,
+                                   Map<String, List<StreamBase.StreamDisseminationMetadata>> metadataRegistry) {
+        List<BackupTopicInfo> affectedTopics = topicLocations.get(lostMember);
+        for (BackupTopicInfo backupTopicInfo : affectedTopics) {
+            String stream = backupTopicInfo.getStream();
+            Topic primary = backupTopicInfo.getPrimary();
+            // get the corresponding out going topics
+            List<StreamBase.StreamDisseminationMetadata> metadataList = metadataRegistry.get(stream);
+            for (StreamBase.StreamDisseminationMetadata metadata : metadataList) {
+                for (int i = 0; i < metadata.topics.length; i++) {
+                    Topic outGoingTopic = metadata.topics[i];
+                    // if any of the out-going topics are equal to the primary
+                    if (outGoingTopic.equals(primary)) {
+                        // pick a secondary and set as the primary
+                        TopicInfo chosenForPrimary = backupTopicInfo.getBackups().get(0);
+                        metadata.topics[i] = chosenForPrimary.getTopic();
+                        if (logger.isDebugEnabled()) {
+                            logger.debug(String.format("[%s] Repairing the primary: " +
+                                            "Original: %s, New topic: %s, New topic location: %s",
+                                    instanceIdentifier, outGoingTopic.toString(),
+                                    chosenForPrimary.getTopic(), chosenForPrimary.getResourceEndpoint()));
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
