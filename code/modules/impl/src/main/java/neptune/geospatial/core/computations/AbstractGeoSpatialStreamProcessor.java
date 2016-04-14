@@ -742,11 +742,12 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
         List<StreamDisseminationMetadata> metadataList = metadataRegistry.get(Constants.Streams.STATE_REPLICA_STREAM);
         if (metadataList != null) {
             for (StreamDisseminationMetadata metadata : metadataList) {
-                List<Topic> replicationTopics = Arrays.asList(metadata.topics);
+                List<Topic> replicationTopics = new ArrayList<>();
+                replicationTopics.addAll(Arrays.asList(metadata.topics));
                 if (!replicationTopics.contains(topic)) {
                     replicationTopics.add(topic);
                     metadata.topics = replicationTopics.toArray(new Topic[replicationTopics.size()]);
-                    if(logger.isDebugEnabled()){
+                    if (logger.isDebugEnabled()) {
                         logger.debug(String.format("[%s] Updated stream dissemination " +
                                 "metadata with new replication topic. Topic: %s", getInstanceIdentifier(), topic));
                     }
