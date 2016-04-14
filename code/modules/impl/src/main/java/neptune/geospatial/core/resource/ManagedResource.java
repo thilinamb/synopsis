@@ -349,7 +349,9 @@ public class ManagedResource {
     public void registerStreamProcessor(AbstractGeoSpatialStreamProcessor processor) {
         synchronized (this) {
             String instanceIdentifier = processor.getInstanceIdentifier();
-            monitoredProcessors.put(instanceIdentifier, new MonitoredComputationState(processor));
+            if (!monitoredProcessors.containsKey(instanceIdentifier)) {
+                monitoredProcessors.put(instanceIdentifier, new MonitoredComputationState(processor));
+            }
             if (pendingStateTransfers.containsKey(instanceIdentifier)) {
                 List<StateTransferMsg> stateTransferMsgs = pendingStateTransfers.remove(instanceIdentifier);
                 for (StateTransferMsg stateTransferMsg : stateTransferMsgs) {
