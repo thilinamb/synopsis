@@ -25,6 +25,7 @@ import io.sigpipe.sing.util.TestConfiguration;
 public class Sketch {
 
     private GraphMetrics metrics = new GraphMetrics();
+    public GeoTrie geoTrie = new GeoTrie();
 
     private static final Logger logger = Logger.getLogger("io.sigpipe.sing");
 
@@ -149,7 +150,19 @@ public class Sketch {
         /* Place the path payload (traversal result) at the end of this path. */
         path.get(path.size() - 1).setData(container);
 
+        GraphMetrics oldMetrics = null;
+        try {
+            oldMetrics = (GraphMetrics) this.metrics.clone();
+        } catch (Exception e) { }
         root.addPath(path.iterator(), this.metrics);
+
+        if (oldMetrics.equals(this.metrics) == false) {
+            long a = this.metrics.getVertexCount() - oldMetrics.getVertexCount();
+            long b = this.metrics.getLeafCount() - oldMetrics.getLeafCount();
+            geoTrie.addHash(
+                    path.get(path.size() - 1).getLabel().getString(),
+                    new CountContainer(a, b));
+        }
     }
 
     /**

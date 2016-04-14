@@ -74,14 +74,15 @@ public class ReadMetaBlob {
             }
         }
         System.out.println();
-//        System.gc();
-//        System.gc();
-//        
-//        Runtime runtime = Runtime.getRuntime();
-//        System.out.println("max=" + runtime.maxMemory());
-//        System.out.println("total=" + runtime.totalMemory());
-//        System.out.println("free=" + runtime.freeMemory());
-//        System.out.println("used=" + (runtime.totalMemory() - runtime.freeMemory()));
+        System.gc();
+        System.gc();
+        
+        System.out.println();
+        Runtime runtime = Runtime.getRuntime();
+        System.out.println("max=" + runtime.maxMemory());
+        System.out.println("total=" + runtime.totalMemory());
+        System.out.println("free=" + runtime.freeMemory());
+        System.out.println("used=" + (runtime.totalMemory() - runtime.freeMemory()));
 
         Scanner scan=new Scanner(System.in);
         scan.nextInt();
@@ -130,5 +131,7 @@ public class ReadMetaBlob {
 //        fs.printAll();
         out.close();
         System.out.println(s.getMetrics());
+
+        System.out.println(s.geoTrie.query("dj").b);
     }
 }

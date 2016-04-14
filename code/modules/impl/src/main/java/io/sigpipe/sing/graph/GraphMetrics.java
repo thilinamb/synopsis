@@ -1,12 +1,36 @@
 package io.sigpipe.sing.graph;
 
-public class GraphMetrics {
+public class GraphMetrics implements Cloneable {
 
     private long vertices;
     private long leaves;
 
     public GraphMetrics() {
 
+    }
+
+    @Override
+    public Object clone() throws CloneNotSupportedException {
+        return super.clone();
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
+
+        if (obj == null) {
+            return false;
+        }
+
+        if (getClass() != obj.getClass()) {
+            return false;
+        }
+
+        GraphMetrics that = (GraphMetrics) obj;
+        return this.vertices == that.vertices
+            && this.leaves == that.leaves;
     }
 
     public GraphMetrics(int vertices, int leaves) {

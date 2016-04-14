@@ -252,6 +252,14 @@ public class Vertex implements ByteSerializable {
         }
     }
 
+    public Vertex disconnect(Feature label) {
+        return this.edges.remove(label);
+    }
+
+    public Vertex disconnect(Vertex vertex) {
+        return this.edges.remove(vertex.label);
+    }
+
     /**
      * Removes all the edges from this Vertex, severing any connections with
      * neighboring vertices.

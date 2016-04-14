@@ -7,8 +7,8 @@ import io.sigpipe.sing.serialization.SerializationOutputStream;
 
 public class CountContainer extends DataContainer {
 
-    long a;
-    long b;
+    public long a;
+    public long b;
 
     public CountContainer() {
 

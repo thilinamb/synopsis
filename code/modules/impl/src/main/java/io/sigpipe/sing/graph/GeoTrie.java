@@ -75,6 +75,50 @@ public class GeoTrie {
         }
     }
 
+    private Vertex findVertex(String geohash) {
+        return findVertex(this.root, hashToPath(geohash).iterator());
+    }
+
+    private Vertex findVertex(Vertex start, Iterator<Vertex> path) {
+        if (path.hasNext()) {
+            Vertex step = path.next();
+            Vertex neighbor = start.getNeighbor(step.getLabel());
+            if (neighbor == null) {
+                /* Part of the path is broken; return null */
+                return null;
+            } else {
+                return findVertex(neighbor, path);
+            }
+        } else {
+            return start;
+        }
+    }
+
+    public void remove(String geohash) {
+        remove(this.root, hashToPath(geohash).iterator());
+    }
+
+    private void remove(Vertex vertex, Iterator<Vertex> path) {
+        if (path.hasNext()) {
+            Vertex search = path.next();
+            Vertex neighbor = vertex.getNeighbor(search.getLabel());
+            if (neighbor == null) {
+                /* Part of the path is broken; return null */
+                return;
+            } else {
+                if (path.hasNext() == false) {
+                    /* The next vertex is the last one in the search path */
+                    System.out.println("removing: " + search.getLabel());
+                    vertex.disconnect(search.getLabel());
+                    System.out.println(vertex.numNeighbors());
+                } else {
+                    /* Keep going */
+                    remove(neighbor, path);
+                }
+            }
+        }
+    }
+
     private List<Vertex> hashToPath(String geohash) {
         List<Vertex> path = new ArrayList<>(geohash.length());
         for (char c : geohash.toCharArray()) {
@@ -94,6 +138,8 @@ public class GeoTrie {
         gt.addHash("djjs", new CountContainer(0, 1));
         gt.addHash("djj9", new CountContainer(1, 1));
         gt.addHash("djj2", new CountContainer(1, 1));
+
+        //gt.remove("9x");
         CountContainer cc = gt.query("9");
 
         System.out.println(gt.root.numDescendants());
