@@ -498,7 +498,7 @@ public class GeoSpatialDeployer extends JobDeployer implements MembershipChangeL
                                     newBackupProcessorTopic.toString(), newLocation));
                         }
                         // send a message to the computation with new state replication topic info
-                        String targetComputation = RivuletUtil.getResourceEndpointForTopic(zk, gsProcessorTopicInfo.getTopic());
+                        String targetComputation = RivuletUtil.getSubscriberComputationForTopic(zk, gsProcessorTopicInfo.getTopic());
                         StateReplicationLevelIncreaseMsg repLevelIncreaseMsg = new StateReplicationLevelIncreaseMsg(targetComputation,
                                 newLocation, newStateReplicationTopic.toString());
                         SendUtility.sendControlMessage(repIndex.get(primaryLoc).getControlEndpoint(), repLevelIncreaseMsg);

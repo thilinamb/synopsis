@@ -22,6 +22,7 @@ public class RivuletUtil {
 
     /**
      * Get the {@code InetAddress} of the current host
+     *
      * @return @code InetAddress} of the current host
      */
     public static InetAddress getHostInetAddress() {
@@ -36,6 +37,7 @@ public class RivuletUtil {
 
     /**
      * Returns the control plain address of the current process
+     *
      * @return Control plain address
      * @throws GranulesConfigurationException Error reading the configuration file
      */
@@ -51,17 +53,17 @@ public class RivuletUtil {
     }
 
     public static String getResourceEndpointForTopic(ZooKeeper zk, Topic topic) throws KeeperException, InterruptedException {
+        String subscriberId = getSubscriberComputationForTopic(zk, topic);
+        String zNodePath = ds.granules.util.Constants.ZK_ZNODE_OP_ASSIGNMENTS + "/" + subscriberId;
+        byte[] endPointData = ZooKeeperUtils.readZNodeData(zk, zNodePath);
+        return new String(endPointData);
+    }
+
+    public static String getSubscriberComputationForTopic(ZooKeeper zk, Topic topic) throws KeeperException, InterruptedException {
         String topicPath = ds.granules.util.Constants.ZK_ZNODE_STREAMS + "/" + topic.toString();
         List<String> subscribers = ZooKeeperUtils.getChildDirectories(zk, topicPath);
-        if (subscribers != null) {
-            // for the first subscriber, get their deployed locations -> there can be only one subscriber as per our scaling model
-            String subscriberId = subscribers.get(0).substring(
-                    subscribers.get(0).lastIndexOf("/") + 1, subscribers.get(0).length());
-            String zNodePath = ds.granules.util.Constants.ZK_ZNODE_OP_ASSIGNMENTS + "/" + subscriberId;
-            byte[] endPointData = ZooKeeperUtils.readZNodeData(zk, zNodePath);
-            return new String(endPointData);
-
-        }
-        return null;
+        // for the first subscriber, get their deployed locations -> there can be only one subscriber as per our scaling model
+        return subscribers.get(0).substring(
+                subscribers.get(0).lastIndexOf("/") + 1, subscribers.get(0).length());
     }
 }
