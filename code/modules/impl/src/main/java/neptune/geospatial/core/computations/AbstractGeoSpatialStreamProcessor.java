@@ -606,6 +606,11 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
     protected void deserializeMemberVariables(FormatReader formatReader) {
         try {
             if (ManagedResource.getInstance().isFaultToleranceEnabled()) {
+                // we need to make sure that the messages from deployer about replication level increasing
+                // can reach the computation
+                if (!initialized.get()) {
+                    ManagedResource.getInstance().registerStreamProcessor(this);
+                }
                 int replicationElementCount = formatReader.readInt();
                 this.replicationStreamTopics = new ArrayList<>();
                 for (int i = 0; i < replicationElementCount; i++) {
