@@ -355,7 +355,8 @@ public class GeoSpatialDeployer extends JobDeployer implements MembershipChangeL
             // initialize the state replication streams for the new computation
             if (faultToleranceEnabled && clone instanceof AbstractGeoSpatialStreamProcessor) {
                 AbstractGeoSpatialStreamProcessor streamProcessor = (AbstractGeoSpatialStreamProcessor) clone;
-                configureReplicationStreams(streamProcessor, lastAssigned - 1);
+                configureReplicationStreams(streamProcessor, lastAssigned == 0 ? resourceEndpoints.size() - 1 :
+                        lastAssigned - 1);
                 createBackupTopicZNode(streamProcessor, resourceEndpoint.getDataEndpoint());
             }
             // write the assignments to ZooKeeper
