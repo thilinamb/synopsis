@@ -194,25 +194,10 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
     @Override
     public final void onEvent(StreamEvent streamEvent) throws StreamingDatasetException {
         if (!initialized.get()) {
-            try {
-                // register with the resource to enable monitoring
-                initializeProtocolProcessors();
-                messageSize.set(getMessageSize(streamEvent));
-                this.scalingContext = new ScalingContext(getInstanceIdentifier());
-                ManagedResource resource = ManagedResource.getInstance();
-                resource.registerStreamProcessor(this);
-                this.faultToleranceEnabled = resource.isFaultToleranceEnabled();
-                if (faultToleranceEnabled) {
-                    stateReplicationInterval = resource.getStateReplicationInterval();
-                }
-                initialized.set(true);
-                if (logger.isDebugEnabled()) {
-                    logger.debug(String.format("[%s] Initialized. Message Size: %d", getInstanceIdentifier(),
-                            messageSize.get()));
-                }
-            } catch (NIException e) {
-                logger.error("Error retrieving the resource instance.", e);
-            }
+            init();
+        }
+        if (messageSize.get() == -1) {
+            messageSize.set(getMessageSize(streamEvent));
         }
         GeoHashIndexedRecord geoHashIndexedRecord = (GeoHashIndexedRecord) streamEvent;
         // this a dummy message sent to activate the computation after scaling out.
@@ -239,6 +224,29 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
                 if (logger.isDebugEnabled()) {
                     logger.debug(String.format("[%s] state was replicated.", getInstanceIdentifier()));
                 }
+            }
+        }
+    }
+
+    private synchronized void init() {
+        if (!initialized.get()) {
+            try {
+                // register with the resource to enable monitoring
+                initializeProtocolProcessors();
+                this.scalingContext = new ScalingContext(getInstanceIdentifier());
+                ManagedResource resource = ManagedResource.getInstance();
+                resource.registerStreamProcessor(this);
+                this.faultToleranceEnabled = resource.isFaultToleranceEnabled();
+                if (faultToleranceEnabled) {
+                    stateReplicationInterval = resource.getStateReplicationInterval();
+                }
+                initialized.set(true);
+                if (logger.isDebugEnabled()) {
+                    logger.debug(String.format("[%s] Initialized. Message Size: %d", getInstanceIdentifier(),
+                            messageSize.get()));
+                }
+            } catch (NIException e) {
+                logger.error("Error retrieving the resource instance.", e);
             }
         }
     }
@@ -609,7 +617,7 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
                 // we need to make sure that the messages from deployer about replication level increasing
                 // can reach the computation
                 if (!initialized.get()) {
-                    ManagedResource.getInstance().registerStreamProcessor(this);
+                    init();
                 }
                 int replicationElementCount = formatReader.readInt();
                 this.replicationStreamTopics = new ArrayList<>();
