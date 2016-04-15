@@ -11,15 +11,14 @@ def main():
     instances = genfromtxt('./data/v3/instance-count.stat', delimiter=',')
     fig,ax2 = plt.subplots(figsize=(8,4))
 
-    leg_thru = plt.plot(thru[:,0], thru[:,1], color='cornflowerblue', label='Data Ingestion Rate')
-    plt.tick_params(axis='x',which='both', bottom='off',top='off', labelbottom='off')
+    leg_thru = plt.plot(thru[:,0], thru[:,1], color='darkblue', label='Data Ingestion Rate')
     pylab.ylabel('Data Ingestion Rate(Msgs/s)', fontsize=10)
     pylab.ylim((0,400))
     ax2.xaxis.set_major_formatter(NullFormatter())
+    pylab.xlabel('Time', fontsize=10)
 
     ax = ax2.twinx()
-    leg_comp = ax.step(instances[:,0], instances[:,1], color='darkorange', label='Number of Sketch Instances')
-    plt.tick_params(axis='x',which='both', bottom='off',top='off', labelbottom='off')
+    leg_comp = ax.step(instances[:,0], instances[:,1], color='magenta', label='Number of Sketch Instances')
     pylab.ylim((0,1100))
 
     pylab.xlabel('Time', fontsize=10)
