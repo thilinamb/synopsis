@@ -34,6 +34,9 @@ The monitoring task as shown in Figure~\ref{fig:process-monitor} periodically pr
 	Monitoring task will continuously record the memory utilization by the entire JVM process as well as the memory utilization by individual \textsc{Synopsis} tasks.
 \end{enumerate} 
 
+The objective of scaling out is to maintain the stability of each node.
+We define stability as the ability to keep up with incoming data rates while incurring a manageable memory pressure.
+
 During the analysis phase, we use threshold based rules~\cite{lorido2012auto} to provide scale out recommendations to \textsc{Synopsis} nodes if necessary.
 Currently we rely on a reactive scheme where we evaluate the threshold based rules based on the current observations.
 Scaling out recommendations are provided if either of following rules are consistently satisfied for certain number of observations.
