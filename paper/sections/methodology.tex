@@ -119,13 +119,9 @@ Locks are released from the bottom to top in the sub tree where parent releases 
 
 \subsection{Query Evaluations}
 \label{subsec:query-eval}
-Accounting for data arrival rates, accuracy requirements, memory pressures, and the capacity of network links result in dynamic upscaling and downscaling of nodes that comprise \textsc{Synopsis}. The result of these scaling operations is a distributed sketch, with constituent nodes holding compact representations of observational data from different geographic locations. 
+\textsc{Synopsis} incorporates support for user-defined queries that are evaluated over the distributed sketch. Depending on scaling operations and the spatial scope of the queries, evaluations are carried out on one or more \textsc{Synopsis} nodes. Information on the placement of sketch instances in the system and their corresponding feature scopes is maintained at each node in a Geohash prefix tree, with changes propagated through the network in an eventually-consistent manner as data is ingested and scaling maneuvers occur.
 
-Information about nodes that comprise the \textsc{Synopsis} sketch is maintained as a prefix tree at each node. Addition and removal of nodes comprising the distributed sketch due to scaling maneuvers are propagated through the system and the prefix trees updated. Information within the prefix trees is designed to be eventually consistent.  Alongside each vertex in this prefix tree, we maintain information about the spatiotemporal scope/range and the set of features available at the node.  
-
-\textsc{Synopsis} incorporates support for discrete and continuous queries specified by users. Queries specified by a user are evaluated over the distributed sketch. Depending on the spatial scopes that may be implicitly or explicitly specified within these queries, query evaluations will be performed on one or more nodes comprising the distributed sketch. 
-
-The entry point for these queries may be any of the nodes comprising the distributed sketch – we refer to this node as the conduit for the particular query.  During query evaluations, a first step is to identify the set of \textsc{Synopsis} nodes that must be targeted for query evaluations. The conduit node consults its prefix tree to identify nodes to contact based on the spatial, chronological, and particular features implied in the query. Conduit nodes are responsible for forwarding queries to the relevant nodes comprising the distributed sketch where the query must be evaluated.  The conduit node also responds to the client with the list of nodes that will be responding to the query. 
+The entry point for these queries, called the \emph{conduit}, may be any of the nodes comprising the distributed sketch. During query evaluations, the first step is to identify the set of \textsc{Synopsis} nodes that are relevant to the query. The conduit consults its prefix tree to locate nodes based on spatial, chronological, and feature constraints specified by the user. After this process is complete, the conduit forwards the queries on to the nodes for evaluation and supplies the client with a list of nodes that will respond to the query.
 
 Results from query evaluations performed over the distributed sketch are streamed back to the client.  Precisely what is streamed depends on the nature of the query.  For example, if a client is interested in retrieving average temperatures in Colorado for July 2015 and if there are multiple nodes (within \textsc{Synopsis}) that hold relevant portions of this data; then the query must be forwarded to all these nodes. The results returned from each of these nodes would include {\textless}temperature, frequency{\textgreater} tuples that would then be combined at the client side to compute the final average temperature.
 
@@ -133,23 +129,20 @@ Alternatively, \textsc{Synopsis} nodes participating in the query evaluations wi
 
 The prefix tree also allows query evaluations during both upscaling and downscaling operations. During query evaluations, queries are forwarded to child nodes (created during a recent upscaling operation). When the conduit forwards a query to a \textsc{Synopsis} node and the node is unavailable, it is either due to a failure at that node or a downscaling operation that merges the child node with its parent node. When a node is unreachable, the conduit forwards the query to the parent node. 
 
-\subsection{Types of Queries}
-Queries within \textsc{Synopsis} can be discrete or continuous queries. Unlike discrete queries that are evaluated once, continuous queries are evaluated periodically or when observations become available. Though observations are never stored on stable storage, queries specified by users may target spatial and chronological scopes. In the case of continuous queries, the chronological range implicitly evolves as new observations trickle in; in the case of windowing operators, the specified chronological window continually slides over the observational streams. We classify queries – discrete or continuous –   supported by \textsc{Synopsis} into 5 broad queries. These include:
-\begin{enumerate} 
-	\item	Filter queries that specify inequality/relational queries along one or more dimensions. 
-	\item	Statistical queries allow users to explore statistical properties of the observational space. For example, users can retrieve and contrast correlations between any two features at different geographic locations at the same time. Alternatively, queries may contrast correlations between different features at different time ranges at the same geographic location. Statistical queries also support retrieval of the mean, standard deviation, and also of feature outliers based on Chebyshev’s rule about the distribution of feature values.
-	\item	Density queries support analysis over the distribution of values associated with a feature over a particular spatiotemporal scope. These include kernel density estimations, estimating the probability of observing a particular value for an observation, and determining the deciles and quartiles for the observed feature. 
-	\item	Set Queries target identification of whether a particular combination of feature values was observed, estimating the cardinality of the dataset, and identifying the frequencies of repeated observations.
-	\item	Inferential queries are intended to support projections about how the feature is expected to evolve over a spatiotemporal scope. In this study, these projections are predicated on the registration of time-series models at the particular scope. Specifically, we rely on exponential smoothing methods to make forecasts about the estimated values of features at different time points. Besides compact representations and faster evaluations that are amenable to keeping pace with high data arrival rates, smoothing methods are able to handle trends and seasonality that often underpin observational data. We rely on the Holt-Winters model. Here, the trend and seasonality components for the forecast are computed separately and updated independently based on the error computed from the forecasted and observed values. The seasonality component in the Holt-Winters model may either be additive or multiplicative; we work with the multiplicative components that are are known to perform better with real-world applications. 
-\end{enumerate}
+\subsection{Query Types}
+\textsc{Synopsis} queries can be discrete or continuous. Unlike discrete queries that are evaluated once, continuous queries are evaluated periodically or when observations become available. Though observations are never stored on stable storage, queries specified by users may target spatial and chronological scopes. In the case of continuous queries, the chronological range implicitly evolves as new observations trickle in; in the case of windowing operators, the specified chronological window continually slides over the observational streams. We classify queries -- discrete or continuous -- supported by \textsc{Synopsis} into 5 broad categories, including filter, statistical, density-based, set, and inferential.
 
 \subsubsection{Filter Queries}
+specify inequality/relational queries along one or more dimensions. 
 
 \subsubsection{Correlation/statistical queries}
+Statistical queries allow users to explore statistical properties of the observational space. For example, users can retrieve and contrast correlations between any two features at different geographic locations at the same time. Alternatively, queries may contrast correlations between different features at different time ranges at the same geographic location. Statistical queries also support retrieval of the mean, standard deviation, and also of feature outliers based on Chebyshev’s rule about the distribution of feature values.
 
 \subsubsection{Kernel Density estimation queries}
+Density queries support analysis over the distribution of values associated with a feature over a particular spatiotemporal scope. These include kernel density estimations, estimating the probability of observing a particular value for an observation, and determining the deciles and quartiles for the observed feature. 
 
 \subsubsection{Set Queries}
+Set Queries target identification of whether a particular combination of feature values was observed, estimating the cardinality of the dataset, and identifying the frequencies of repeated observations.
 \begin{itemize}
 	\item Membership (Bloom Filters)
 	\item HyperLogLog: probabilistic estimator for approximating the cardinality of a dataset
@@ -157,8 +150,8 @@ Queries within \textsc{Synopsis} can be discrete or continuous queries. Unlike d
 \end{itemize}
 
 
-\subsubsection{Forecasting Queries}
-Queries that we have discussed so far report on what has happened; a forecasting query requests information about what will happen.
+\subsubsection{Inferential Queries}
+Inferential queries are intended to support projections about how the feature is expected to evolve over a spatiotemporal scope. In this study, these projections are predicated on the registration of time-series models at the particular scope. Specifically, we rely on exponential smoothing methods to make forecasts about the estimated values of features at different time points. Besides compact representations and faster evaluations that are amenable to keeping pace with high data arrival rates, smoothing methods are able to handle trends and seasonality that often underpin observational data. We rely on the Holt-Winters model. Here, the trend and seasonality components for the forecast are computed separately and updated independently based on the error computed from the forecasted and observed values. The seasonality component in the Holt-Winters model may either be additive or multiplicative; we work with the multiplicative components that are are known to perform better with real-world applications. 
 
 \subsection{Support for High throughput Query Evaluations}
 
