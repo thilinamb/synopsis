@@ -14,37 +14,46 @@ import java.io.IOException;
  */
 public class StateReplicationMessage extends AbstractStreamEvent {
 
-    private String computationId;
+    private long checkpointId;
     private byte stateType;
     private byte[] serializedState;
+    private String primaryComp;
+    private String primaryCompLocation;
 
     public StateReplicationMessage() {
     }
 
-    public StateReplicationMessage(String computationId, byte type, byte[] serializedState) {
-        this.computationId = computationId;
+    public StateReplicationMessage(long checkpointId, byte type, byte[] serializedState,
+                                   String primaryComp, String primaryCompLocation) {
+        this.checkpointId = checkpointId;
         this.stateType = type;
         this.serializedState = serializedState;
+        this.primaryComp = primaryComp;
+        this.primaryCompLocation = primaryCompLocation;
     }
 
     @Override
     protected void readValues(DataInputStream dataInputStream) throws IOException {
-        this.computationId = dataInputStream.readUTF();
+        this.checkpointId = dataInputStream.readLong();
         this.stateType = dataInputStream.readByte();
         this.serializedState = new byte[dataInputStream.readInt()];
         dataInputStream.readFully(this.serializedState);
+        this.primaryComp = dataInputStream.readUTF();
+        this.primaryCompLocation = dataInputStream.readUTF();
     }
 
     @Override
     protected void writeValues(DataOutputStream dataOutputStream) throws IOException {
-        dataOutputStream.writeUTF(this.computationId);
+        dataOutputStream.writeLong(this.checkpointId);
         dataOutputStream.writeByte(this.stateType);
         dataOutputStream.writeInt(this.serializedState.length);
         dataOutputStream.write(this.serializedState);
+        dataOutputStream.writeUTF(this.primaryComp);
+        dataOutputStream.writeUTF(this.primaryCompLocation);
     }
 
-    public String getComputationId() {
-        return computationId;
+    public long getCheckpointId() {
+        return checkpointId;
     }
 
     public byte getType() {
@@ -53,5 +62,13 @@ public class StateReplicationMessage extends AbstractStreamEvent {
 
     public byte[] getSerializedState() {
         return serializedState;
+    }
+
+    public String getPrimaryComp() {
+        return primaryComp;
+    }
+
+    public String getPrimaryCompLocation() {
+        return primaryCompLocation;
     }
 }
