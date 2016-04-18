@@ -95,4 +95,8 @@ public class GeoHashIndexedRecord extends AbstractStreamEvent {
     public void setCheckpointId(long checkpointId) {
         this.checkpointId = checkpointId;
     }
+
+    public long getCheckpointId() {
+        return checkpointId;
+    }
 }

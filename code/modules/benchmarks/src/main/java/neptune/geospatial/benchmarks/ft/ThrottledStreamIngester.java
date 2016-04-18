@@ -29,7 +29,7 @@ import java.util.concurrent.atomic.AtomicLong;
 /**
  * @author Thilina Buddhika
  */
-public class ThrottledStreamIngester extends NOAADataIngester implements FaultTolerantStreamBase, MembershipChangeListener {
+class ThrottledStreamIngester extends NOAADataIngester implements FaultTolerantStreamBase, MembershipChangeListener {
 
     private Logger logger = Logger.getLogger(ThrottledStreamIngester.class);
 
@@ -39,6 +39,8 @@ public class ThrottledStreamIngester extends NOAADataIngester implements FaultTo
     private BufferedWriter bufferedWriter;
     private Map<String, List<BackupTopicInfo>> topicLocations = new HashMap<>();
     private AtomicLong checkpointCounter = new AtomicLong(0);
+    private long checkpointingInterval;
+    private long tsLastCheckpoint = -1;
 
     public ThrottledStreamIngester() {
         super();
@@ -63,8 +65,12 @@ public class ThrottledStreamIngester extends NOAADataIngester implements FaultTo
         GeoHashIndexedRecord record = nextRecord();
         if (record != null) {
             long now = System.currentTimeMillis();
-            if(now - tsLastEmitted > 2000){
+            if (tsLastCheckpoint == -1) {
+                tsLastCheckpoint = now;
+            }
+            if (now - tsLastCheckpoint >= checkpointingInterval) {
                 record.setCheckpointId(checkpointCounter.incrementAndGet());
+                tsLastCheckpoint = now;
             }
             synchronized (this) {
                 try {
@@ -122,6 +128,7 @@ public class ThrottledStreamIngester extends NOAADataIngester implements FaultTo
         // doing it lazily is expensive.
         try {
             if (ManagedResource.getInstance().isFaultToleranceEnabled()) {
+                this.checkpointingInterval = ManagedResource.getInstance().getStateReplicationInterval();
                 MembershipTracker.getInstance().registerListener(this);
                 this.topicLocations = populateBackupTopicMap(getInstanceIdentifier(), metadataRegistry);
             }

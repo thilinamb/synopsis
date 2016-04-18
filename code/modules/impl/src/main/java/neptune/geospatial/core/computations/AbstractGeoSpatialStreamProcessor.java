@@ -83,8 +83,6 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
 
     // fault tolerance related attributes
     private boolean faultToleranceEnabled;
-    private long tsLastStateReplication = -1;
-    private long stateReplicationInterval;
     private Map<String, List<BackupTopicInfo>> topicLocations = new HashMap<>();
     private List<TopicInfo> replicationStreamTopics;
 
@@ -210,17 +208,13 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
             process(geoHashIndexedRecord);
         }
         if (faultToleranceEnabled) {
-            long currentTs = System.currentTimeMillis();
-            if (tsLastStateReplication == -1) {
-                tsLastStateReplication = currentTs;
-            } else if ((currentTs - tsLastStateReplication) >= stateReplicationInterval) {
+            if (geoHashIndexedRecord.getCheckpointId() > 0) {
                 // send out a dummy state replication message for now
                 byte[] serializedState = new byte[100];
                 new Random().nextBytes(serializedState);
                 StateReplicationMessage stateReplicationMessage = new StateReplicationMessage(getInstanceIdentifier(),
                         (byte) 1, serializedState);
                 writeToStream(Constants.Streams.STATE_REPLICA_STREAM, stateReplicationMessage);
-                tsLastStateReplication = currentTs;
                 if (logger.isDebugEnabled()) {
                     logger.debug(String.format("[%s] state was replicated.", getInstanceIdentifier()));
                 }
@@ -237,9 +231,6 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
                 ManagedResource resource = ManagedResource.getInstance();
                 resource.registerStreamProcessor(this);
                 this.faultToleranceEnabled = resource.isFaultToleranceEnabled();
-                if (faultToleranceEnabled) {
-                    stateReplicationInterval = resource.getStateReplicationInterval();
-                }
                 initialized.set(true);
                 if (logger.isDebugEnabled()) {
                     logger.debug(String.format("[%s] Initialized. Message Size: %d", getInstanceIdentifier(),
