@@ -18,3 +18,14 @@ Every draft version of the paper (since version 8) is tracked here.
 * Updated version of related work on elastic stream processing
 
 **Last Commit**: [aca6a80](https://github.com/thilinamb/neptune-geospatial/commit/aca6a803123c262237f0999afd1910040b0d2e11)
+
+###Version 10
+**Date**:  04/17/2016
+
+**Improvements/Modifications**:
+* Discussion on fault tolerance
+* Node stability benchmark
+* Reworked query section and updated formatting
+* Added several new related works
+
+**Last Commit**: [bce337d](https://github.com/thilinamb/neptune-geospatial/commit/bce337da0439df3a29b115a689ca33235443897e)
