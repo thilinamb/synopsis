@@ -30,12 +30,24 @@ public class GeoHashIndexedRecord extends AbstractStreamEvent {
      */
     private long messageIdentifier;
 
-    /** Raw payload of this record, containing feature metadata. */
+    /**
+     * Raw payload of this record, containing feature metadata.
+     */
     private byte[] payload;
 
     private long checkpointId = -1;
 
+    private String parentId;
+
+    private String parentEndpoint;
+
     public GeoHashIndexedRecord() {
+    }
+
+    public GeoHashIndexedRecord(long checkpointId, String parentId, String parentEndpoint) {
+        this.checkpointId = checkpointId;
+        this.parentId = parentId;
+        this.parentEndpoint = parentEndpoint;
     }
 
     public GeoHashIndexedRecord(String geoHash, int prefixLength, long messageIdentifier, long tsIngested, byte[] payload) {
@@ -48,24 +60,34 @@ public class GeoHashIndexedRecord extends AbstractStreamEvent {
 
     @Override
     protected void readValues(DataInputStream dataInputStream) throws IOException {
-        this.geoHash = dataInputStream.readUTF();
-        this.prefixLength = dataInputStream.readInt();
-        this.messageIdentifier = dataInputStream.readLong();
-        this.tsIngested = dataInputStream.readLong();
-        this.payload = new byte[dataInputStream.readInt()];
-        dataInputStream.readFully(this.payload);
         this.checkpointId = dataInputStream.readLong();
+        if (this.checkpointId > -1) {
+            this.parentId = dataInputStream.readUTF();
+            this.parentEndpoint = dataInputStream.readUTF();
+        } else {
+            this.geoHash = dataInputStream.readUTF();
+            this.prefixLength = dataInputStream.readInt();
+            this.messageIdentifier = dataInputStream.readLong();
+            this.tsIngested = dataInputStream.readLong();
+            this.payload = new byte[dataInputStream.readInt()];
+            dataInputStream.readFully(this.payload);
+        }
     }
 
     @Override
     protected void writeValues(DataOutputStream dataOutputStream) throws IOException {
-        dataOutputStream.writeUTF(this.geoHash);
-        dataOutputStream.writeInt(this.prefixLength);
-        dataOutputStream.writeLong(this.messageIdentifier);
-        dataOutputStream.writeLong(this.tsIngested);
-        dataOutputStream.writeInt(this.payload.length);
-        dataOutputStream.write(this.payload);
         dataOutputStream.writeLong(this.checkpointId);
+        if (this.checkpointId > -1) {
+            dataOutputStream.writeUTF(this.parentId);
+            dataOutputStream.writeUTF(this.parentEndpoint);
+        } else {
+            dataOutputStream.writeUTF(this.geoHash);
+            dataOutputStream.writeInt(this.prefixLength);
+            dataOutputStream.writeLong(this.messageIdentifier);
+            dataOutputStream.writeLong(this.tsIngested);
+            dataOutputStream.writeInt(this.payload.length);
+            dataOutputStream.write(this.payload);
+        }
     }
 
     public String getGeoHash() {
@@ -98,5 +120,13 @@ public class GeoHashIndexedRecord extends AbstractStreamEvent {
 
     public long getCheckpointId() {
         return checkpointId;
+    }
+
+    public String getParentId() {
+        return parentId;
+    }
+
+    public String getParentEndpoint() {
+        return parentEndpoint;
     }
 }
