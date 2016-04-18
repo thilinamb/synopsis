@@ -11,6 +11,7 @@ import ds.granules.communication.direct.control.SendUtility;
 import ds.granules.dataset.DatasetException;
 import ds.granules.dataset.StreamEvent;
 import ds.granules.exception.CommunicationsException;
+import ds.granules.exception.GranulesConfigurationException;
 import ds.granules.neptune.interfere.core.NIException;
 import ds.granules.streaming.core.StreamProcessor;
 import ds.granules.streaming.core.exception.StreamingDatasetException;
@@ -27,10 +28,9 @@ import neptune.geospatial.core.protocol.processors.StateTransferMsgProcessor;
 import neptune.geospatial.core.protocol.processors.scalein.*;
 import neptune.geospatial.core.protocol.processors.scalout.*;
 import neptune.geospatial.core.resource.ManagedResource;
-import neptune.geospatial.ft.BackupTopicInfo;
-import neptune.geospatial.ft.FaultTolerantStreamBase;
-import neptune.geospatial.ft.StateReplicationMessage;
-import neptune.geospatial.ft.TopicInfo;
+import neptune.geospatial.ft.*;
+import neptune.geospatial.ft.protocol.CheckpointAck;
+import neptune.geospatial.ft.protocol.CheckpointAckProcessor;
 import neptune.geospatial.ft.protocol.StateReplLvlIncreaseMsgProcessor;
 import neptune.geospatial.ft.zk.MembershipChangeListener;
 import neptune.geospatial.ft.zk.MembershipTracker;
@@ -40,6 +40,7 @@ import neptune.geospatial.hazelcast.HazelcastClientInstanceHolder;
 import neptune.geospatial.hazelcast.HazelcastException;
 import neptune.geospatial.partitioner.GeoHashPartitioner;
 import neptune.geospatial.util.Mutex;
+import neptune.geospatial.util.RivuletUtil;
 import org.apache.log4j.Logger;
 import org.apache.zookeeper.KeeperException;
 
@@ -71,6 +72,7 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
     private AtomicLong tsLastUpdated = new AtomicLong(0);
 
     private ScalingContext scalingContext;
+    private String ctrlEndpoint;
 
     // mutex to ensure only a single scale in/out operations takes place at a given time
     private final Mutex mutex = new Mutex();
@@ -85,6 +87,8 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
     private boolean faultToleranceEnabled;
     private Map<String, List<BackupTopicInfo>> topicLocations = new HashMap<>();
     private List<TopicInfo> replicationStreamTopics;
+
+    private Map<Long, PendingCheckpoint> pendingCheckpoints = new HashMap<>();
 
     /**
      * Implement the specific business logic to process each
@@ -203,20 +207,40 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
             return;
         }
         // preprocess each message
-        if (preprocess(geoHashIndexedRecord)) {
+        long checkpointId = geoHashIndexedRecord.getCheckpointId();
+        if (checkpointId <= 0 && preprocess(geoHashIndexedRecord)) {
             // perform the business logic: do this selectively. Send through the traffic we don't process.
             process(geoHashIndexedRecord);
         }
         if (faultToleranceEnabled) {
-            if (geoHashIndexedRecord.getCheckpointId() > 0) {
+            if (checkpointId > 0) {
                 // send out a dummy state replication message for now
                 byte[] serializedState = new byte[100];
                 new Random().nextBytes(serializedState);
-                StateReplicationMessage stateReplicationMessage = new StateReplicationMessage(getInstanceIdentifier(),
-                        (byte) 1, serializedState);
-                writeToStream(Constants.Streams.STATE_REPLICA_STREAM, stateReplicationMessage);
+                StateReplicationMessage stateReplicationMessage = new StateReplicationMessage(
+                        checkpointId, (byte) 1, serializedState, getInstanceIdentifier(),
+                        ctrlEndpoint);
                 if (logger.isDebugEnabled()) {
                     logger.debug(String.format("[%s] state was replicated.", getInstanceIdentifier()));
+                }
+                GeoHashIndexedRecord recordToChildren = new GeoHashIndexedRecord(
+                        checkpointId, getInstanceIdentifier(), this.ctrlEndpoint);
+                List<String> outgoingStreams = scalingContext.getOutgoingStreams();
+                // keep track of the pending checkpoint
+                PendingCheckpoint pendingCheckpoint = new PendingCheckpoint(checkpointId,
+                        replicationStreamTopics.size(), outgoingStreams.size(), geoHashIndexedRecord.getParentId(),
+                        geoHashIndexedRecord.getParentEndpoint());
+                pendingCheckpoints.put(checkpointId, pendingCheckpoint);
+                // write to replication streams
+                writeToStream(Constants.Streams.STATE_REPLICA_STREAM, stateReplicationMessage);
+                // propagate the request to child nodes
+                for (String outgoingStream : outgoingStreams) {
+                    writeToStream(outgoingStream, recordToChildren);
+                }
+                if (logger.isDebugEnabled()) {
+                    logger.debug(String.format("[%s] Propagated checkpoint trigger to child nodes. " +
+                                    "Checkpoint Id: %d Number of children: %d", getInstanceIdentifier(),
+                            checkpointId, outgoingStreams.size()));
                 }
             }
         }
@@ -231,6 +255,7 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
                 ManagedResource resource = ManagedResource.getInstance();
                 resource.registerStreamProcessor(this);
                 this.faultToleranceEnabled = resource.isFaultToleranceEnabled();
+                this.ctrlEndpoint = RivuletUtil.getCtrlEndpoint();
                 initialized.set(true);
                 if (logger.isDebugEnabled()) {
                     logger.debug(String.format("[%s] Initialized. Message Size: %d", getInstanceIdentifier(),
@@ -238,6 +263,8 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
                 }
             } catch (NIException e) {
                 logger.error("Error retrieving the resource instance.", e);
+            } catch (GranulesConfigurationException e) {
+                logger.error("Error retrieving control endpoint.", e);
             }
         }
     }
