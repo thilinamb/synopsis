@@ -6,6 +6,7 @@ import neptune.geospatial.core.protocol.ProtocolTypes;
 import neptune.geospatial.core.protocol.msg.*;
 import neptune.geospatial.core.protocol.msg.scalein.*;
 import neptune.geospatial.core.protocol.msg.scaleout.*;
+import neptune.geospatial.ft.protocol.CheckpointAck;
 import neptune.geospatial.ft.protocol.StateReplicationLevelIncreaseMsg;
 import org.apache.log4j.Logger;
 
@@ -120,6 +121,13 @@ public class ResourceProtocolHandler extends AbstractProtocolHandler {
                             replIncreaseMsg.getTargetComputation());
                 }
                 managedResource.dispatchControlMessage(replIncreaseMsg.getTargetComputation(), replIncreaseMsg);
+                break;
+            case ProtocolTypes.CHECKPOINT_ACK:
+                CheckpointAck checkpointAck = (CheckpointAck) ctrlMsg;
+                if(logger.isDebugEnabled()){
+                    logger.debug("Received a State persistence ack for " + checkpointAck.getTargetComputation());
+                }
+                managedResource.dispatchControlMessage(checkpointAck.getTargetComputation(), checkpointAck);
                 break;
             default:
                 logger.warn("Unsupported message type: " + type);

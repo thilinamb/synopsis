@@ -5,6 +5,7 @@ import ds.granules.communication.direct.control.ControlMessage;
 import neptune.geospatial.core.protocol.msg.*;
 import neptune.geospatial.core.protocol.msg.scalein.*;
 import neptune.geospatial.core.protocol.msg.scaleout.*;
+import neptune.geospatial.ft.protocol.CheckpointAck;
 import neptune.geospatial.ft.protocol.StateReplicationLevelIncreaseMsg;
 
 import java.io.ByteArrayInputStream;
@@ -79,6 +80,9 @@ public class ProtocolFactory {
                     break;
                 case ProtocolTypes.STATE_REPL_LEVEL_INCREASE:
                     message = new StateReplicationLevelIncreaseMsg();
+                    break;
+                case ProtocolTypes.CHECKPOINT_ACK:
+                    message = new CheckpointAck();
                     break;
                 default:
                     String errorMsg = "Unsupported message type: " + messageType;

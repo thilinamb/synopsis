@@ -22,4 +22,5 @@ public final class ProtocolTypes {
     public static final int STATE_TRANSFER_MSG = 12300;
     // fault tolerance related protocol codes
     public static final int STATE_REPL_LEVEL_INCREASE = 12400;
+    public static final int CHECKPOINT_ACK = 12401;
 }
