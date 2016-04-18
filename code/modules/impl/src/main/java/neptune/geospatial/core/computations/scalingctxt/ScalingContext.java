@@ -219,4 +219,25 @@ public class ScalingContext {
         }
         return hzInstance;
     }
+
+    /**
+     * Get a list of outgoing streams that represent the entire child computation set.
+     * For each child computation, the returned list contains one going stream
+     *
+     * @return List of outgoing streams covering all child computations
+     */
+    public List<String> getOutgoingStreams(){
+        Set<String> uniqueComputations = new HashSet<>();
+        List<String> outgoingStreams = new ArrayList<>();
+        for(String monitoredPrefixStr: monitoredPrefixMap.keySet()){
+            MonitoredPrefix monitoredPrefix = monitoredPrefixMap.get(monitoredPrefixStr);
+            if(monitoredPrefix.getIsPassThroughTraffic()){
+                if(!uniqueComputations.contains(monitoredPrefix.getDestComputationId())){
+                    uniqueComputations.add(monitoredPrefix.getDestComputationId());
+                    outgoingStreams.add(monitoredPrefix.getOutGoingStream());
+                }
+            }
+        }
+        return outgoingStreams;
+    }
 }
