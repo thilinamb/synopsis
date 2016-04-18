@@ -38,6 +38,7 @@ public class ThrottledStreamIngester extends NOAADataIngester implements FaultTo
     private long tsLastEmitted = -1;
     private BufferedWriter bufferedWriter;
     private Map<String, List<BackupTopicInfo>> topicLocations = new HashMap<>();
+    private AtomicLong checkpointCounter = new AtomicLong(0);
 
     public ThrottledStreamIngester() {
         super();
@@ -61,6 +62,10 @@ public class ThrottledStreamIngester extends NOAADataIngester implements FaultTo
         }
         GeoHashIndexedRecord record = nextRecord();
         if (record != null) {
+            long now = System.currentTimeMillis();
+            if(now - tsLastEmitted > 2000){
+                record.setCheckpointId(checkpointCounter.incrementAndGet());
+            }
             synchronized (this) {
                 try {
                     writeToStream(Constants.Streams.NOAA_DATA_STREAM, record);
@@ -76,7 +81,6 @@ public class ThrottledStreamIngester extends NOAADataIngester implements FaultTo
             }
             countEmitted++;
             long sentCount = counter.incrementAndGet();
-            long now = System.currentTimeMillis();
 
             if (tsLastEmitted == -1) {
                 tsLastEmitted = now;

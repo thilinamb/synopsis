@@ -33,6 +33,8 @@ public class GeoHashIndexedRecord extends AbstractStreamEvent {
     /** Raw payload of this record, containing feature metadata. */
     private byte[] payload;
 
+    private long checkpointId = -1;
+
     public GeoHashIndexedRecord() {
     }
 
@@ -52,6 +54,7 @@ public class GeoHashIndexedRecord extends AbstractStreamEvent {
         this.tsIngested = dataInputStream.readLong();
         this.payload = new byte[dataInputStream.readInt()];
         dataInputStream.readFully(this.payload);
+        this.checkpointId = dataInputStream.readLong();
     }
 
     @Override
@@ -62,6 +65,7 @@ public class GeoHashIndexedRecord extends AbstractStreamEvent {
         dataOutputStream.writeLong(this.tsIngested);
         dataOutputStream.writeInt(this.payload.length);
         dataOutputStream.write(this.payload);
+        dataOutputStream.writeLong(this.checkpointId);
     }
 
     public String getGeoHash() {
@@ -88,4 +92,7 @@ public class GeoHashIndexedRecord extends AbstractStreamEvent {
         return this.payload;
     }
 
+    public void setCheckpointId(long checkpointId) {
+        this.checkpointId = checkpointId;
+    }
 }
