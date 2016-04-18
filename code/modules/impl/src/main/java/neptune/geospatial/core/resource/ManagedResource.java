@@ -23,6 +23,8 @@ import neptune.geospatial.core.protocol.msg.StateTransferMsg;
 import neptune.geospatial.core.protocol.msg.scaleout.DeploymentAck;
 import neptune.geospatial.core.protocol.msg.scaleout.ScaleOutLockRequest;
 import neptune.geospatial.core.protocol.msg.scaleout.StateTransferCompleteAck;
+import neptune.geospatial.ft.protocol.CheckpointAck;
+import neptune.geospatial.graph.operators.NOAADataIngester;
 import neptune.geospatial.hazelcast.HazelcastClientInstanceHolder;
 import neptune.geospatial.hazelcast.HazelcastNodeInstanceHolder;
 import neptune.geospatial.util.trie.GeoHashPrefixTree;
@@ -176,6 +178,8 @@ public class ManagedResource {
     private long activeScalingPeriod;
     private long tsActiveScalingStarted;
     private ScheduledFuture future;
+
+    private Map<String, NOAADataIngester> registeredIngesters = new HashMap<>();
 
     private ManagedResource(Properties inProps, int numOfThreads) throws CommunicationsException {
         Resource resource = new Resource(inProps, numOfThreads);
@@ -411,11 +415,26 @@ public class ManagedResource {
                     logger.debug("New computation is not active yet. Storing ScaleOutLockRequest.");
                 }
             } else {
-                logger.warn(String.format("Invalid control message to computation : %s, type: %d", computationId,
-                        ctrlMessage.getMessageType()));
+                if(ctrlMessage instanceof CheckpointAck && registeredIngesters.containsKey(computationId)){
+                    registeredIngesters.get(computationId).handleControlMessage(ctrlMessage);
+                } else {
+                    logger.warn(String.format("Invalid control message to computation : %s, type: %d", computationId,
+                            ctrlMessage.getMessageType()));
+                }
             }
         }
     }
+
+    public synchronized void registerIngester(NOAADataIngester ingester){
+        String ingesterId = ingester.getInstanceIdentifier();
+        if(!registeredIngesters.containsKey(ingesterId)){
+            registeredIngesters.put(ingesterId, ingester);
+            logger.info("Successfully registered the stream ingester: " + ingesterId);
+        } else {
+            logger.warn("Ingester already registered. Ingester Id: " + ingesterId);
+        }
+    }
+
 
     void ackDeployment(String instanceId) {
         if (logger.isDebugEnabled()) {

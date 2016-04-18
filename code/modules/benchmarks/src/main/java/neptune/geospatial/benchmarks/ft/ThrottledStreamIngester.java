@@ -185,4 +185,15 @@ public class ThrottledStreamIngester extends NOAADataIngester implements FaultTo
             this.notifyAll();
         }
     }
+
+    @Override
+    public void handleControlMessage(ControlMessage ctrlMsg) {
+        if(ctrlMsg instanceof CheckpointAck){
+            CheckpointAck ack = (CheckpointAck)ctrlMsg;
+            if(logger.isDebugEnabled()) {
+                logger.debug(String.format("[%s] Received acknowledgments from all child nodes. " +
+                        "Clearup the upstream back for checkpoint: %d",getInstanceIdentifier(), ack.getCheckpointId()));
+            }
+        }
+    }
 }

@@ -553,6 +553,7 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
         protocolProcessors.put(ProtocolTypes.SCALE_IN_COMPLETE, new ScaleInCompleteMsgProcessor());
         protocolProcessors.put(ProtocolTypes.SCALE_IN_COMPLETE_ACK, new ScaleInCompleteAckProcessor());
         protocolProcessors.put(ProtocolTypes.STATE_REPL_LEVEL_INCREASE, new StateReplLvlIncreaseMsgProcessor());
+        protocolProcessors.put(ProtocolTypes.CHECKPOINT_ACK, new CheckpointAckProcessor());
     }
 
     /**
@@ -765,6 +766,49 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
                             getInstanceIdentifier(), topic, newLocation));
                 }
             }
+        }
+    }
+
+    public void handleAckStatePersistence(CheckpointAck ack) {
+        long checkpointId = ack.getCheckpointId();
+        PendingCheckpoint pendingCheckpoint = pendingCheckpoints.get(checkpointId);
+        if (pendingCheckpoint != null) {
+            int pendingCount;
+            if (ack.isFromReplicator()) {
+                pendingCount = pendingCheckpoint.ackFromStateReplicationProcessor();
+                if (logger.isDebugEnabled()) {
+                    logger.debug(String.format("[%s] Received an ack from state replicator. " +
+                                    "Checkpoint id: %d, State Replicator endpoint: %s, Pending State Replication acks: %d, " +
+                                    "Pending Child acks: %d", getInstanceIdentifier(),
+                            checkpointId, ack.getOriginEndpoint(), pendingCheckpoint.getStateReplicationAcks(),
+                            pendingCheckpoint.getChildAcks()));
+                }
+            } else {
+                pendingCount = pendingCheckpoint.ackFromChild();
+                logger.debug(String.format("[%s] Received an ack from a child. " +
+                                "Checkpoint id: %d, Child endpoint: %s, Pending State Replication acks: %d, " +
+                                "Pending Child acks: %d", getInstanceIdentifier(),
+                        checkpointId, ack.getOriginEndpoint(), pendingCheckpoint.getStateReplicationAcks(),
+                        pendingCheckpoint.getChildAcks()));
+            }
+            if (pendingCount == 0 && pendingCheckpoint.isCheckpointCompleted()) {
+                CheckpointAck ackToParent = new CheckpointAck(CheckpointAck.ACK_FROM_CHILD,
+                        checkpointId, pendingCheckpoint.getParentCompId());
+                try {
+                    SendUtility.sendControlMessage(pendingCheckpoint.getParentCompEndpoint(), ackToParent);
+                    if (logger.isDebugEnabled()) {
+                        logger.debug(String.format("[%s] Received all acks. Acknowledging parent. " +
+                                "Checkpoint id: %d", getInstanceIdentifier(), checkpointId));
+                    }
+                } catch (CommunicationsException | IOException e) {
+                    logger.error(String.format("[%s] Error sending checkpoint ack to parent. " +
+                                    "Checkpoint id: %d, Parent endpoint: %s", getInstanceIdentifier(), checkpointId,
+                            pendingCheckpoint.getParentCompEndpoint()));
+                }
+            }
+        } else {
+            logger.warn(String.format("[%s] Invalid AckStatePersistence. Checkpoing Id: %d", getInstanceIdentifier(),
+                    checkpointId));
         }
     }
 }
