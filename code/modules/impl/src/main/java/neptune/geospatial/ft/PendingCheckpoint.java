@@ -8,30 +8,31 @@ package neptune.geospatial.ft;
 public class PendingCheckpoint {
 
     private long checkpointId;
-    private int stateReplicationAcks;
-    private int childAcks;
+    private int pendingStateReplicationAcks;
+    private int pendingChildAcks;
     private String parentCompId;
     private String parentCompEndpoint;
+    private boolean checkpointStatus = true;
 
-    public PendingCheckpoint(long checkpointId, int stateReplicationAcks, int childAcks,
+    public PendingCheckpoint(long checkpointId, int pendingStateReplicationAcks, int pendingChildAcks,
                              String parentCompId, String parentCompEndpoint) {
         this.checkpointId = checkpointId;
-        this.stateReplicationAcks = stateReplicationAcks;
-        this.childAcks = childAcks;
+        this.pendingStateReplicationAcks = pendingStateReplicationAcks;
+        this.pendingChildAcks = pendingChildAcks;
         this.parentCompId = parentCompId;
         this.parentCompEndpoint = parentCompEndpoint;
     }
 
     public int ackFromStateReplicationProcessor() {
-        return --stateReplicationAcks;
+        return --pendingStateReplicationAcks;
     }
 
     public int ackFromChild() {
-        return --childAcks;
+        return --pendingChildAcks;
     }
 
     public boolean isCheckpointCompleted() {
-        return (childAcks == 0) && (stateReplicationAcks == 0);
+        return (pendingChildAcks == 0) && (pendingStateReplicationAcks == 0);
     }
 
     public String getParentCompId() {
@@ -42,11 +43,16 @@ public class PendingCheckpoint {
         return parentCompEndpoint;
     }
 
-    public int getStateReplicationAcks() {
-        return stateReplicationAcks;
+    public int getPendingStateReplicationAcks() {
+        return pendingStateReplicationAcks;
     }
 
-    public int getChildAcks() {
-        return childAcks;
+    public int getPendingChildAcks() {
+        return pendingChildAcks;
+    }
+
+    public boolean updateCheckpointStatus(boolean status){
+        checkpointStatus = checkpointStatus && status;
+        return checkpointStatus;
     }
 }
