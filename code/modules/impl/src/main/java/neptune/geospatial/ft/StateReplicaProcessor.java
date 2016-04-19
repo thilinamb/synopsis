@@ -35,7 +35,7 @@ public class StateReplicaProcessor extends StreamProcessor {
                     stateReplicationMsg.getPrimaryComp(), stateReplicationMsg.getCheckpointId()));
         }
         // acknowledge the primary
-        CheckpointAck ack = new CheckpointAck(CheckpointAck.ACK_FROM_STATE_REPLICATOR,
+        CheckpointAck ack = new CheckpointAck(CheckpointAck.ACK_FROM_STATE_REPLICATOR, CheckpointAck.STATUS_SUCCESS,
                 stateReplicationMsg.getCheckpointId(), stateReplicationMsg.getPrimaryComp());
         try {
             SendUtility.sendControlMessage(stateReplicationMsg.getPrimaryCompLocation(), ack);
