@@ -52,9 +52,9 @@ rivulet-scale-in-threshold=10
 rivulet-monitored-backlog-history-length=5
 
 # fault tolerance related properties
-rivulet-enable-fault-tolerance=true
+rivulet-enable-fault-tolerance=false
 rivulet-state-replication-interval=2000
-rivulet-scaling-period-in-mins=1
+rivulet-scaling-period-in-mins=10
 rivulet-checkpoint-timeout=10000
 
 # Hazelcast serializer registration
