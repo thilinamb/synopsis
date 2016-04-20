@@ -4,8 +4,7 @@ import ds.granules.Granules;
 import ds.granules.streaming.core.Job;
 import ds.granules.util.NeptuneRuntime;
 import ds.granules.util.ParamsReader;
-import neptune.geospatial.benchmarks.dynamicscaling.StreamProcessor;
-import neptune.geospatial.benchmarks.dynamicscaling.ThrottledStreamIngester;
+import neptune.geospatial.core.computations.SketchProcessor;
 import neptune.geospatial.core.deployer.GeoSpatialDeployer;
 import neptune.geospatial.graph.Constants;
 import neptune.geospatial.partitioner.GeoHashPartitioner;
@@ -49,7 +48,7 @@ public class DynamicScalingGraph {
 
             Properties processorProps = new Properties();
             processorProps.put(ds.granules.util.Constants.StreamBaseProperties.BUFFER_SIZE, Integer.toString(0));
-            job.addStreamProcessor("stream-processor", StreamProcessor.class, INITIAL_PROCESSOR_COUNT, processorProps);
+            job.addStreamProcessor("stream-processor", SketchProcessor.class, INITIAL_PROCESSOR_COUNT, processorProps);
 
             // edges
             job.addLink("ingester", "stream-processor", Constants.Streams.NOAA_DATA_STREAM,

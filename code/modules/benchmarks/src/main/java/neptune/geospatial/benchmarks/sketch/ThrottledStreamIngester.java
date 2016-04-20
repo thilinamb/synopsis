@@ -1,15 +1,10 @@
 package neptune.geospatial.benchmarks.sketch;
 
-import com.hazelcast.core.IQueue;
 import ds.granules.streaming.core.exception.StreamingDatasetException;
-import neptune.geospatial.benchmarks.dynamicscaling.DynamicScalingGraph;
-import neptune.geospatial.benchmarks.dynamicscaling.DynamicScalingMonitor;
 import neptune.geospatial.benchmarks.util.SineCurveLoadProfiler;
 import neptune.geospatial.graph.Constants;
 import neptune.geospatial.graph.messages.GeoHashIndexedRecord;
 import neptune.geospatial.graph.operators.NOAADataIngester;
-import neptune.geospatial.hazelcast.HazelcastClientInstanceHolder;
-import neptune.geospatial.hazelcast.HazelcastException;
 import org.apache.log4j.Logger;
 
 import java.io.BufferedWriter;
@@ -59,7 +54,7 @@ public class ThrottledStreamIngester extends NOAADataIngester {
             if(tsLastEmitted == -1){
                 tsLastEmitted = now;
                 // register a listener for scaling in and out
-                registerListener();
+                //registerListener();
             } else if (now - tsLastEmitted > 1000){
                 try {
                     bufferedWriter.write(now + "," + sentCount * 1000.0/(now - tsLastEmitted) + "\n");
@@ -70,15 +65,16 @@ public class ThrottledStreamIngester extends NOAADataIngester {
                     logger.error("Error writing stats.", e);
                 }
             }
-            try {
-                Thread.sleep(loadProfiler.nextSleepInterval());
+            /*try {
+                //Thread.sleep(loadProfiler.nextSleepInterval());
+                Thread.sleep(1);
             } catch (InterruptedException ignore) {
 
-            }
+            }*/
         }
     }
 
-    private void registerListener(){
+    /*private void registerListener(){
         try {
             IQueue<Integer> scalingMonitorQueue = HazelcastClientInstanceHolder.getInstance().
                     getHazelcastClientInstance().getQueue("scaling-monitor");
@@ -87,5 +83,5 @@ public class ThrottledStreamIngester extends NOAADataIngester {
         } catch (HazelcastException e) {
             e.printStackTrace();
         }
-    }
+    }*/
 }
