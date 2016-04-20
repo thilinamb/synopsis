@@ -51,6 +51,12 @@ rivulet-scale-out-threshold=100
 rivulet-scale-in-threshold=10
 rivulet-monitored-backlog-history-length=5
 
+# fault tolerance related properties
+rivulet-enable-fault-tolerance=true
+rivulet-state-replication-interval=2000
+rivulet-scaling-period-in-mins=1
+rivulet-checkpoint-timeout=10000
+
 # Hazelcast serializer registration
 rivulet-hazelcast-serializer-neptune.geospatial.hazelcast.type.SketchLocation=neptune.geospatial.hazelcast.serializer.SketchLocationSerializer
 

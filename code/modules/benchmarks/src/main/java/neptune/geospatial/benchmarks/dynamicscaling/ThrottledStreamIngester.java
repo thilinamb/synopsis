@@ -39,9 +39,9 @@ public class ThrottledStreamIngester extends NOAADataIngester {
 
     @Override
     public void emit() throws StreamingDatasetException {
-        if(tsLastEmitted == -1){
+        if (tsLastEmitted == -1) {
             try {
-                Thread.sleep(20*1000);
+                Thread.sleep(20 * 1000);
                 logger.debug("Initial sleep period is over. Starting to emit messages.");
             } catch (InterruptedException ignore) {
 
@@ -49,18 +49,30 @@ public class ThrottledStreamIngester extends NOAADataIngester {
         }
         GeoHashIndexedRecord record = nextRecord();
         if (record != null) {
-            writeToStream(Constants.Streams.NOAA_DATA_STREAM, record);
+            synchronized (this) {
+                try {
+                    writeToStream(Constants.Streams.NOAA_DATA_STREAM, record);
+                } catch (StreamingDatasetException e) {
+                    logger.error("Faulty downstream. Waiting till switching to a secondary topic.", e);
+                    try {
+                        this.wait();
+                    } catch (InterruptedException ignore) {
+
+                    }
+                    logger.debug("Resuming after swithcing to secondary topic.");
+                }
+            }
             countEmitted++;
             long sentCount = counter.incrementAndGet();
             long now = System.currentTimeMillis();
 
-            if(tsLastEmitted == -1){
+            if (tsLastEmitted == -1) {
                 tsLastEmitted = now;
                 // register a listener for scaling in and out
                 registerListener();
-            } else if (now - tsLastEmitted > 1000){
+            } else if (now - tsLastEmitted > 1000) {
                 try {
-                    bufferedWriter.write(now + "," + sentCount * 1000.0/(now - tsLastEmitted) + "\n");
+                    bufferedWriter.write(now + "," + sentCount * 1000.0 / (now - tsLastEmitted) + "\n");
                     bufferedWriter.flush();
                     tsLastEmitted = now;
                     counter.set(0);
@@ -76,7 +88,7 @@ public class ThrottledStreamIngester extends NOAADataIngester {
         }
     }
 
-    private void registerListener(){
+    private void registerListener() {
         try {
             IQueue<Integer> scalingMonitorQueue = HazelcastClientInstanceHolder.getInstance().
                     getHazelcastClientInstance().getQueue("scaling-monitor");
