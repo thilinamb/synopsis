@@ -125,6 +125,7 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
 
     // fault tolerance related attributes
     private boolean faultToleranceEnabled;
+    private long checkpointTimeoutPeriod;
     private Map<String, List<BackupTopicInfo>> topicLocations = new HashMap<>();
     private List<TopicInfo> replicationStreamTopics;
 
@@ -272,7 +273,8 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
                         replicationStreamTopics.size(), outgoingStreams.size(), geoHashIndexedRecord.getParentId(),
                         geoHashIndexedRecord.getParentEndpoint());
                 pendingCheckpoints.put(checkpointId, pendingCheckpoint);
-                checkpointMonitors.schedule(new CheckpointTimer(checkpointId), 1000, TimeUnit.MILLISECONDS);
+                checkpointMonitors.schedule(new CheckpointTimer(checkpointId), checkpointTimeoutPeriod,
+                        TimeUnit.MILLISECONDS);
 
                 // write to replication streams
                 writeToStream(Constants.Streams.STATE_REPLICA_STREAM, stateReplicationMessage);
@@ -699,6 +701,7 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
                     init();
                 }
                 int replicationElementCount = formatReader.readInt();
+                this.checkpointTimeoutPeriod = ManagedResource.getInstance().getCheckpointTimeoutPeriod();
                 this.replicationStreamTopics = new ArrayList<>();
                 for (int i = 0; i < replicationElementCount; i++) {
                     TopicInfo topicInfo = new TopicInfo();
