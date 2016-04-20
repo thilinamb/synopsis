@@ -64,11 +64,11 @@ import java.util.concurrent.atomic.AtomicLong;
 public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor implements FaultTolerantStreamBase,
         MembershipChangeListener {
 
-    public class CheckpointTimer implements Runnable {
+    private class CheckpointTimer implements Runnable {
 
         private final long pendingCheckpointId;
 
-        public CheckpointTimer(long pendingCheckpointId) {
+        private CheckpointTimer(long pendingCheckpointId) {
             this.pendingCheckpointId = pendingCheckpointId;
         }
 
@@ -324,12 +324,18 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
         String prefix = getPrefix(record);
         boolean processLocally;
         synchronized (this) {
-            updateIncomingRatesForSubPrefixes(prefix, record);
+            boolean hasSeenBefore = scalingContext.hasSeenBefore(prefix, record.getMessageIdentifier());
+            // update statistics only if it is not a replayed message
+            if (!hasSeenBefore) {
+                updateIncomingRatesForSubPrefixes(prefix, record);
+            }
             MonitoredPrefix monitoredPrefix = scalingContext.getMonitoredPrefix(prefix);
             // if there is an outgoing stream, then this should be sent to a child node.
             processLocally = !monitoredPrefix.getIsPassThroughTraffic();
-            monitoredPrefix.setLastMessageSent(record.getMessageIdentifier());
-            monitoredPrefix.setLastGeoHashSent(record.getGeoHash());
+            if (!hasSeenBefore) {
+                monitoredPrefix.setLastMessageSent(record.getMessageIdentifier());
+                monitoredPrefix.setLastGeoHashSent(record.getGeoHash());
+            }
             if (!processLocally) {
                 record.setPrefixLength(record.getPrefixLength() + 1);
                 // send to the child node
@@ -351,6 +357,10 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
                     logger.debug("Resuming message processing after the swap is completed.");
                     throw e;
                 }
+            }
+            // replayed messages are not processed more than once
+            if (hasSeenBefore) {
+                processLocally = false;
             }
             if (monitoredPrefix.getTerminationPoint() == monitoredPrefix.getLastMessageSent()) {
                 propagateScaleInActivationRequests(monitoredPrefix.getActivateReq());
