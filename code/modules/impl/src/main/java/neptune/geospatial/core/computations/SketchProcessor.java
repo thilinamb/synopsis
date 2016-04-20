@@ -88,7 +88,7 @@ public class SketchProcessor extends AbstractGeoSpatialStreamProcessor {
             rq.execute(sketch.getRoot());
             rq.serializeResults(sketch.getRoot(), out);
 
-            byteOut.close();
+            out.close();
         } catch (Exception e) {
             System.out.println("Failed to split sketch");
             e.printStackTrace();
