@@ -54,20 +54,30 @@ public class ScalingContext {
     /**
      * Register a new monitored prefix
      *
-     * @param prefix Prefix string
+     * @param prefix          Prefix string
      * @param monitoredPrefix {@code MonitoredPrefix} object
      */
-    public void addMonitoredPrefix(String prefix, MonitoredPrefix monitoredPrefix){
+    public void addMonitoredPrefix(String prefix, MonitoredPrefix monitoredPrefix) {
         monitoredPrefixMap.put(prefix, monitoredPrefix);
         monitoredPrefixes.add(monitoredPrefix);
     }
 
     /**
      * Remove a monitored prefix
+     *
      * @param prefix Prefix String
      */
-    public void removeMonitoredPrefix(String prefix){
+    public void removeMonitoredPrefix(String prefix) {
         monitoredPrefixes.remove(monitoredPrefixMap.remove(prefix));
+    }
+
+    public boolean hasSeenBefore(String prefix, long seqNo) {
+        MonitoredPrefix monitoredPrefix = monitoredPrefixMap.get(prefix);
+        if (monitoredPrefix != null) {
+            long lastMessageSent = monitoredPrefix.getLastMessageSent();
+            return lastMessageSent >= seqNo;
+        }
+        return false;
     }
 
     /**
@@ -197,11 +207,11 @@ public class ScalingContext {
         pendingScaleInRequests.put(key, scaleInRequest);
     }
 
-    public PendingScaleInRequest getPendingScalingInRequest(String key){
+    public PendingScaleInRequest getPendingScalingInRequest(String key) {
         return pendingScaleInRequests.get(key);
     }
 
-    public void removePendingScaleInRequest(String key){
+    public void removePendingScaleInRequest(String key) {
         pendingScaleInRequests.remove(key);
     }
 
@@ -226,13 +236,13 @@ public class ScalingContext {
      *
      * @return List of outgoing streams covering all child computations
      */
-    public List<String> getOutgoingStreams(){
+    public List<String> getOutgoingStreams() {
         Set<String> uniqueComputations = new HashSet<>();
         List<String> outgoingStreams = new ArrayList<>();
-        for(String monitoredPrefixStr: monitoredPrefixMap.keySet()){
+        for (String monitoredPrefixStr : monitoredPrefixMap.keySet()) {
             MonitoredPrefix monitoredPrefix = monitoredPrefixMap.get(monitoredPrefixStr);
-            if(monitoredPrefix.getIsPassThroughTraffic()){
-                if(!uniqueComputations.contains(monitoredPrefix.getDestComputationId())){
+            if (monitoredPrefix.getIsPassThroughTraffic()) {
+                if (!uniqueComputations.contains(monitoredPrefix.getDestComputationId())) {
                     uniqueComputations.add(monitoredPrefix.getDestComputationId());
                     outgoingStreams.add(monitoredPrefix.getOutGoingStream());
                 }
