@@ -158,7 +158,8 @@ public class ManagedResource {
     private static final String HAZELCAST_INTERFACE = "rivulet-hazelcast-interface";
     public static final String ENABLE_FAULT_TOLERANCE = "rivulet-enable-fault-tolerance";
     private static final String STATE_REPLICATION_INTERVAL = "rivulet-state-replication-interval";
-    public static final String ACTIVE_SCALING_PERIOD = "rivulet-scaling-period-in-mins";
+    private static final String ACTIVE_SCALING_PERIOD = "rivulet-scaling-period-in-mins";
+    public static final String CHECKPOINT_TIMEOUT_PERIOD = "rivulet-checkpoint-timeout";
 
     // default values
     private int monitoredBackLogLength;
@@ -177,6 +178,7 @@ public class ManagedResource {
     private long stateReplicationInterval = 2000;
     private long activeScalingPeriod;
     private long tsActiveScalingStarted;
+    private long checkpointTimeoutPeriod;
     private ScheduledFuture future;
 
     private Map<String, NOAADataIngester> registeredIngesters = new HashMap<>();
@@ -226,6 +228,8 @@ public class ManagedResource {
                         Long.parseLong(startupProps.getProperty(STATE_REPLICATION_INTERVAL)) : 2000;
                 activeScalingPeriod = startupProps.containsKey(ACTIVE_SCALING_PERIOD) ?
                         Integer.parseInt(startupProps.getProperty(ACTIVE_SCALING_PERIOD)) * 60 * 1000 : -1;
+                checkpointTimeoutPeriod = startupProps.containsKey(CHECKPOINT_TIMEOUT_PERIOD) ?
+                        Long.parseLong(startupProps.getProperty(CHECKPOINT_TIMEOUT_PERIOD)) : 6000;
             }
 
             logger.info(String.format("Fault tolerance enabled: %b, Active Scaling Period: %d", enableFaultTolerance, activeScalingPeriod));
@@ -415,7 +419,7 @@ public class ManagedResource {
                     logger.debug("New computation is not active yet. Storing ScaleOutLockRequest.");
                 }
             } else {
-                if(ctrlMessage instanceof CheckpointAck && registeredIngesters.containsKey(computationId)){
+                if (ctrlMessage instanceof CheckpointAck && registeredIngesters.containsKey(computationId)) {
                     registeredIngesters.get(computationId).handleControlMessage(ctrlMessage);
                 } else {
                     logger.warn(String.format("Invalid control message to computation : %s, type: %d", computationId,
@@ -425,9 +429,9 @@ public class ManagedResource {
         }
     }
 
-    public synchronized void registerIngester(NOAADataIngester ingester){
+    public synchronized void registerIngester(NOAADataIngester ingester) {
         String ingesterId = ingester.getInstanceIdentifier();
-        if(!registeredIngesters.containsKey(ingesterId)){
+        if (!registeredIngesters.containsKey(ingesterId)) {
             registeredIngesters.put(ingesterId, ingester);
             logger.info("Successfully registered the stream ingester: " + ingesterId);
         } else {
@@ -445,6 +449,10 @@ public class ManagedResource {
 
     public boolean isFaultToleranceEnabled() {
         return this.enableFaultTolerance;
+    }
+
+    public long getCheckpointTimeoutPeriod() {
+        return checkpointTimeoutPeriod;
     }
 
     public long getStateReplicationInterval() {
