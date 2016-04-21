@@ -44,7 +44,6 @@ public abstract class AbstractProtocolHandler implements ChannelReaderCallback, 
                 synchronized (controlMessageQueue) {
                     if (controlMessageQueue.size() == 0) {
                         try {
-                            System.out.println("Waiting for a control message!");
                             controlMessageQueue.wait();
                         } catch (InterruptedException e) {
                             e.printStackTrace();
