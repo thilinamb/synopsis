@@ -135,9 +135,9 @@ echo 'Using Funnel Bootstrap URL: '${FUNNEL_BOOTSTRAP}
 
 # location of the log4j properties file
 log4j_conf_file='file:'${GRANULES_HOME}'/lib/log4j.properties'
+jul_conf_file=${GRANULES_HOME}'/lib/logging.properties'
 # append it to java opts
-java_opts=${java_opts}' -Dlog4j.configuration='${log4j_conf_file}'
--Dcom.sun.management.jmxremote.authenticate=false -Dcom.sun.management.jmxremote.ssl=false
+java_opts=${java_opts}' -Dlog4j.configuration='${log4j_conf_file}' -Djava.util.logging.config.file='${jul_conf_file}' -Dcom.sun.management.jmxremote.authenticate=false -Dcom.sun.management.jmxremote.ssl=false
 -Dcom.sun.management.jmxremote.port=10020'
 
 echo ${java_opts}
