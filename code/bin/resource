@@ -35,7 +35,7 @@ config_file=${GRANULES_HOME}/config/resourceConfig.txt
 if [[ -n ${GRANULES_JVM_OPTS} ]]; then
     java_opts=${GRANULES_JVM_OPTS}
 else
-    java_opts="-Xmx1024m"
+    java_opts="-Xmx4096m"
 fi
 
 while getopts "c:d:f:n:o:rkh" flag; do
