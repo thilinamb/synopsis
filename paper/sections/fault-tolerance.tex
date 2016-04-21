@@ -20,7 +20,7 @@ In case of a failure, all messages since the last checkpoint will be replayed.
 \textsc{Synopsis} nodes are implemented as idempotent operators (using the message sequence numbers), hence they will process the replayed messages only if necessary.
 Users can use their own policy for defining the period between the incremental checkpoints because too frequent checkpoints can incur high overhead whereas longer periods between successive checkpoints may consume more resources for upstream backups as well as for processing replayed messages in case of a failure.
 
-Membership management in Neptune is implemented using Zookeepr~\cite{hunt2010zookeeper}, which is leveraged to detect failed nodes.
+Membership management in Neptune is implemented using Zookeeper~\cite{hunt2010zookeeper}, which is leveraged to detect failed nodes.
 Upon receiving notifications from the system about node failures, an upstream node switches to a secondary child node if necessary.The secondary child node is a \textsc{Synopsis} node running on the process where a state replication sink was running; hence can access the persisted replicated state.
 The secondary will start processing messages immediately and start populating its state from the persistence storage in the background.
 Due to this mode of operation, there may be a small window of time during which the correctness of queries are affected.
