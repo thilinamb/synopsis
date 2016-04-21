@@ -34,7 +34,6 @@ public class ScaleOutResponseProcessor implements ProtocolProcessor {
         ScaleOutResponse scaleOutResp = (ScaleOutResponse) ctrlMessage;
         PendingScaleOutRequest pendingReq = scalingContext.getPendingScaleOutRequest(scaleOutResp.getInResponseTo());
         String instanceIdentifier = streamProcessor.getInstanceIdentifier();
-
         if (pendingReq != null) {
             try {
                 // send a dummy message, just to ensure the new computation is activated.
@@ -44,8 +43,9 @@ public class ScaleOutResponseProcessor implements ProtocolProcessor {
                 streamProcessor.emit(pendingReq.getStreamId(), record);
             } catch (StreamingDatasetException e) {
                 logger.error("Error sending a message", e);
+                streamProcessor.releaseMutex();
+                return;
             }
-
             ScaleOutLockRequest lockRequest = new ScaleOutLockRequest(scaleOutResp.getInResponseTo(),
                     instanceIdentifier, scaleOutResp.getNewComputationId());
             try {

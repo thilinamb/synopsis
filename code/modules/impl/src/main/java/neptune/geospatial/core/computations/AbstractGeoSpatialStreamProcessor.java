@@ -2,36 +2,53 @@ package neptune.geospatial.core.computations;
 
 
 import com.hazelcast.core.HazelcastInstance;
+import ds.funnel.data.format.FormatReader;
+import ds.funnel.data.format.FormatWriter;
 import ds.funnel.topic.Topic;
+import ds.granules.communication.direct.ZooKeeperAgent;
 import ds.granules.communication.direct.control.ControlMessage;
 import ds.granules.communication.direct.control.SendUtility;
+import ds.granules.dataset.DatasetException;
 import ds.granules.dataset.StreamEvent;
 import ds.granules.exception.CommunicationsException;
+import ds.granules.exception.GranulesConfigurationException;
 import ds.granules.neptune.interfere.core.NIException;
 import ds.granules.streaming.core.StreamProcessor;
 import ds.granules.streaming.core.exception.StreamingDatasetException;
 import ds.granules.streaming.core.exception.StreamingGraphConfigurationException;
+import ds.granules.streaming.core.partition.scheme.SendToAllPartitioner;
 import neptune.geospatial.core.computations.scalingctxt.*;
 import neptune.geospatial.core.protocol.ProtocolTypes;
+import neptune.geospatial.core.protocol.msg.StateTransferMsg;
 import neptune.geospatial.core.protocol.msg.scalein.ScaleInActivateReq;
 import neptune.geospatial.core.protocol.msg.scalein.ScaleInLockRequest;
 import neptune.geospatial.core.protocol.msg.scaleout.ScaleOutRequest;
-import neptune.geospatial.core.protocol.msg.StateTransferMsg;
-import neptune.geospatial.core.protocol.processors.*;
+import neptune.geospatial.core.protocol.processors.ProtocolProcessor;
+import neptune.geospatial.core.protocol.processors.StateTransferMsgProcessor;
 import neptune.geospatial.core.protocol.processors.scalein.*;
 import neptune.geospatial.core.protocol.processors.scalout.*;
 import neptune.geospatial.core.resource.ManagedResource;
+import neptune.geospatial.ft.*;
+import neptune.geospatial.ft.protocol.CheckpointAck;
+import neptune.geospatial.ft.protocol.CheckpointAckProcessor;
+import neptune.geospatial.ft.protocol.StateReplLvlIncreaseMsgProcessor;
+import neptune.geospatial.ft.zk.MembershipChangeListener;
+import neptune.geospatial.ft.zk.MembershipTracker;
+import neptune.geospatial.graph.Constants;
 import neptune.geospatial.graph.messages.GeoHashIndexedRecord;
 import neptune.geospatial.hazelcast.HazelcastClientInstanceHolder;
 import neptune.geospatial.hazelcast.HazelcastException;
 import neptune.geospatial.partitioner.GeoHashPartitioner;
 import neptune.geospatial.util.Mutex;
+import neptune.geospatial.util.RivuletUtil;
 import org.apache.log4j.Logger;
+import org.apache.zookeeper.KeeperException;
 
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -44,7 +61,45 @@ import java.util.concurrent.atomic.AtomicLong;
  *
  * @author Thilina Buddhika
  */
-public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor {
+public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor implements FaultTolerantStreamBase,
+        MembershipChangeListener {
+
+    private class CheckpointTimer implements Runnable {
+
+        private final long pendingCheckpointId;
+
+        private CheckpointTimer(long pendingCheckpointId) {
+            this.pendingCheckpointId = pendingCheckpointId;
+        }
+
+        @Override
+        public void run() {
+            synchronized (pendingCheckpoints) {
+                PendingCheckpoint pendingCheckpoint = pendingCheckpoints.get(pendingCheckpointId);
+                if (pendingCheckpoint == null) {
+                    if (logger.isDebugEnabled()) {
+                        logger.debug(String.format("[%s]Checkpoint has already been completed. Checkpoint Id: %d",
+                                getInstanceIdentifier(), pendingCheckpointId));
+                    }
+                } else {
+                    CheckpointAck ackToParent = new CheckpointAck(CheckpointAck.ACK_FROM_CHILD, CheckpointAck.STATUS_FAILURE,
+                            pendingCheckpointId, pendingCheckpoint.getParentCompId());
+                    try {
+                        SendUtility.sendControlMessage(pendingCheckpoint.getParentCompEndpoint(), ackToParent);
+                        pendingCheckpoints.remove(pendingCheckpointId);
+                        logger.info(String.format("[%s] Checkpoint didnot complete on time, Reporting to parent. " +
+                                        "Checkpoint id: %d Pending replication acks: %d, Pending child acks: %b",
+                                getInstanceIdentifier(), pendingCheckpointId,
+                                pendingCheckpoint.getPendingStateReplicationAcks(), pendingCheckpoint.getPendingChildAcks()));
+                    } catch (CommunicationsException | IOException e) {
+                        logger.error(String.format("[%s] Error sending checkpoint ack to parent. " +
+                                        "Checkpoint id: %d, Parent endpoint: %s", getInstanceIdentifier(), pendingCheckpointId,
+                                pendingCheckpoint.getParentCompEndpoint()));
+                    }
+                }
+            }
+        }
+    }
 
     private Logger logger = Logger.getLogger(AbstractGeoSpatialStreamProcessor.class.getName());
     private static final String OUTGOING_STREAM_BASE_ID = "out-going";
@@ -57,6 +112,7 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
     private AtomicLong tsLastUpdated = new AtomicLong(0);
 
     private ScalingContext scalingContext;
+    private String ctrlEndpoint;
 
     // mutex to ensure only a single scale in/out operations takes place at a given time
     private final Mutex mutex = new Mutex();
@@ -67,6 +123,14 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
     // protocol processors
     private Map<Integer, ProtocolProcessor> protocolProcessors = new HashMap<>();
 
+    // fault tolerance related attributes
+    private boolean faultToleranceEnabled;
+    private long checkpointTimeoutPeriod;
+    private Map<String, List<BackupTopicInfo>> topicLocations = new HashMap<>();
+    private List<TopicInfo> replicationStreamTopics;
+
+    private final Map<Long, PendingCheckpoint> pendingCheckpoints = new HashMap<>();
+    private ScheduledExecutorService checkpointMonitors = Executors.newScheduledThreadPool(1);
 
     /**
      * Implement the specific business logic to process each
@@ -131,19 +195,21 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
 
     /**
      * Returns an estimation of the memory consumed by the sketch for a given prefix
+     *
      * @param prefix Prefix String
      * @return estimation of consumed memory
      */
-    public double getMemoryConsumptionForPrefix(String prefix){
+    public double getMemoryConsumptionForPrefix(String prefix) {
         throw new UnsupportedOperationException("getMemoryConsumptionForPrefix is not implemented in " +
                 "AbstractGeoSpatialStreamProcessor class.");
     }
 
     /**
      * Returns an estimation of memory consumption by all prefixes
+     *
      * @return estimated memory consumption
      */
-    public double getMemoryConsumptionForAllPrefixes(){
+    public double getMemoryConsumptionForAllPrefixes() {
         throw new UnsupportedOperationException("getMemoryConsumptionForAllPrefixes is not implemented in " +
                 "AbstractGeoSpatialStreamProcessor class.");
     }
@@ -151,18 +217,20 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
     /**
      * Returns the state change since last invocation of this method.
      * If this is invoked for the first time, returns the base version.
+     *
      * @return Serialized state change
      */
-    public byte[] getSketchDiff(){
+    public byte[] getSketchDiff() {
         throw new UnsupportedOperationException("getSketchDiff is not implemented in " +
                 "AbstractGeoSpatialStreamProcessor class.");
     }
 
     /**
      * Repopulate the sketch using serialized state changes stored in disk
+     *
      * @param baseDirPath Path to the directory where the serialized state changes are stored
      */
-    public void populateSketch(String baseDirPath){
+    public void populateSketch(String baseDirPath) {
         throw new UnsupportedOperationException("populateSketch is not implemented in " +
                 "AbstractGeoSpatialStreamProcessor class.");
     }
@@ -170,20 +238,10 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
     @Override
     public final void onEvent(StreamEvent streamEvent) throws StreamingDatasetException {
         if (!initialized.get()) {
-            try {
-                // register with the resource to enable monitoring
-                initializeProtocolProcessors();
-                messageSize.set(getMessageSize(streamEvent));
-                this.scalingContext = new ScalingContext(getInstanceIdentifier());
-                ManagedResource.getInstance().registerStreamProcessor(this);
-                initialized.set(true);
-                if (logger.isDebugEnabled()) {
-                    logger.debug(String.format("[%s] Initialized. Message Size: %d", getInstanceIdentifier(),
-                            messageSize.get()));
-                }
-            } catch (NIException e) {
-                logger.error("Error retrieving the resource instance.", e);
-            }
+            init();
+        }
+        if (messageSize.get() == -1) {
+            messageSize.set(getMessageSize(streamEvent));
         }
         GeoHashIndexedRecord geoHashIndexedRecord = (GeoHashIndexedRecord) streamEvent;
         // this a dummy message sent to activate the computation after scaling out.
@@ -191,9 +249,68 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
             return;
         }
         // preprocess each message
-        if (preprocess(geoHashIndexedRecord)) {
+        long checkpointId = geoHashIndexedRecord.getCheckpointId();
+        if (checkpointId <= 0 && preprocess(geoHashIndexedRecord)) {
             // perform the business logic: do this selectively. Send through the traffic we don't process.
             process(geoHashIndexedRecord);
+        }
+        if (faultToleranceEnabled) {
+            if (checkpointId > 0) {
+                // send out a dummy state replication message for now
+                byte[] serializedState = new byte[100];
+                new Random().nextBytes(serializedState);
+                StateReplicationMessage stateReplicationMessage = new StateReplicationMessage(
+                        checkpointId, (byte) 1, serializedState, getInstanceIdentifier(),
+                        ctrlEndpoint);
+                if (logger.isDebugEnabled()) {
+                    logger.debug(String.format("[%s] state was replicated.", getInstanceIdentifier()));
+                }
+                GeoHashIndexedRecord recordToChildren = new GeoHashIndexedRecord(
+                        checkpointId, getInstanceIdentifier(), this.ctrlEndpoint);
+                List<String> outgoingStreams = scalingContext.getOutgoingStreams();
+                // keep track of the pending checkpoint
+                PendingCheckpoint pendingCheckpoint = new PendingCheckpoint(checkpointId,
+                        replicationStreamTopics.size(), outgoingStreams.size(), geoHashIndexedRecord.getParentId(),
+                        geoHashIndexedRecord.getParentEndpoint());
+                pendingCheckpoints.put(checkpointId, pendingCheckpoint);
+                checkpointMonitors.schedule(new CheckpointTimer(checkpointId), checkpointTimeoutPeriod,
+                        TimeUnit.MILLISECONDS);
+
+                // write to replication streams
+                writeToStream(Constants.Streams.STATE_REPLICA_STREAM, stateReplicationMessage);
+                // propagate the request to child nodes
+                for (String outgoingStream : outgoingStreams) {
+                    writeToStream(outgoingStream, recordToChildren);
+                }
+                if (logger.isDebugEnabled()) {
+                    logger.debug(String.format("[%s] Propagated checkpoint trigger to child nodes. " +
+                                    "Checkpoint Id: %d Number of children: %d", getInstanceIdentifier(),
+                            checkpointId, outgoingStreams.size()));
+                }
+            }
+        }
+    }
+
+    private synchronized void init() {
+        if (!initialized.get()) {
+            try {
+                // register with the resource to enable monitoring
+                initializeProtocolProcessors();
+                this.scalingContext = new ScalingContext(getInstanceIdentifier());
+                ManagedResource resource = ManagedResource.getInstance();
+                resource.registerStreamProcessor(this);
+                this.faultToleranceEnabled = resource.isFaultToleranceEnabled();
+                this.ctrlEndpoint = RivuletUtil.getCtrlEndpoint();
+                initialized.set(true);
+                if (logger.isDebugEnabled()) {
+                    logger.debug(String.format("[%s] Initialized. Message Size: %d", getInstanceIdentifier(),
+                            messageSize.get()));
+                }
+            } catch (NIException e) {
+                logger.error("Error retrieving the resource instance.", e);
+            } catch (GranulesConfigurationException e) {
+                logger.error("Error retrieving control endpoint.", e);
+            }
         }
     }
 
@@ -209,12 +326,18 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
         String prefix = getPrefix(record);
         boolean processLocally;
         synchronized (this) {
-            updateIncomingRatesForSubPrefixes(prefix, record);
+            boolean hasSeenBefore = scalingContext.hasSeenBefore(prefix, record.getMessageIdentifier());
+            // update statistics only if it is not a replayed message
+            if (!hasSeenBefore) {
+                updateIncomingRatesForSubPrefixes(prefix, record);
+            }
             MonitoredPrefix monitoredPrefix = scalingContext.getMonitoredPrefix(prefix);
             // if there is an outgoing stream, then this should be sent to a child node.
             processLocally = !monitoredPrefix.getIsPassThroughTraffic();
-            monitoredPrefix.setLastMessageSent(record.getMessageIdentifier());
-            monitoredPrefix.setLastGeoHashSent(record.getGeoHash());
+            if (!hasSeenBefore) {
+                monitoredPrefix.setLastMessageSent(record.getMessageIdentifier());
+                monitoredPrefix.setLastGeoHashSent(record.getGeoHash());
+            }
             if (!processLocally) {
                 record.setPrefixLength(record.getPrefixLength() + 1);
                 // send to the child node
@@ -227,8 +350,19 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
                 } catch (StreamingDatasetException e) {
                     logger.error("Error writing to stream to " + monitoredPrefix.getDestResourceCtrlEndpoint() + ":" +
                             monitoredPrefix.getDestComputationId());
+                    logger.debug("Waiting until a secondary is swapped with the primary.");
+                    try {
+                        this.wait();
+                    } catch (InterruptedException ignore) {
+
+                    }
+                    logger.debug("Resuming message processing after the swap is completed.");
                     throw e;
                 }
+            }
+            // replayed messages are not processed more than once
+            if (hasSeenBefore) {
+                processLocally = false;
             }
             if (monitoredPrefix.getTerminationPoint() == monitoredPrefix.getLastMessageSent()) {
                 propagateScaleInActivationRequests(monitoredPrefix.getActivateReq());
@@ -500,5 +634,269 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
         protocolProcessors.put(ProtocolTypes.STATE_TRANSFER_MSG, new StateTransferMsgProcessor());
         protocolProcessors.put(ProtocolTypes.SCALE_IN_COMPLETE, new ScaleInCompleteMsgProcessor());
         protocolProcessors.put(ProtocolTypes.SCALE_IN_COMPLETE_ACK, new ScaleInCompleteAckProcessor());
+        protocolProcessors.put(ProtocolTypes.STATE_REPL_LEVEL_INCREASE, new StateReplLvlIncreaseMsgProcessor());
+        protocolProcessors.put(ProtocolTypes.CHECKPOINT_ACK, new CheckpointAckProcessor());
+    }
+
+    /**
+     * deploy outgoing streams for state replication
+     *
+     * @param topics Stream ids of chosen replica locations
+     */
+    public void deployStateReplicationStreams(Topic[] topics) {
+        String fqStreamId = getStreamIdentifier(Constants.Streams.STATE_REPLICA_STREAM);
+        try {
+            for (Topic topic : topics) {
+                this.streamDataset.addOutputStream(topic);
+                String streamType = StateReplicationMessage.class.getName();
+                outGoingStreamTypes.put(fqStreamId, streamType);
+                outGoingStreamTypes.put(topic.toString(), streamType);
+            }
+
+            StreamDisseminationMetadata streamDisseminationMetadata = new StreamDisseminationMetadata(new SendToAllPartitioner(), topics);
+            if (metadataRegistry.containsKey(Constants.Streams.STATE_REPLICA_STREAM)) {
+                metadataRegistry.get(Constants.Streams.STATE_REPLICA_STREAM).add(streamDisseminationMetadata);
+            } else {
+                List<StreamDisseminationMetadata> streamDisseminationMetadataElems = new ArrayList<>();
+                streamDisseminationMetadataElems.add(streamDisseminationMetadata);
+                metadataRegistry.put(Constants.Streams.STATE_REPLICA_STREAM, streamDisseminationMetadataElems);
+            }
+        } catch (DatasetException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void registerDefaultTopic(Topic topic) throws StreamingDatasetException {
+        try {
+            this.getDefaultStreamDataset().addInputStream(topic, this.getInstanceIdentifier());
+            // add the incoming stream type at the destination.
+            this.incomingStreamTypes.put(topic.toString(), GeoHashIndexedRecord.class.getName());
+            this.identifierMap.put(Integer.parseInt(topic.toString()), Constants.Streams.NOAA_DATA_STREAM);
+        } catch (DatasetException e) {
+            logger.error(e.getMessage(), e);
+            throw new StreamingDatasetException(e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Returns the default incoming geo-spatial stream topic.
+     * Used by the deployer initially to figure out the incoming streams
+     * to create the replication topic tree in zk.
+     *
+     * @return Default incoming geo spatial stream topic
+     */
+    public Topic getDefaultGeoSpatialStream() {
+        List<Topic> topics = new ArrayList<>();
+        topics.addAll(this.getDefaultStreamDataset().getInputStreams());
+        return topics.get(0);
+    }
+
+    @Override
+    protected void deserializeMemberVariables(FormatReader formatReader) {
+        try {
+            if (ManagedResource.getInstance().isFaultToleranceEnabled()) {
+                // we need to make sure that the messages from deployer about replication level increasing
+                // can reach the computation
+                if (!initialized.get()) {
+                    init();
+                }
+                int replicationElementCount = formatReader.readInt();
+                this.checkpointTimeoutPeriod = ManagedResource.getInstance().getCheckpointTimeoutPeriod();
+                this.replicationStreamTopics = new ArrayList<>();
+                for (int i = 0; i < replicationElementCount; i++) {
+                    TopicInfo topicInfo = new TopicInfo();
+                    topicInfo.unmarshall(formatReader);
+                    this.replicationStreamTopics.add(topicInfo);
+                }
+                // Hack: since Granules does not reinitialize operators after deploying
+                // we need a way to read the backup topics from the zk tree just after the deployment.
+                // doing it lazily is expensive.
+                this.topicLocations = this.populateBackupTopicMap(getInstanceIdentifier(), metadataRegistry);
+                MembershipTracker.getInstance().registerListener(this);
+            }
+        } catch (NIException e) {
+            logger.error("Error acquiring the Resource instance.", e);
+        } catch (CommunicationsException e) {
+            logger.error("Error registering for cluster memberhsip changes.", e);
+        }
+    }
+
+    public void populateBackupTopicsPerStream(String stream) throws ScalingException {
+        if (faultToleranceEnabled) {
+            try {
+                processBackupTopicPerStream(ZooKeeperAgent.getInstance().getZooKeeperInstance(),
+                        getInstanceIdentifier(), stream, metadataRegistry, topicLocations);
+                if (logger.isDebugEnabled()) {
+                    logger.debug(String.format("[%s] Backup topics are populated for the new outgoing stream: %s",
+                            getInstanceIdentifier(), stream));
+                }
+            } catch (KeeperException | InterruptedException | CommunicationsException e) {
+                throw new ScalingException("Error updating backup topics for newly deployed child node.", e);
+            }
+        }
+    }
+
+    public void setReplicationStreamTopics(List<TopicInfo> replicationStreamTopics) {
+        this.replicationStreamTopics = replicationStreamTopics;
+    }
+
+    @Override
+    protected void serializedMemberVariables(FormatWriter formatWriter) {
+        if (this.replicationStreamTopics != null) {
+            formatWriter.writeInt(this.replicationStreamTopics.size());
+            for (TopicInfo topicInfo : this.replicationStreamTopics) {
+                topicInfo.marshall(formatWriter);
+            }
+        }
+    }
+
+    @Override
+    public void membershipChanged(List<String> lostMembers) {
+        synchronized (this) {
+            boolean updateTopicLocations = false;
+            List<TopicInfo> currentStateReplicationTopics = new ArrayList<>();
+            for (String lostMember : lostMembers) {
+                if (logger.isDebugEnabled()) {
+                    logger.debug(String.format("[%s] Processing the lost node: %s", getInstanceIdentifier(), lostMember));
+                }
+                // check if a node that hosts an out-going topic has left the cluster
+                if (topicLocations.containsKey(lostMember)) {
+                    // get the list of all topics that was running on the lost node
+                    if (logger.isDebugEnabled()) {
+                        logger.debug(String.format("[%s] Current node is affected by the lost node. Lost node: %s, " +
+                                        "Number of affected topics: %d", getInstanceIdentifier(), lostMember,
+                                topicLocations.get(lostMember).size()));
+                    }
+                    switchToSecondary(topicLocations, lostMember, getInstanceIdentifier(), metadataRegistry);
+                    updateTopicLocations = true;
+                }
+                for (TopicInfo stateReplicaProcessor : replicationStreamTopics) {
+                    if (stateReplicaProcessor.getResourceEndpoint().equals(lostMember)) {
+                        if (logger.isDebugEnabled()) {
+                            logger.debug(String.format("[%s] A state replication processor is affected. " +
+                                    "State Replication Topic: %s", getInstanceIdentifier(), stateReplicaProcessor.getTopic()));
+                        }
+                        List<StreamDisseminationMetadata> metadataList = metadataRegistry.get(Constants.Streams.STATE_REPLICA_STREAM);
+                        // one of the replicas has failed. Increase the replica level.
+                        if (metadataList != null) {
+                            for (StreamDisseminationMetadata metadata : metadataList) {
+                                List<Topic> validTopics = new ArrayList<>();
+                                for (Topic replicationTopic : metadata.topics) {
+                                    if (!replicationTopic.equals(stateReplicaProcessor.getTopic())) {
+                                        validTopics.add(replicationTopic);
+                                    } else {
+                                        if (logger.isDebugEnabled()) {
+                                            logger.debug(String.format("[%s] " +
+                                                            "Replication topic on the lost node was removed. Topic: %s",
+                                                    getInstanceIdentifier(), replicationTopic.toString()));
+                                        }
+                                    }
+                                }
+                                if (validTopics.size() < metadata.topics.length) {
+                                    metadata.topics = validTopics.toArray(new Topic[validTopics.size()]);
+                                }
+                            }
+                        }
+                    } else {
+                        currentStateReplicationTopics.add(stateReplicaProcessor);
+                    }
+                }
+            }
+            // update the current replication topics
+            replicationStreamTopics = currentStateReplicationTopics;
+            if (logger.isDebugEnabled()) {
+                logger.debug(String.format("[%s] Current replication processor count: %d", getInstanceIdentifier(),
+                        replicationStreamTopics.size()));
+            }
+            // it is required to repopulate the backup nodes list
+            if (updateTopicLocations) {
+                populateBackupTopicMap(this.getInstanceIdentifier(), metadataRegistry);
+                if (logger.isDebugEnabled()) {
+                    logger.debug(String.format("[%s] BackupTopicMap is updated.", getInstanceIdentifier()));
+                }
+            }
+            this.notifyAll();
+        }
+    }
+
+    public void addNewStateReplicationTopic(Topic topic, String newLocation) {
+        TopicInfo topicInfo = new TopicInfo(topic, newLocation);
+        if (replicationStreamTopics.contains(topicInfo)) {
+            logger.error(String.format("[%s] Duplicate state replication topic detected. Topic: %s, Location: %s",
+                    getInstanceIdentifier(), topic, newLocation));
+            return;
+        }
+        replicationStreamTopics.add(topicInfo);
+        if (logger.isDebugEnabled()) {
+            logger.debug(String.format("[%s] Added new stare replication topic. Topic: %s, New Location: %s",
+                    getInstanceIdentifier(), topic, newLocation));
+        }
+        // update the meta data registry
+        List<StreamDisseminationMetadata> metadataList = metadataRegistry.get(Constants.Streams.STATE_REPLICA_STREAM);
+        if (metadataList != null) {
+            for (StreamDisseminationMetadata metadata : metadataList) {
+                List<Topic> replicationTopics = new ArrayList<>();
+                replicationTopics.addAll(Arrays.asList(metadata.topics));
+                if (!replicationTopics.contains(topic)) {
+                    replicationTopics.add(topic);
+                    metadata.topics = replicationTopics.toArray(new Topic[replicationTopics.size()]);
+                    if (logger.isDebugEnabled()) {
+                        logger.debug(String.format("[%s] Updated stream dissemination " +
+                                "metadata with new replication topic. Topic: %s", getInstanceIdentifier(), topic));
+                    }
+                } else {
+                    logger.error(String.format("[%s] Duplicate state replication topic detected. Topic: %s, Location: %s",
+                            getInstanceIdentifier(), topic, newLocation));
+                }
+            }
+        }
+    }
+
+    public void handleAckStatePersistence(CheckpointAck ack) {
+        long checkpointId = ack.getCheckpointId();
+        synchronized (pendingCheckpoints) {
+            final PendingCheckpoint pendingCheckpoint = pendingCheckpoints.get(checkpointId);
+            if (pendingCheckpoint != null) {
+                int pendingCount;
+                if (ack.isFromReplicator()) {
+                    pendingCount = pendingCheckpoint.ackFromStateReplicationProcessor();
+                    if (logger.isDebugEnabled()) {
+                        logger.debug(String.format("[%s] Received an ack from state replicator. " +
+                                        "Checkpoint id: %d, State Replicator endpoint: %s, Pending State Replication acks: %d, " +
+                                        "Pending Child acks: %d", getInstanceIdentifier(),
+                                checkpointId, ack.getOriginEndpoint(), pendingCheckpoint.getPendingStateReplicationAcks(),
+                                pendingCheckpoint.getPendingChildAcks()));
+                    }
+                } else {
+                    pendingCount = pendingCheckpoint.ackFromChild();
+                    logger.debug(String.format("[%s] Received an ack from a child. " +
+                                    "Checkpoint id: %d, Child endpoint: %s, Pending State Replication acks: %d, " +
+                                    "Pending Child acks: %d", getInstanceIdentifier(),
+                            checkpointId, ack.getOriginEndpoint(), pendingCheckpoint.getPendingStateReplicationAcks(),
+                            pendingCheckpoint.getPendingChildAcks()));
+                }
+                boolean status = pendingCheckpoint.updateCheckpointStatus(ack.isSuccess());
+                if (pendingCount == 0 && pendingCheckpoint.isCheckpointCompleted()) {
+                    CheckpointAck ackToParent = new CheckpointAck(CheckpointAck.ACK_FROM_CHILD, status,
+                            checkpointId, pendingCheckpoint.getParentCompId());
+                    try {
+                        SendUtility.sendControlMessage(pendingCheckpoint.getParentCompEndpoint(), ackToParent);
+                        pendingCheckpoints.remove(checkpointId);
+                        if (logger.isDebugEnabled()) {
+                            logger.debug(String.format("[%s] Received all acks. Status: %b. Acknowledging parent. " +
+                                    "Checkpoint id: %d", getInstanceIdentifier(), status, checkpointId));
+                        }
+                    } catch (CommunicationsException | IOException e) {
+                        logger.error(String.format("[%s] Error sending checkpoint ack to parent. " +
+                                        "Checkpoint id: %d, Parent endpoint: %s", getInstanceIdentifier(), checkpointId,
+                                pendingCheckpoint.getParentCompEndpoint()));
+                    }
+
+                }
+            } else {
+                logger.warn(String.format("[%s] Invalid AckStatePersistence. Checkpoint Id: %d", getInstanceIdentifier(),
+                        checkpointId));
+            }
+        }
     }
 }

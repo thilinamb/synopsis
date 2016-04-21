@@ -6,6 +6,7 @@ import ds.granules.communication.direct.control.SendUtility;
 import ds.granules.exception.CommunicationsException;
 import ds.granules.neptune.interfere.core.NIException;
 import neptune.geospatial.core.computations.AbstractGeoSpatialStreamProcessor;
+import neptune.geospatial.core.computations.ScalingException;
 import neptune.geospatial.core.computations.scalingctxt.MonitoredPrefix;
 import neptune.geospatial.core.computations.scalingctxt.PendingScaleOutRequest;
 import neptune.geospatial.core.computations.scalingctxt.ScalingContext;
@@ -41,6 +42,14 @@ public class ScaleOutLockResponseProcessor implements ProtocolProcessor {
         if (pendingReq != null) {
             if (lockResponse.isLockAcquired()) {
                 IMap<String, SketchLocation> prefMap = streamProcessor.getHzInstance().getMap(GeoHashPrefixTree.PREFIX_MAP);
+
+                try {
+                    streamProcessor.populateBackupTopicsPerStream(pendingReq.getStreamId());
+                } catch (ScalingException e) {
+                    logger.error(String.format("[%s] Error populating backup topics. Aborting scale out.",
+                            instanceIdentifier), e);
+                }
+
                 for (String prefix : pendingReq.getPrefixes()) {
                     MonitoredPrefix monitoredPrefix = scalingContext.getMonitoredPrefix(prefix);
                     monitoredPrefix.setIsPassThroughTraffic(true);

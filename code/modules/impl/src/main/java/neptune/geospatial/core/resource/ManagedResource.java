@@ -23,20 +23,17 @@ import neptune.geospatial.core.protocol.msg.StateTransferMsg;
 import neptune.geospatial.core.protocol.msg.scaleout.DeploymentAck;
 import neptune.geospatial.core.protocol.msg.scaleout.ScaleOutLockRequest;
 import neptune.geospatial.core.protocol.msg.scaleout.StateTransferCompleteAck;
+import neptune.geospatial.ft.protocol.CheckpointAck;
+import neptune.geospatial.graph.operators.NOAADataIngester;
 import neptune.geospatial.hazelcast.HazelcastClientInstanceHolder;
 import neptune.geospatial.hazelcast.HazelcastNodeInstanceHolder;
 import neptune.geospatial.util.trie.GeoHashPrefixTree;
 import org.apache.log4j.Logger;
 
-import java.io.BufferedWriter;
 import java.io.File;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.util.*;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -111,6 +108,17 @@ public class ManagedResource {
     private class ComputationMonitor implements Runnable {
         @Override
         public void run() {
+            // terminate the monitoring task after the active scaling period is elapsed, if it's set.
+            if (enableFaultTolerance && activeScalingPeriod > 0) {
+                long now = System.currentTimeMillis();
+                if (tsActiveScalingStarted == 0) {
+                    tsActiveScalingStarted = now;
+                } else if ((now - tsActiveScalingStarted) >= activeScalingPeriod) {
+                    logger.info("Active Scaling Period is elapsed. Terminating the monitoring task.");
+                    future.cancel(false);
+                    return;
+                }
+            }
             if (logger.isDebugEnabled()) {
                 logger.debug("Monitoring thread is executing.");
             }
@@ -148,6 +156,10 @@ public class ManagedResource {
     private static final String MONITORED_BACKLOG_HISTORY_LENGTH = "rivulet-monitored-backlog-history-length";
     private static final String HAZELCAST_SERIALIZER_PREFIX = "rivulet-hazelcast-serializer-";
     private static final String HAZELCAST_INTERFACE = "rivulet-hazelcast-interface";
+    public static final String ENABLE_FAULT_TOLERANCE = "rivulet-enable-fault-tolerance";
+    private static final String STATE_REPLICATION_INTERVAL = "rivulet-state-replication-interval";
+    private static final String ACTIVE_SCALING_PERIOD = "rivulet-scaling-period-in-mins";
+    public static final String CHECKPOINT_TIMEOUT_PERIOD = "rivulet-checkpoint-timeout";
 
     // default values
     private int monitoredBackLogLength;
@@ -161,6 +173,15 @@ public class ManagedResource {
     private ScheduledExecutorService monitoringService = Executors.newSingleThreadScheduledExecutor();
     private Map<String, List<StateTransferMsg>> pendingStateTransfers = new HashMap<>();
     private Map<String, ScaleOutLockRequest> pendingScaleOutLockRequests = new HashMap<>();
+
+    private boolean enableFaultTolerance = false;
+    private long stateReplicationInterval = 2000;
+    private long activeScalingPeriod;
+    private long tsActiveScalingStarted;
+    private long checkpointTimeoutPeriod;
+    private ScheduledFuture future;
+
+    private Map<String, NOAADataIngester> registeredIngesters = new HashMap<>();
 
     private ManagedResource(Properties inProps, int numOfThreads) throws CommunicationsException {
         Resource resource = new Resource(inProps, numOfThreads);
@@ -193,12 +214,26 @@ public class ManagedResource {
                 monitoredBackLogLength = startupProps.containsKey(MONITORED_BACKLOG_HISTORY_LENGTH) ?
                         Integer.parseInt(startupProps.getProperty(MONITORED_BACKLOG_HISTORY_LENGTH)) : 5;
                 // start the computation monitor thread
-                monitoringService.scheduleWithFixedDelay(new ComputationMonitor(), 0, monitoringPeriod,
+                future = monitoringService.scheduleWithFixedDelay(new ComputationMonitor(), 0, monitoringPeriod,
                         TimeUnit.MILLISECONDS);
                 logger.info(String.format("Scale-in Threshold: %d, Scale-out Threshold: %d, " +
                                 "Monitoring Period: %d (ms), Monitored Backlog History Length: %d", scaleInThreshold,
                         scaleOutThreshold, monitoringPeriod, monitoredBackLogLength));
             }
+            // if fault tolerance enabled
+            enableFaultTolerance = startupProps.containsKey(ENABLE_FAULT_TOLERANCE) && Boolean.parseBoolean(
+                    startupProps.getProperty(ENABLE_FAULT_TOLERANCE).toLowerCase());
+            if (enableFaultTolerance) {
+                stateReplicationInterval = startupProps.containsKey(STATE_REPLICATION_INTERVAL) ?
+                        Long.parseLong(startupProps.getProperty(STATE_REPLICATION_INTERVAL)) : 2000;
+                activeScalingPeriod = startupProps.containsKey(ACTIVE_SCALING_PERIOD) ?
+                        Integer.parseInt(startupProps.getProperty(ACTIVE_SCALING_PERIOD)) * 60 * 1000 : -1;
+                checkpointTimeoutPeriod = startupProps.containsKey(CHECKPOINT_TIMEOUT_PERIOD) ?
+                        Long.parseLong(startupProps.getProperty(CHECKPOINT_TIMEOUT_PERIOD)) : 6000;
+            }
+
+            logger.info(String.format("Fault tolerance enabled: %b, Active Scaling Period: %d", enableFaultTolerance, activeScalingPeriod));
+
             initializeHazelcast(startupProps);
             // register callback to receive deployment acks.
             ChannelToStreamDeMultiplexer.getInstance().registerCallback(Constants.DEPLOYMENT_REQ,
@@ -322,7 +357,9 @@ public class ManagedResource {
     public void registerStreamProcessor(AbstractGeoSpatialStreamProcessor processor) {
         synchronized (this) {
             String instanceIdentifier = processor.getInstanceIdentifier();
-            monitoredProcessors.put(instanceIdentifier, new MonitoredComputationState(processor));
+            if (!monitoredProcessors.containsKey(instanceIdentifier)) {
+                monitoredProcessors.put(instanceIdentifier, new MonitoredComputationState(processor));
+            }
             if (pendingStateTransfers.containsKey(instanceIdentifier)) {
                 List<StateTransferMsg> stateTransferMsgs = pendingStateTransfers.remove(instanceIdentifier);
                 for (StateTransferMsg stateTransferMsg : stateTransferMsgs) {
@@ -382,16 +419,43 @@ public class ManagedResource {
                     logger.debug("New computation is not active yet. Storing ScaleOutLockRequest.");
                 }
             } else {
-                logger.warn(String.format("Invalid control message to computation : %s, type: %d", computationId,
-                        ctrlMessage.getMessageType()));
+                if (ctrlMessage instanceof CheckpointAck && registeredIngesters.containsKey(computationId)) {
+                    registeredIngesters.get(computationId).handleControlMessage(ctrlMessage);
+                } else {
+                    logger.warn(String.format("Invalid control message to computation : %s, type: %d", computationId,
+                            ctrlMessage.getMessageType()));
+                }
             }
         }
     }
+
+    public synchronized void registerIngester(NOAADataIngester ingester) {
+        String ingesterId = ingester.getInstanceIdentifier();
+        if (!registeredIngesters.containsKey(ingesterId)) {
+            registeredIngesters.put(ingesterId, ingester);
+            logger.info("Successfully registered the stream ingester: " + ingesterId);
+        } else {
+            logger.warn("Ingester already registered. Ingester Id: " + ingesterId);
+        }
+    }
+
 
     void ackDeployment(String instanceId) {
         if (logger.isDebugEnabled()) {
             logger.debug(String.format("Sending deployment ack for %s", instanceId));
         }
         sendToDeployer(new DeploymentAck(instanceId));
+    }
+
+    public boolean isFaultToleranceEnabled() {
+        return this.enableFaultTolerance;
+    }
+
+    public long getCheckpointTimeoutPeriod() {
+        return checkpointTimeoutPeriod;
+    }
+
+    public long getStateReplicationInterval() {
+        return stateReplicationInterval;
     }
 }

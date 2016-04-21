@@ -1,9 +1,13 @@
 package neptune.geospatial.graph.operators;
 
+import ds.funnel.data.format.FormatReader;
+import ds.granules.communication.direct.control.ControlMessage;
+import ds.granules.neptune.interfere.core.NIException;
 import ds.granules.streaming.core.StreamSource;
 import ds.granules.streaming.core.exception.StreamingDatasetException;
 import ds.granules.streaming.core.exception.StreamingGraphConfigurationException;
 import io.sigpipe.sing.serialization.SerializationInputStream;
+import neptune.geospatial.core.resource.ManagedResource;
 import neptune.geospatial.graph.Constants;
 import neptune.geospatial.graph.messages.GeoHashIndexedRecord;
 import neptune.geospatial.util.RivuletUtil;
@@ -103,5 +107,14 @@ public class NOAADataIngester extends StreamSource {
         declareStream(Constants.Streams.NOAA_DATA_STREAM, GeoHashIndexedRecord.class.getName());
     }
 
+    @Override
+    protected void deserializeMemberVariables(FormatReader formatReader) {
+        try {
+            ManagedResource.getInstance().registerIngester(this);
+        } catch (NIException e) {
+            logger.error("Error registering the ingester.", e);
+        }
+    }
 
+    public void handleControlMessage(ControlMessage ctrlMsg){}
 }

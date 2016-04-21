@@ -46,8 +46,10 @@ public class ScaleOutResponse extends ControlMessage {
         this.inResponseTo = dis.readUTF();
         this.targetComputation = dis.readUTF();
         this.status = dis.readBoolean();
-        this.newComputationId = dis.readUTF();
-        this.newLocationURL = dis.readUTF();
+        if (status) {
+            this.newComputationId = dis.readUTF();
+            this.newLocationURL = dis.readUTF();
+        }
     }
 
     @Override
@@ -55,16 +57,14 @@ public class ScaleOutResponse extends ControlMessage {
         dos.writeUTF(this.inResponseTo);
         dos.writeUTF(this.targetComputation);
         dos.writeBoolean(this.status);
-        dos.writeUTF(this.newComputationId);
-        dos.writeUTF(this.newLocationURL);
+        if (status) {
+            dos.writeUTF(this.newComputationId);
+            dos.writeUTF(this.newLocationURL);
+        }
     }
 
     public String getInResponseTo() {
         return inResponseTo;
-    }
-
-    public boolean isStatus() {
-        return status;
     }
 
     public String getTargetComputation() {

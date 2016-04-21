@@ -3,7 +3,9 @@ package neptune.geospatial.core.deployer;
 import com.google.gson.Gson;
 import com.google.gson.stream.JsonReader;
 import ds.funnel.topic.StringTopic;
+import ds.funnel.topic.Topic;
 import ds.granules.communication.direct.JobDeployer;
+import ds.granules.communication.direct.ZooKeeperAgent;
 import ds.granules.communication.direct.control.SendUtility;
 import ds.granules.communication.direct.dispatch.ControlMessageDispatcher;
 import ds.granules.communication.direct.netty.server.MessageReceiver;
@@ -13,8 +15,6 @@ import ds.granules.exception.DeploymentException;
 import ds.granules.exception.GranulesConfigurationException;
 import ds.granules.exception.MarshallingException;
 import ds.granules.neptune.interfere.core.NIException;
-import ds.granules.neptune.interfere.core.schedule.NIRoundRobinScheduler;
-import ds.granules.neptune.interfere.core.schedule.NIScheduler;
 import ds.granules.operation.Operation;
 import ds.granules.operation.ProcessingException;
 import ds.granules.operation.ProgressTracker;
@@ -32,12 +32,21 @@ import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
+import neptune.geospatial.core.computations.AbstractGeoSpatialStreamProcessor;
 import neptune.geospatial.core.protocol.msg.scaleout.DeploymentAck;
 import neptune.geospatial.core.protocol.msg.scaleout.ScaleOutRequest;
 import neptune.geospatial.core.protocol.msg.scaleout.ScaleOutResponse;
+import neptune.geospatial.core.resource.ManagedResource;
+import neptune.geospatial.ft.StateReplicaProcessor;
+import neptune.geospatial.ft.TopicInfo;
+import neptune.geospatial.ft.protocol.StateReplicationLevelIncreaseMsg;
+import neptune.geospatial.ft.zk.MembershipChangeListener;
+import neptune.geospatial.ft.zk.MembershipTracker;
+import neptune.geospatial.util.RivuletUtil;
 import org.apache.log4j.Logger;
 import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.KeeperException;
+import org.apache.zookeeper.ZooKeeper;
 
 import java.io.FileReader;
 import java.io.IOException;
@@ -50,13 +59,13 @@ import java.util.concurrent.CountDownLatch;
  *
  * @author Thilina Buddhika
  */
-public class GeoSpatialDeployer extends JobDeployer {
+public class GeoSpatialDeployer extends JobDeployer implements MembershipChangeListener {
 
     private class CtrlMessageEndpoint implements Runnable {
 
         private int ctrlPort;
 
-        public CtrlMessageEndpoint(int ctrlPort) {
+        CtrlMessageEndpoint(int ctrlPort) {
             this.ctrlPort = ctrlPort;
         }
 
@@ -92,27 +101,34 @@ public class GeoSpatialDeployer extends JobDeployer {
     }
 
     private static final Logger logger = Logger.getLogger(GeoSpatialDeployer.class);
-    public static final String DEPLOYER_CONFIG_PATH = "deployer-config";
+    private static final String DEPLOYER_CONFIG_PATH = "deployer-config";
 
     private CountDownLatch initializationLatch = new CountDownLatch(2);
-    private NIScheduler scheduler = new NIRoundRobinScheduler();
     private static GeoSpatialDeployer instance;
-    private Map<String, String> niOpAssignments = new HashMap<>();
     private Map<String, Operation> computationIdToObjectMap = new HashMap<>();
-    private Map<String, String> niControlToDataEndPoints = new HashMap<>();
+    private Map<String, Topic> stateReplicationOpPlacements = new HashMap<>();
+    private Map<String, Topic> resourceEndpointToDefaultTopicMap = new HashMap<>();
     private List<ScaleOutResponse> pendingDeployments = new ArrayList<>();
     private String jobId;
     private DeployerConfig deployerConfig;
+    private boolean faultToleranceEnabled;
+    private Map<TopicInfo, TopicInfo[]> stateReplicationTopics = new HashMap<>();
 
     @Override
     public ProgressTracker deployOperations(Operation[] operations) throws
             CommunicationsException, DeploymentException, MarshallingException {
+        this.jobId = uuidRetriever.getRandomBasedUUIDAsString();
+
+        if (faultToleranceEnabled) {
+            // deploy state replica computations at each resource
+            deployStateReplicaOperators(jobId);
+        }
+        AbstractGeoSpatialStreamProcessor original = null;
         // shuffle operations
         List<Operation> opList = Arrays.asList(operations);
         //Collections.shuffle(opList);
         opList.toArray(operations);
 
-        this.jobId = uuidRetriever.getRandomBasedUUIDAsString();
         if (!resourceEndpoints.isEmpty()) {
             try {
                 Map<Operation, String> assignments = new HashMap<>(operations.length);
@@ -121,13 +137,53 @@ public class GeoSpatialDeployer extends JobDeployer {
                     ResourceEndpoint resourceEndpoint = nextResource(op);
                     assignments.put(op, resourceEndpoint.getDataEndpoint());
                     String operatorId = op.getInstanceIdentifier();
-                    niOpAssignments.put(operatorId, resourceEndpoint.getControlEndpoint());
                     computationIdToObjectMap.put(operatorId, op);
-                    niControlToDataEndPoints.put(resourceEndpoint.getControlEndpoint(), resourceEndpoint.getDataEndpoint());
                     // write the assignments to ZooKeeper
                     ZooKeeperUtils.createDirectory(zk, Constants.ZK_ZNODE_OP_ASSIGNMENTS + "/" + operatorId,
                             resourceEndpoint.getDataEndpoint().getBytes(), CreateMode.PERSISTENT);
+                    // configure state replication
+                    if (faultToleranceEnabled && op instanceof AbstractGeoSpatialStreamProcessor) {
+                        AbstractGeoSpatialStreamProcessor geoSpatialStreamProcessor = (AbstractGeoSpatialStreamProcessor) op;
+                        configureReplicationStreams(geoSpatialStreamProcessor, lastAssigned - 1);
+                        resourceEndpointToDefaultTopicMap.put(resourceEndpoint.getDataEndpoint(),
+                                geoSpatialStreamProcessor.getDefaultGeoSpatialStream());
+                        if (original == null) {
+                            original = (AbstractGeoSpatialStreamProcessor) op;
+                        }
+                    }
                 }
+
+                // deploy an empty computation at every node, so that it can take over if the primary fails
+                if (faultToleranceEnabled && original != null) {
+                    for (ResourceEndpoint resourceEndpoint : resourceEndpoints) {
+                        if (!resourceEndpointToDefaultTopicMap.containsKey(resourceEndpoint.getDataEndpoint())) {
+                            try {
+                                // copy the minimal state
+                                AbstractGeoSpatialStreamProcessor clone = original.getClass().newInstance();
+                                original.createMinimalClone(clone);
+                                // create incoming topics
+                                Topic topic = deployGeoSpatialProcessor(resourceEndpoint.getDataEndpoint(), clone);
+                                assignments.put(clone, resourceEndpoint.getDataEndpoint());
+                                configureReplicationStreams(clone, resourceEndpoints.indexOf(resourceEndpoint));
+                                if (topic != null) {
+                                    resourceEndpointToDefaultTopicMap.put(resourceEndpoint.getDataEndpoint(), topic);
+                                }
+                                if (logger.isDebugEnabled()) {
+                                    logger.debug(String.format("An additional computation is deployed on %s",
+                                            resourceEndpoint.getDataEndpoint()));
+                                }
+                            } catch (Exception e) {
+                                String errMsg = "Error deploying additional computation at resource %s" +
+                                        resourceEndpoint.getDataEndpoint();
+                                logger.error(errMsg, e);
+                                throw new DeploymentException(errMsg, e);
+                            }
+                        }
+                    }
+                    // create the zookeeeper backup node hierarchy
+                    createZKBackupProcessorMap(assignments);
+                }
+
                 // send the deployment messages
                 for (Map.Entry<Operation, String> entry : assignments.entrySet()) {
                     deployOperation(jobId, entry.getValue(), entry.getKey());
@@ -142,6 +198,70 @@ public class GeoSpatialDeployer extends JobDeployer {
             System.exit(-1);
         }
         return null;
+    }
+
+    private void configureReplicationStreams(AbstractGeoSpatialStreamProcessor streamProcessor, int location) {
+        Topic[] topics = new Topic[]{stateReplicationOpPlacements.get(
+                resourceEndpoints.get((location + 1) % resourceEndpoints.size()).getDataEndpoint())
+                , stateReplicationOpPlacements.get(
+                resourceEndpoints.get((location + 2) % resourceEndpoints.size()).getDataEndpoint())};
+        streamProcessor.deployStateReplicationStreams(topics);
+        // keep track of the backup topics for later
+        TopicInfo[] stateReplicationTopics = {new TopicInfo(topics[0],
+                resourceEndpoints.get((location + 1) % resourceEndpoints.size()).getDataEndpoint()),
+                new TopicInfo(topics[1],
+                        resourceEndpoints.get((location + 2) % resourceEndpoints.size()).getDataEndpoint())};
+        this.stateReplicationTopics.put(new TopicInfo(streamProcessor.getDefaultGeoSpatialStream(),
+                resourceEndpoints.get(location).getDataEndpoint()), stateReplicationTopics);
+        // set the state replications stream topics
+        streamProcessor.setReplicationStreamTopics(Arrays.asList(stateReplicationTopics));
+        if (logger.isDebugEnabled()) {
+            logger.debug(String.format("State Replication Processors are deployed for %s in %s and %s",
+                    streamProcessor.getInstanceIdentifier(),
+                    resourceEndpoints.get((lastAssigned + 1) % resourceEndpoints.size()).getDataEndpoint(),
+                    resourceEndpoints.get((lastAssigned + 2) % resourceEndpoints.size()).getDataEndpoint()));
+        }
+    }
+
+    private void deployStateReplicaOperators(String jobId) throws CommunicationsException, DeploymentException {
+        ZooKeeper zk = ZooKeeperAgent.getInstance().getZooKeeperInstance();
+        // deploy one state replica operator per instance
+        for (ResourceEndpoint resourceEndpoint : resourceEndpoints) {
+            StateReplicaProcessor stateReplicaProcessor = new StateReplicaProcessor();
+            int topicId;
+            try {
+                topicId = ZooKeeperUtils.getNextSequenceNumber(zk);
+                Topic topic = new StringTopic(Integer.toString(topicId));
+                // create a subscription
+                stateReplicaProcessor.registerIncomingTopic(topic, jobId);
+                // write the assignments to ZooKeeper
+                ZooKeeperUtils.createDirectory(zk, Constants.ZK_ZNODE_OP_ASSIGNMENTS + "/" +
+                                stateReplicaProcessor.getInstanceIdentifier(),
+                        resourceEndpoint.getDataEndpoint().getBytes(), CreateMode.PERSISTENT);
+                // deploy the operator
+                deployOperation(jobId, resourceEndpoint.getDataEndpoint(), stateReplicaProcessor);
+                stateReplicationOpPlacements.put(resourceEndpoint.getDataEndpoint(), topic);
+            } catch (KeeperException | InterruptedException | StreamingDatasetException e) {
+                throw new DeploymentException(e.getMessage(), e);
+            }
+        }
+    }
+
+    private Topic deployGeoSpatialProcessor(String endpoint, StreamProcessor clone)
+            throws CommunicationsException, DeploymentException {
+        ZooKeeper zk = ZooKeeperAgent.getInstance().getZooKeeperInstance();
+        Topic topic;
+        try {
+            int topicId = ZooKeeperUtils.getNextSequenceNumber(zk);
+            topic = new StringTopic(Integer.toString(topicId));
+            ((AbstractGeoSpatialStreamProcessor) clone).registerDefaultTopic(topic);
+            // write the assignments to ZooKeeper
+            ZooKeeperUtils.createDirectory(zk, Constants.ZK_ZNODE_OP_ASSIGNMENTS + "/" + clone.getInstanceIdentifier(),
+                    endpoint.getBytes(), CreateMode.PERSISTENT);
+        } catch (KeeperException | InterruptedException | StreamingDatasetException e) {
+            throw new DeploymentException(e.getMessage(), e);
+        }
+        return topic;
     }
 
     private ResourceEndpoint nextResource(Operation op) {
@@ -176,6 +296,13 @@ public class GeoSpatialDeployer extends JobDeployer {
             deployerConfig = gson.fromJson(jsonReader, DeployerConfig.class);
             logger.info("Using the custom deployment configuration.");
         }
+        if (streamingProperties.containsKey(ManagedResource.ENABLE_FAULT_TOLERANCE)) {
+            faultToleranceEnabled = Boolean.parseBoolean(streamingProperties.getProperty(ManagedResource.ENABLE_FAULT_TOLERANCE));
+        }
+        logger.info("Fault Tolerance Enabled: " + faultToleranceEnabled);
+        if (faultToleranceEnabled) {
+            MembershipTracker.getInstance().registerListener(this);
+        }
         super.initialize(streamingProperties);
         initializationCompleted();
     }
@@ -193,7 +320,7 @@ public class GeoSpatialDeployer extends JobDeployer {
         return instance;
     }
 
-    protected void ackCtrlMsgHandlerStarted() {
+    void ackCtrlMsgHandlerStarted() {
         initializationLatch.countDown();
     }
 
@@ -206,7 +333,7 @@ public class GeoSpatialDeployer extends JobDeployer {
         }
     }
 
-    public void handleScaleUpRequest(ScaleOutRequest scaleOutReq) throws GeoSpatialDeployerException {
+    void handleScaleUpRequest(ScaleOutRequest scaleOutReq) throws GeoSpatialDeployerException {
         String computationId = scaleOutReq.getCurrentComputation();
         if (!computationIdToObjectMap.containsKey(computationId)) {
             throw new GeoSpatialDeployerException("Invalid computation: " + computationId);
@@ -225,16 +352,23 @@ public class GeoSpatialDeployer extends JobDeployer {
                     scaleOutReq.getStreamType());
             // deploy
             ResourceEndpoint resourceEndpoint = nextResource(clone);
+            // initialize the state replication streams for the new computation
+            if (faultToleranceEnabled && clone instanceof AbstractGeoSpatialStreamProcessor) {
+                AbstractGeoSpatialStreamProcessor streamProcessor = (AbstractGeoSpatialStreamProcessor) clone;
+                configureReplicationStreams(streamProcessor, lastAssigned == 0 ? resourceEndpoints.size() - 1 :
+                        lastAssigned - 1);
+                createBackupTopicZNode(streamProcessor, resourceEndpoint.getDataEndpoint());
+            }
             // write the assignments to ZooKeeper
             ZooKeeperUtils.createDirectory(zk, Constants.ZK_ZNODE_OP_ASSIGNMENTS + "/" +
                             clone.getInstanceIdentifier(),
                     resourceEndpoint.getDataEndpoint().getBytes(), CreateMode.PERSISTENT);
             // deploy the operation in the chosen Granules resource
-            deployOperation(this.jobId, resourceEndpoint.getDataEndpoint(), clone);
             computationIdToObjectMap.put(clone.getInstanceIdentifier(), clone);
-            niOpAssignments.put(clone.getInstanceIdentifier(), resourceEndpoint.getControlEndpoint());
             ack = new ScaleOutResponse(scaleOutReq.getMessageId(), computationId, scaleOutReq.getOriginEndpoint(), true,
                     clone.getInstanceIdentifier(), resourceEndpoint.getControlEndpoint());
+            pendingDeployments.add(ack);
+            deployOperation(this.jobId, resourceEndpoint.getDataEndpoint(), clone);
             if (logger.isDebugEnabled()) {
                 logger.debug(String.format("Sent the deployment request new instance. Instance Id: %s, Location: %s",
                         clone.getInstanceIdentifier(), resourceEndpoint.getDataEndpoint()));
@@ -254,14 +388,11 @@ public class GeoSpatialDeployer extends JobDeployer {
                     logger.error("Error sending out the TriggerScaleAck to " + scaleOutReq.getOriginEndpoint());
                 }
             }
-            else {
-                pendingDeployments.add(ack);
-            }
         }
     }
 
-    public void handleDeploymentAck(DeploymentAck deploymentAck){
-        if(!pendingDeployments.isEmpty()){
+    void handleDeploymentAck(DeploymentAck deploymentAck) {
+        if (!pendingDeployments.isEmpty()) {
             ScaleOutResponse ack = pendingDeployments.remove(0);
             try {
                 SendUtility.sendControlMessage(ack.getTargetEndpoint(), ack);
@@ -274,5 +405,154 @@ public class GeoSpatialDeployer extends JobDeployer {
         } else {
             logger.warn("Invalid Deployment Ack. No pending deployments.");
         }
+    }
+
+    private void createZKBackupProcessorMap(Map<Operation, String> assignments) throws DeploymentException {
+        try {
+            if (!ZooKeeperUtils.directoryExists(zk, neptune.geospatial.graph.Constants.ZNodes.ZNODE_BACKUP_TOPICS)) {
+                ZooKeeperUtils.createDirectory(zk, neptune.geospatial.graph.Constants.ZNodes.ZNODE_BACKUP_TOPICS, null,
+                        CreateMode.PERSISTENT);
+            }
+            for (Map.Entry<Operation, String> entry : assignments.entrySet()) {
+                Operation op = entry.getKey();
+                if (op instanceof AbstractGeoSpatialStreamProcessor) {
+                    createBackupTopicZNode((AbstractGeoSpatialStreamProcessor) op, entry.getValue());
+                }
+            }
+        } catch (KeeperException | InterruptedException e) {
+            logger.error("Error creating Zookeeper backup node tree.", e);
+            throw new DeploymentException("Error creating Zookeeper backup node tree.", e);
+        }
+    }
+
+    private void createBackupTopicZNode(AbstractGeoSpatialStreamProcessor processor, String resourceEndpoint)
+            throws KeeperException, InterruptedException {
+        Topic defaultGSSTopic = processor.getDefaultGeoSpatialStream();
+        TopicInfo defaultTopicInfo = new TopicInfo(defaultGSSTopic, resourceEndpoint);
+        if (stateReplicationTopics.containsKey(defaultTopicInfo)) {
+            TopicInfo[] stateReplicationTopics = this.stateReplicationTopics.get(defaultTopicInfo);
+            String backupNodePath = neptune.geospatial.graph.Constants.ZNodes.ZNODE_BACKUP_TOPICS + "/" +
+                    defaultGSSTopic.toString();
+            ZooKeeperUtils.createDirectory(zk, backupNodePath, null, CreateMode.PERSISTENT);
+            for (TopicInfo stateReplicationTopic : stateReplicationTopics) {
+                Topic processorTopic = resourceEndpointToDefaultTopicMap.get(stateReplicationTopic.getResourceEndpoint());
+                String childNodePath = backupNodePath + "/" + processorTopic.toString();
+                ZooKeeperUtils.createDirectory(zk, childNodePath, stateReplicationTopic.getResourceEndpoint().getBytes(),
+                        CreateMode.PERSISTENT);
+                if (logger.isDebugEnabled()) {
+                    logger.debug(String.format("ZK Backup Node tree updated. Topic: %s [%s], " +
+                                    "Backup Node: %s [%s]", defaultGSSTopic, resourceEndpoint,
+                            processorTopic, stateReplicationTopic.getResourceEndpoint()));
+                }
+            }
+        } else {
+            logger.error("No backup topics found for " + defaultGSSTopic);
+        }
+    }
+
+    @Override
+    public void membershipChanged(List<String> lostMembers) {
+        if (logger.isDebugEnabled()) {
+            logger.debug("Detected lost members. Evaluating under replicated nodes. Lost Node Count: " +
+                    lostMembers.size());
+        }
+        // first update the resource endpoint list
+        Map<String, ResourceEndpoint> repIndex = reIndexResourceList(lostMembers);
+        List<TopicInfo> toBeRemoved = new ArrayList<>();
+
+        for (Map.Entry<TopicInfo, TopicInfo[]> entry : stateReplicationTopics.entrySet()) {
+            TopicInfo gsProcessorTopicInfo = entry.getKey();
+            String primaryLoc = gsProcessorTopicInfo.getResourceEndpoint();
+            if (lostMembers.contains(primaryLoc)) {
+                toBeRemoved.add(gsProcessorTopicInfo);
+                continue;
+            }
+            TopicInfo[] stateReplicationTopics = entry.getValue();
+            for (int i = 0; i < stateReplicationTopics.length; i++) {
+                TopicInfo stateReplicationTopic = stateReplicationTopics[i];
+                String replicationEndpoint = stateReplicationTopic.getResourceEndpoint();
+                if (lostMembers.contains(replicationEndpoint)) {
+                    if (logger.isDebugEnabled()) {
+                        logger.debug(String.format("Detected a under replicated topic. " +
+                                        "Primary processor location: %s, Failed replication endpoint: %s",
+                                gsProcessorTopicInfo.getResourceEndpoint(), replicationEndpoint));
+                    }
+                    // update the zookeeper
+                    String invalidZKPath = neptune.geospatial.graph.Constants.ZNodes.ZNODE_BACKUP_TOPICS + "/" +
+                            gsProcessorTopicInfo.getTopic() + "/" + resourceEndpointToDefaultTopicMap.get(replicationEndpoint);
+                    try {
+                        zk.delete(invalidZKPath, -1);
+                        // find a new location
+                        int currentLocationIndex = resourceEndpoints.indexOf(repIndex.get(primaryLoc));
+                        String newLocation = getLocationForNextReplica(stateReplicationTopics, currentLocationIndex);
+                        Topic newStateReplicationTopic = stateReplicationOpPlacements.get(newLocation);
+                        Topic newBackupProcessorTopic = resourceEndpointToDefaultTopicMap.get(newLocation);
+                        TopicInfo newStateReplicationTopicInfo = new TopicInfo(newStateReplicationTopic, newLocation);
+                        stateReplicationTopics[i] = newStateReplicationTopicInfo;
+                        String newZkPath = neptune.geospatial.graph.Constants.ZNodes.ZNODE_BACKUP_TOPICS + "/" +
+                                gsProcessorTopicInfo.getTopic() + "/" + newBackupProcessorTopic.toString();
+                        ZooKeeperUtils.createDirectory(zk, newZkPath, newLocation.getBytes(),
+                                CreateMode.PERSISTENT);
+                        if (logger.isDebugEnabled()) {
+                            logger.info(String.format("Replication level increased. New State Replication Topic: %s " +
+                                            "New Processor Topic: %s New Location: %s", newStateReplicationTopic.toString(),
+                                    newBackupProcessorTopic.toString(), newLocation));
+                        }
+                        // send a message to the computation with new state replication topic info
+                        String targetComputation = RivuletUtil.getSubscriberComputationForTopic(zk, gsProcessorTopicInfo.getTopic());
+                        StateReplicationLevelIncreaseMsg repLevelIncreaseMsg = new StateReplicationLevelIncreaseMsg(targetComputation,
+                                newLocation, newStateReplicationTopic.toString());
+                        SendUtility.sendControlMessage(repIndex.get(primaryLoc).getControlEndpoint(), repLevelIncreaseMsg);
+                        if (logger.isDebugEnabled()) {
+                            logger.debug(String.format("Sent a StateReplicationLevelIncreaseMsg to %s. " +
+                                            "Old topic: %s New topic: %s", repIndex.get(primaryLoc).getControlEndpoint(),
+                                    stateReplicationTopic.getTopic().toString(),
+                                    newStateReplicationTopic.toString()));
+                        }
+                    } catch (InterruptedException | KeeperException e) {
+                        logger.error("Error updating replication topic in Zookeeper.", e);
+                    } catch (CommunicationsException | IOException e) {
+                        logger.error("Error sending StateReplicationLevelIncreaseMsg message to " +
+                                repIndex.get(primaryLoc).getControlEndpoint());
+                    }
+                }
+            }
+        }
+        for (TopicInfo invalidItem : toBeRemoved) {
+            stateReplicationTopics.remove(invalidItem);
+            if (logger.isDebugEnabled()) {
+                logger.debug(String.format("Cleaning up topics from lost nodes. Topic: %s Endpoint: %s",
+                        invalidItem.getTopic(), invalidItem.getResourceEndpoint()));
+            }
+        }
+    }
+
+    private Map<String, ResourceEndpoint> reIndexResourceList(List<String> lostMembers) {
+        List<ResourceEndpoint> newResourceList = new ArrayList<>(resourceEndpoints.size() - lostMembers.size());
+        Map<String, ResourceEndpoint> index = new HashMap<>();
+        for (ResourceEndpoint endpoint : resourceEndpoints) {
+            if (!lostMembers.contains(endpoint.getDataEndpoint())) {
+                newResourceList.add(endpoint);
+                index.put(endpoint.getDataEndpoint(), endpoint);
+            } else if (logger.isDebugEnabled()) {
+                logger.debug(String.format("Lost Resource endpoint detected. data endpoint: %s", endpoint.getDataEndpoint()));
+            }
+        }
+        resourceEndpoints = newResourceList;
+        return index;
+    }
+
+    private String getLocationForNextReplica(TopicInfo[] currentTopics, int currentIndex) {
+        List<String> currentLocations = new ArrayList<>(currentTopics.length);
+        for (TopicInfo topicInfo : currentTopics) {
+            currentLocations.add(topicInfo.getResourceEndpoint());
+        }
+        // let's start with a new location with a reasonable chance, because we use a replication level of 2
+        int nextIndex = currentIndex + 2;
+        String nextLoc = resourceEndpoints.get((nextIndex) % resourceEndpoints.size()).getDataEndpoint();
+        while (currentLocations.contains(nextLoc)) {
+            nextLoc = resourceEndpoints.get((++nextIndex) % resourceEndpoints.size()).getDataEndpoint();
+        }
+        return nextLoc;
     }
 }
