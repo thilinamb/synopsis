@@ -27,18 +27,21 @@ public class ScalingContext {
 
     private final Logger logger = Logger.getLogger(ScalingContext.class);
 
+    private final AbstractGeoSpatialStreamProcessor processor;
+    private final String instanceIdentifier;
+
     private final Set<MonitoredPrefix> monitoredPrefixes = new TreeSet<>();
     private final Map<String, MonitoredPrefix> monitoredPrefixMap = new HashMap<>();
     private final Map<String, PendingScaleOutRequest> pendingScaleOutRequests = new HashMap<>();
     private final Map<String, PendingScaleInRequest> pendingScaleInRequests = new HashMap<>();
     private HazelcastInstance hzInstance;
-    private final String instanceIdentifier;
 
     /**
-     * @param instanceIdentifier Instance Identifier of the underlying computation
+     * @param processor underlying computation
      */
-    public ScalingContext(String instanceIdentifier) {
-        this.instanceIdentifier = instanceIdentifier;
+    public ScalingContext(AbstractGeoSpatialStreamProcessor processor) {
+        this.processor = processor;
+        this.instanceIdentifier = processor.getInstanceIdentifier();
     }
 
     /**
