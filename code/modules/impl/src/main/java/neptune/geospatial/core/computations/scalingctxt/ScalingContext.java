@@ -129,17 +129,26 @@ public class ScalingContext {
      * @param excess A measure of the excess load
      * @return List of prefixes chosen for scaling out
      */
-    public List<String> getPrefixesForScalingOut(Double excess) {
+    public List<String> getPrefixesForScalingOut(Double excess, boolean memoryBased) {
         List<String> prefixesForScalingOut = new ArrayList<>();
         double cumulSumOfPrefixes = 0;
         Iterator<MonitoredPrefix> itr = monitoredPrefixes.iterator();
+        int locallyProcessedCount = 0;
         while (itr.hasNext() && cumulSumOfPrefixes < excess) {
             MonitoredPrefix monitoredPrefix = itr.next();
-            if (!monitoredPrefix.getIsPassThroughTraffic() && monitoredPrefix.getMessageRate() > 0 &&
-                    monitoredPrefix.getPrefix().length() < AbstractGeoSpatialStreamProcessor.MAX_CHARACTER_DEPTH) {
-                prefixesForScalingOut.add(monitoredPrefix.getPrefix());
+            if (!monitoredPrefix.getIsPassThroughTraffic()) {
+                locallyProcessedCount++;
+            }
+            if (!monitoredPrefix.getIsPassThroughTraffic() && prefixesForScalingOut.size() < 25 &&
+                    monitoredPrefix.getPrefix().length() <= AbstractGeoSpatialStreamProcessor.MAX_CHARACTER_DEPTH) {
                 // let's consider the number of messages accumulated over 2s.
-                cumulSumOfPrefixes += monitoredPrefix.getMessageRate() * 2;
+                if (memoryBased) {
+                    cumulSumOfPrefixes += processor.getMemoryConsumptionForPrefix(monitoredPrefix.getPrefix());
+                    prefixesForScalingOut.add(monitoredPrefix.getPrefix());
+                } else {
+                    cumulSumOfPrefixes += monitoredPrefix.getMessageRate() * 2;
+                    prefixesForScalingOut.add(monitoredPrefix.getPrefix());
+                }
             }
         }
         if (logger.isDebugEnabled()) {

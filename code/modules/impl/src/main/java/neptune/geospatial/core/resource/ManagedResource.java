@@ -32,6 +32,9 @@ import org.apache.log4j.Logger;
 
 import java.io.File;
 import java.io.IOException;
+import java.lang.management.ManagementFactory;
+import java.lang.management.MemoryMXBean;
+import java.lang.management.MemoryUsage;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -47,17 +50,17 @@ import java.util.concurrent.atomic.AtomicReference;
  */
 public class ManagedResource {
 
-    class MonitoredComputationState {
+    private class MonitoredComputationState {
         private AbstractGeoSpatialStreamProcessor computation;
         private AtomicReference<ArrayList<Long>> backLogHistory = new AtomicReference<>(
-                new ArrayList<Long>(monitoredBackLogLength));
+                new ArrayList<>(monitoredBackLogLength));
         private AtomicBoolean eligibleForScaling = new AtomicBoolean(true);
 
         private MonitoredComputationState(AbstractGeoSpatialStreamProcessor computation) {
             this.computation = computation;
         }
 
-        private double monitor() {
+        private double[] update() {
             long currentBacklog = computation.getBacklogLength();
             backLogHistory.get().add(currentBacklog);
             if (logger.isDebugEnabled()) {
@@ -67,7 +70,7 @@ public class ManagedResource {
             while (backLogHistory.get().size() > monitoredBackLogLength) {
                 backLogHistory.get().remove(0);
             }
-            return isBacklogDeveloping();
+            return new double[]{isBacklogDeveloping(), getMemoryConsumption()};
         }
 
         private double isBacklogDeveloping() {
@@ -93,6 +96,10 @@ public class ManagedResource {
             return excess;
         }
 
+        private double getMemoryConsumption() {
+            return computation.getMemoryConsumptionForAllPrefixes();
+        }
+
         private double getAverageBacklog() {
             long sum = 0;
             for (long entry : backLogHistory.get()) {
@@ -102,10 +109,45 @@ public class ManagedResource {
         }
     }
 
+    private class SortableMetric implements Comparable<SortableMetric> {
+        private AbstractGeoSpatialStreamProcessor computation;
+        private double value;
+
+        private SortableMetric(AbstractGeoSpatialStreamProcessor computation, double value) {
+            this.computation = computation;
+            this.value = value;
+        }
+
+        @Override
+        public int compareTo(SortableMetric o) {
+            return -1 * new Double(o.value).compareTo(this.value);
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+
+            SortableMetric that = (SortableMetric) o;
+
+            return computation.getInstanceIdentifier().equals(that.computation.getInstanceIdentifier());
+
+        }
+
+        @Override
+        public int hashCode() {
+            return computation.getInstanceIdentifier().hashCode();
+        }
+    }
+
     /**
      * Monitors the computations to detect the stragglers.
      */
     private class ComputationMonitor implements Runnable {
+
+        private AtomicBoolean eligibleForScaling = new AtomicBoolean(true);
+        private List<Long> memoryConsumption = new ArrayList<>(monitoredBackLogLength);
+
         @Override
         public void run() {
             // terminate the monitoring task after the active scaling period is elapsed, if it's set.
@@ -122,27 +164,65 @@ public class ManagedResource {
             if (logger.isDebugEnabled()) {
                 logger.debug("Monitoring thread is executing.");
             }
+
+            double avgMemoryUsagePerc = updateMemoryConsumption();
+
             try {
                 synchronized (monitoredProcessors) {
                     // wait till computations are registered. avoid busy waiting at the beginning.
                     if (monitoredProcessors.isEmpty()) {
                         monitoredProcessors.wait();
                     }
+                    // update each monitored computation
+                    Queue<SortableMetric> backlogs = new PriorityQueue<>();
+                    Queue<SortableMetric> memoryUsage = new PriorityQueue<>();
                     for (String identifier : monitoredProcessors.keySet()) {
                         MonitoredComputationState monitoredComputationState = monitoredProcessors.get(identifier);
-                        if (monitoredComputationState.eligibleForScaling.get()) {
-                            double excess = monitoredComputationState.monitor();
-                            if (excess != 0) {
+                        double[] metrics = monitoredComputationState.update();
+                        backlogs.add(new SortableMetric(monitoredComputationState.computation, metrics[0]));
+                        memoryUsage.add(new SortableMetric(monitoredComputationState.computation, metrics[1]));
+                            /*if (excess != 0) {
                                 // trigger scale up
                                 boolean success = monitoredComputationState.computation.recommendScaling(excess);
                                 monitoredComputationState.eligibleForScaling.set(!success);
-                            }
+                            }*/
+                    }
+                    if (!eligibleForScaling.get()) {
+                        return;
+                    }
+                    if (avgMemoryUsagePerc >= 0.5 && memoryUsage.size() > 0) {
+                        SortableMetric highestMemConsumer = memoryUsage.poll();
+                        boolean success = highestMemConsumer.computation.recommendScaling(highestMemConsumer.value, true);
+                        eligibleForScaling.set(!success);
+                    } else if (backlogs.size() > 0) {
+                        SortableMetric longestBacklog = backlogs.poll();
+                        while (longestBacklog.value == 0 && !backlogs.isEmpty()) {
+                            longestBacklog = backlogs.poll();
+                        }
+                        if (longestBacklog.value != 0) {
+                            boolean success = longestBacklog.computation.recommendScaling(longestBacklog.value, false);
+                            eligibleForScaling.set(!success);
                         }
                     }
                 }
             } catch (Throwable e) {
                 logger.error("Error in running computation monitor task.", e);
             }
+        }
+
+        private double updateMemoryConsumption() {
+            MemoryMXBean memoryMXBean = ManagementFactory.getMemoryMXBean();
+            MemoryUsage memUsage = memoryMXBean.getHeapMemoryUsage();
+            memoryConsumption.add(memUsage.getUsed());
+            if (memoryConsumption.size() > monitoredBackLogLength) {
+                memoryConsumption = memoryConsumption.subList(memoryConsumption.size() - monitoredBackLogLength,
+                        memoryConsumption.size());
+            }
+            double sum = 0.0;
+            for (long reading : memoryConsumption) {
+                sum += reading;
+            }
+            return (sum / monitoredBackLogLength) / memUsage.getMax();
         }
     }
 
@@ -159,7 +239,7 @@ public class ManagedResource {
     public static final String ENABLE_FAULT_TOLERANCE = "rivulet-enable-fault-tolerance";
     private static final String STATE_REPLICATION_INTERVAL = "rivulet-state-replication-interval";
     private static final String ACTIVE_SCALING_PERIOD = "rivulet-scaling-period-in-mins";
-    public static final String CHECKPOINT_TIMEOUT_PERIOD = "rivulet-checkpoint-timeout";
+    private static final String CHECKPOINT_TIMEOUT_PERIOD = "rivulet-checkpoint-timeout";
 
     // default values
     private int monitoredBackLogLength;
@@ -173,6 +253,7 @@ public class ManagedResource {
     private ScheduledExecutorService monitoringService = Executors.newSingleThreadScheduledExecutor();
     private Map<String, List<StateTransferMsg>> pendingStateTransfers = new HashMap<>();
     private Map<String, ScaleOutLockRequest> pendingScaleOutLockRequests = new HashMap<>();
+    private ComputationMonitor monitoringTask;
 
     private boolean enableFaultTolerance = false;
     private long stateReplicationInterval = 2000;
@@ -214,7 +295,8 @@ public class ManagedResource {
                 monitoredBackLogLength = startupProps.containsKey(MONITORED_BACKLOG_HISTORY_LENGTH) ?
                         Integer.parseInt(startupProps.getProperty(MONITORED_BACKLOG_HISTORY_LENGTH)) : 5;
                 // start the computation monitor thread
-                future = monitoringService.scheduleWithFixedDelay(new ComputationMonitor(), 0, monitoringPeriod,
+                this.monitoringTask = new ComputationMonitor();
+                future = monitoringService.scheduleWithFixedDelay(monitoringTask, 0, monitoringPeriod,
                         TimeUnit.MILLISECONDS);
                 logger.info(String.format("Scale-in Threshold: %d, Scale-out Threshold: %d, " +
                                 "Monitoring Period: %d (ms), Monitored Backlog History Length: %d", scaleInThreshold,
@@ -359,6 +441,7 @@ public class ManagedResource {
             String instanceIdentifier = processor.getInstanceIdentifier();
             if (!monitoredProcessors.containsKey(instanceIdentifier)) {
                 monitoredProcessors.put(instanceIdentifier, new MonitoredComputationState(processor));
+                logger.info("New processor is registered. Added to the monitoring list. Identifier: " + instanceIdentifier);
             }
             if (pendingStateTransfers.containsKey(instanceIdentifier)) {
                 List<StateTransferMsg> stateTransferMsgs = pendingStateTransfers.remove(instanceIdentifier);
@@ -387,6 +470,7 @@ public class ManagedResource {
         MonitoredComputationState monitoredComputationState = monitoredProcessors.get(computationIdentifier);
         monitoredComputationState.backLogHistory.get().clear();
         monitoredComputationState.eligibleForScaling.set(true);
+        this.monitoringTask.eligibleForScaling.set(true);
     }
 
     void dispatchControlMessage(String computationId, ControlMessage ctrlMessage) {
