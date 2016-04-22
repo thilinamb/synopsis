@@ -30,11 +30,11 @@ public class MonitoredPrefix implements Comparable<MonitoredPrefix> {
 
     @Override
     public int compareTo(MonitoredPrefix o) {
-        // ascending sort based on input rates
+        // descending sort based on input rates
         if (this.messageRate == o.messageRate) {
             return this.prefix.compareTo(o.prefix);
         } else {
-            return (int) (this.messageRate - o.messageRate);
+            return -1 * (int) (this.messageRate - o.messageRate);
         }
     }
 
