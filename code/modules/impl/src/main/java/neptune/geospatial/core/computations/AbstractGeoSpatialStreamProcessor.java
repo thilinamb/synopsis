@@ -413,7 +413,7 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
                 if (!prefixesForScalingOut.isEmpty()) {
                     // We assume we use the same message type throughout the graph.
                     String streamType = scalingContext.getMonitoredPrefix(prefixesForScalingOut.get(0)).getStreamType();
-                    initiateScaleOut(prefixesForScalingOut, streamType);
+                    initiateScaleOut(prefixesForScalingOut, streamType, memoryBased, excess);
                     return true;
                 } else {
                     // we couldn't find any suitable prefixes
@@ -454,7 +454,7 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
         }
     }
 
-    private void initiateScaleOut(List<String> prefix, String streamType) throws ScalingException {
+    private void initiateScaleOut(List<String> prefix, String streamType, boolean isMemoryPressure, double excess) throws ScalingException {
         try {
             GeoHashPartitioner partitioner = new GeoHashPartitioner();
             String outGoingStreamId = getNewStreamIdentifier();
@@ -464,6 +464,9 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
 
             ScaleOutRequest triggerMessage = new ScaleOutRequest(getInstanceIdentifier(), outGoingStreamId,
                     topics[0].toString(), streamType);
+            if (isMemoryPressure) {
+                triggerMessage.setRequiredMemory(excess);
+            }
             scalingContext.addPendingScaleOutRequest(triggerMessage.getMessageId(), new PendingScaleOutRequest(
                     prefix, outGoingStreamId));
             ManagedResource.getInstance().sendToDeployer(triggerMessage);
