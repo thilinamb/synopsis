@@ -142,7 +142,6 @@ public class ManagedResource {
 
         private AtomicBoolean eligibleForScaling = new AtomicBoolean(true);
         private List<Long> memoryConsumption = new ArrayList<>(monitoredBackLogLength);
-        MemoryUsage memUsage = ManagementFactory.getMemoryMXBean().getHeapMemoryUsage();
         private int counter;
 
         @Override
@@ -215,12 +214,14 @@ public class ManagedResource {
         }
 
         private long getAvailableMem() {
+            MemoryUsage memUsage = ManagementFactory.getMemoryMXBean().getHeapMemoryUsage();
             logger.info(String.format("Max mem: %d, Use Mem: %d, Available Mem: %d ", memUsage.getMax(),
                     memUsage.getUsed(),  memUsage.getMax() - memUsage.getUsed()));
             return (memUsage.getMax() - memUsage.getUsed());
         }
 
         private double updateMemoryConsumption() {
+            MemoryUsage memUsage = ManagementFactory.getMemoryMXBean().getHeapMemoryUsage();
             memoryConsumption.add(memUsage.getUsed());
             if (memoryConsumption.size() > monitoredBackLogLength) {
                 memoryConsumption = memoryConsumption.subList(memoryConsumption.size() - monitoredBackLogLength,
