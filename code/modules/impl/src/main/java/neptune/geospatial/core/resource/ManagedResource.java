@@ -1,10 +1,6 @@
 package neptune.geospatial.core.resource;
 
-import com.hazelcast.client.config.ClientConfig;
-import com.hazelcast.config.Config;
-import com.hazelcast.config.SerializerConfig;
 import com.hazelcast.core.IMap;
-import com.hazelcast.nio.serialization.StreamSerializer;
 import ds.granules.Granules;
 import ds.granules.communication.direct.control.ControlMessage;
 import ds.granules.communication.direct.control.SendUtility;
@@ -26,14 +22,13 @@ import neptune.geospatial.core.protocol.msg.scaleout.StateTransferCompleteAck;
 import neptune.geospatial.ft.protocol.CheckpointAck;
 import neptune.geospatial.graph.operators.NOAADataIngester;
 import neptune.geospatial.hazelcast.HazelcastClientInstanceHolder;
-import neptune.geospatial.hazelcast.HazelcastNodeInstanceHolder;
+import neptune.geospatial.util.RivuletUtil;
 import neptune.geospatial.util.trie.GeoHashPrefixTree;
 import org.apache.log4j.Logger;
 
 import java.io.File;
 import java.io.IOException;
 import java.lang.management.ManagementFactory;
-import java.lang.management.MemoryMXBean;
 import java.lang.management.MemoryUsage;
 import java.util.*;
 import java.util.concurrent.*;
@@ -120,7 +115,7 @@ public class ManagedResource {
 
         @Override
         public int compareTo(SortableMetric o) {
-            return -1 * new Double(o.value).compareTo(this.value);
+            return -1 * new Double(this.value).compareTo(o.value);
         }
 
         @Override
@@ -147,6 +142,8 @@ public class ManagedResource {
 
         private AtomicBoolean eligibleForScaling = new AtomicBoolean(true);
         private List<Long> memoryConsumption = new ArrayList<>(monitoredBackLogLength);
+        MemoryUsage memUsage = ManagementFactory.getMemoryMXBean().getHeapMemoryUsage();
+        private int counter;
 
         @Override
         public void run() {
@@ -165,7 +162,13 @@ public class ManagedResource {
                 logger.debug("Monitoring thread is executing.");
             }
 
-            double avgMemoryUsagePerc = updateMemoryConsumption();
+            if (counter == 0) {
+                double currAvailableMem = getAvailableMem();
+                if (memoryUsageMap != null) {
+                    memoryUsageMap.put(dataEndpoint, currAvailableMem);
+                }
+            }
+            double avgMemoryUsage = updateMemoryConsumption();
 
             try {
                 synchronized (monitoredProcessors) {
@@ -173,6 +176,7 @@ public class ManagedResource {
                     if (monitoredProcessors.isEmpty()) {
                         monitoredProcessors.wait();
                     }
+                    counter = ++counter % 5;
                     // update each monitored computation
                     Queue<SortableMetric> backlogs = new PriorityQueue<>();
                     Queue<SortableMetric> memoryUsage = new PriorityQueue<>();
@@ -190,7 +194,7 @@ public class ManagedResource {
                     if (!eligibleForScaling.get()) {
                         return;
                     }
-                    if (avgMemoryUsagePerc >= 0.5 && memoryUsage.size() > 0) {
+                    if (avgMemoryUsage >= 0.5 && memoryUsage.size() > 0) {
                         SortableMetric highestMemConsumer = memoryUsage.poll();
                         boolean success = highestMemConsumer.computation.recommendScaling(highestMemConsumer.value, true);
                         eligibleForScaling.set(!success);
@@ -210,9 +214,13 @@ public class ManagedResource {
             }
         }
 
+        private long getAvailableMem() {
+            logger.info(String.format("Max mem: %d, Use Mem: %d, Available Mem: %d ", memUsage.getMax(),
+                    memUsage.getUsed(),  memUsage.getMax() - memUsage.getUsed()));
+            return (memUsage.getMax() - memUsage.getUsed());
+        }
+
         private double updateMemoryConsumption() {
-            MemoryMXBean memoryMXBean = ManagementFactory.getMemoryMXBean();
-            MemoryUsage memUsage = memoryMXBean.getHeapMemoryUsage();
             memoryConsumption.add(memUsage.getUsed());
             if (memoryConsumption.size() > monitoredBackLogLength) {
                 memoryConsumption = memoryConsumption.subList(memoryConsumption.size() - monitoredBackLogLength,
@@ -222,7 +230,7 @@ public class ManagedResource {
             for (long reading : memoryConsumption) {
                 sum += reading;
             }
-            return (sum / monitoredBackLogLength) / memUsage.getMax();
+            return (sum / memoryConsumption.size()) / memUsage.getMax();
         }
     }
 
@@ -234,8 +242,6 @@ public class ManagedResource {
     private static final String SCALE_OUT_THRESHOLD = "rivulet-scale-out-threshold";
     private static final String SCALE_IN_THRESHOLD = "rivulet-scale-in-threshold";
     private static final String MONITORED_BACKLOG_HISTORY_LENGTH = "rivulet-monitored-backlog-history-length";
-    private static final String HAZELCAST_SERIALIZER_PREFIX = "rivulet-hazelcast-serializer-";
-    private static final String HAZELCAST_INTERFACE = "rivulet-hazelcast-interface";
     public static final String ENABLE_FAULT_TOLERANCE = "rivulet-enable-fault-tolerance";
     private static final String STATE_REPLICATION_INTERVAL = "rivulet-state-replication-interval";
     private static final String ACTIVE_SCALING_PERIOD = "rivulet-scaling-period-in-mins";
@@ -254,6 +260,8 @@ public class ManagedResource {
     private Map<String, List<StateTransferMsg>> pendingStateTransfers = new HashMap<>();
     private Map<String, ScaleOutLockRequest> pendingScaleOutLockRequests = new HashMap<>();
     private ComputationMonitor monitoringTask;
+    private IMap<String, Double> memoryUsageMap;
+    private String dataEndpoint;
 
     private boolean enableFaultTolerance = false;
     private long stateReplicationInterval = 2000;
@@ -279,6 +287,7 @@ public class ManagedResource {
         try {
             Properties startupProps = NeptuneRuntime.getInstance().getProperties();
             deployerEndpoint = startupProps.getProperty(Constants.DEPLOYER_ENDPOINT);
+            dataEndpoint = RivuletUtil.getDataEndpoint();
 
             boolean enableDynamicScaling = startupProps.containsKey(ENABLE_DYNAMIC_SCALING) &&
                     Boolean.parseBoolean(startupProps.getProperty(ENABLE_DYNAMIC_SCALING));
@@ -334,44 +343,15 @@ public class ManagedResource {
     }
 
     private void initializeHazelcast(Properties startupProps) {
-        Config config = new Config();
-        ClientConfig clientConfig = new ClientConfig();
-        for (String propName : startupProps.stringPropertyNames()) {
-            if (propName.startsWith(HAZELCAST_SERIALIZER_PREFIX)) {
-                String typeClazzName = propName.substring(HAZELCAST_SERIALIZER_PREFIX.length(), propName.length());
-                String serializerClazzName = startupProps.getProperty(propName);
-                try {
-                    Class typeClazz = Class.forName(typeClazzName);
-                    Class serializerClazz = Class.forName(serializerClazzName);
-                    StreamSerializer serializer = (StreamSerializer) serializerClazz.newInstance();
-                    SerializerConfig sc = new SerializerConfig().setImplementation(serializer).setTypeClass(typeClazz);
-                    config.getSerializationConfig().addSerializerConfig(sc);
-                    clientConfig.getSerializationConfig().addSerializerConfig(sc);
-                    logger.info("Successfully Added Hazelcast Serializer for type " + typeClazzName);
-                } catch (ClassNotFoundException e) {
-                    logger.error("Error instantiating Type class through reflection. Class name: " + typeClazzName, e);
-                } catch (InstantiationException | IllegalAccessException e) {
-                    logger.error("Error creating a new instance of the serializer. Class name: " + serializerClazzName,
-                            e);
-                }
-            }
-        }
-        // set the interfaces for Hazelcast to bind with.
-        if (startupProps.containsKey(HAZELCAST_INTERFACE)) {
-            String allowedInterface = startupProps.getProperty(HAZELCAST_INTERFACE);
-            config.getNetworkConfig().getInterfaces().addInterface(allowedInterface).setEnabled(true);
-        }
-        // set the logging framework
-        config.setProperty("hazelcast.logging.type", "log4j");
-        clientConfig.setProperty("hazelcast.logging.type", "log4j");
-        HazelcastNodeInstanceHolder.init(config);
-        HazelcastClientInstanceHolder.init(clientConfig);
+        RivuletUtil.initializeHazelcast(startupProps);
         try {
             IMap map = HazelcastClientInstanceHolder.getInstance().getHazelcastClientInstance().getMap(
                     GeoHashPrefixTree.PREFIX_MAP);
             // TODO: Remove me after the micro benchmark
             //map.addEntryListener(new GeoHashPrefixTree(), true);
             map.addEntryListener(new GeoHashPrefixTree(), true);
+            memoryUsageMap = HazelcastClientInstanceHolder.getInstance().getHazelcastClientInstance().getMap(
+                    neptune.geospatial.graph.Constants.MEMORY_USAGE_MAP);
         } catch (neptune.geospatial.hazelcast.HazelcastException e) {
             logger.error("Error getting the Hazelcast client to register the entry listener.", e);
         }
