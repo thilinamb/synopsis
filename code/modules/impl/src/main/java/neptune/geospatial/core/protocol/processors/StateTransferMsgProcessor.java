@@ -54,7 +54,7 @@ public class StateTransferMsgProcessor implements ProtocolProcessor {
                     stateTransferMsg.getPrefix().length());
             // handling the case where no messages are sent after scaling out.
             if (scalingContext.getMonitoredPrefix(childPrefix) == null) {
-                MonitoredPrefix monitoredPrefix = new MonitoredPrefix(childPrefix, null);
+                MonitoredPrefix monitoredPrefix = new MonitoredPrefix(childPrefix, stateTransferMsg.getStreamType());
                 monitoredPrefix.setLastMessageSent(stateTransferMsg.getLastMessageId());
                 monitoredPrefix.setLastGeoHashSent(stateTransferMsg.getLastMessagePrefix());
                 scalingContext.addMonitoredPrefix(childPrefix, monitoredPrefix);

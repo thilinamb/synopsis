@@ -106,7 +106,7 @@ public class ScaleInActivateReqProcessor implements ProtocolProcessor {
             byte[] state = streamProcessor.split(localPrefix);
             StateTransferMsg stateTransMsg = new StateTransferMsg(localPrefix, prefix, state,
                     activationReq.getOriginComputationOfScalingOperation(), instanceIdentifier,
-                    StateTransferMsg.SCALE_IN);
+                    StateTransferMsg.SCALE_IN, null);
             try {
                 SendUtility.sendControlMessage(activationReq.getOriginNodeOfScalingOperation(), stateTransMsg);
                 if (logger.isDebugEnabled()) {

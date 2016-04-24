@@ -567,7 +567,7 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
             byte[] state = split(localPrefix);
             StateTransferMsg stateTransMsg = new StateTransferMsg(localPrefix, prefix, state,
                     activationReq.getOriginComputationOfScalingOperation(), getInstanceIdentifier(),
-                    StateTransferMsg.SCALE_IN);
+                    StateTransferMsg.SCALE_IN, null);
             try {
                 SendUtility.sendControlMessage(activationReq.getOriginNodeOfScalingOperation(), stateTransMsg);
                 if (logger.isDebugEnabled()) {
@@ -615,7 +615,7 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
             tsLastUpdated.set(timeNow);
         } else if ((timeNow - tsLastUpdated.get()) > INPUT_RATE_UPDATE_INTERVAL) {
             double timeElapsed = (timeNow - tsLastUpdated.get()) * 1.0;
-            scalingContext.updateMessageRates(timeElapsed);
+            scalingContext.updateStatisticsForMonitoredPrefixes(timeElapsed);
             tsLastUpdated.set(timeNow);
         }
     }
