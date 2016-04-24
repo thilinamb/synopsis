@@ -42,6 +42,7 @@ import neptune.geospatial.ft.TopicInfo;
 import neptune.geospatial.ft.protocol.StateReplicationLevelIncreaseMsg;
 import neptune.geospatial.ft.zk.MembershipChangeListener;
 import neptune.geospatial.ft.zk.MembershipTracker;
+import neptune.geospatial.hazelcast.HazelcastException;
 import neptune.geospatial.util.RivuletUtil;
 import org.apache.log4j.Logger;
 import org.apache.zookeeper.CreateMode;
@@ -113,6 +114,7 @@ public class GeoSpatialDeployer extends JobDeployer implements MembershipChangeL
     private DeployerConfig deployerConfig;
     private boolean faultToleranceEnabled;
     private Map<TopicInfo, TopicInfo[]> stateReplicationTopics = new HashMap<>();
+    private ResourceMonitor resourceMonitor;
 
     @Override
     public ProgressTracker deployOperations(Operation[] operations) throws
@@ -131,6 +133,10 @@ public class GeoSpatialDeployer extends JobDeployer implements MembershipChangeL
 
         if (!resourceEndpoints.isEmpty()) {
             try {
+                if (resourceMonitor == null) {
+                    resourceMonitor = new ResourceMonitor(resourceEndpoints);
+                    resourceMonitor.init();
+                }
                 Map<Operation, String> assignments = new HashMap<>(operations.length);
                 // create the deployment plan
                 for (Operation op : operations) {
@@ -192,6 +198,8 @@ public class GeoSpatialDeployer extends JobDeployer implements MembershipChangeL
             } catch (KeeperException | InterruptedException e) {
                 logger.error(e.getMessage(), e);
                 throw new DeploymentException(e.getMessage(), e);
+            } catch (HazelcastException e) {
+                throw new DeploymentException("Error initializing Resource Monitor", e);
             }
         } else {
             logger.error("Zero Granules Resources Discovered. Terminating the deployment.");
@@ -303,6 +311,7 @@ public class GeoSpatialDeployer extends JobDeployer implements MembershipChangeL
         if (faultToleranceEnabled) {
             MembershipTracker.getInstance().registerListener(this);
         }
+        RivuletUtil.initializeHazelcast(streamingProperties);
         super.initialize(streamingProperties);
         initializationCompleted();
     }
@@ -351,7 +360,9 @@ public class GeoSpatialDeployer extends JobDeployer implements MembershipChangeL
             currentComp.addStreamConsumer(new StringTopic(scaleOutReq.getTopic()), clone, scaleOutReq.getStreamId(),
                     scaleOutReq.getStreamType());
             // deploy
-            ResourceEndpoint resourceEndpoint = nextResource(clone);
+            ResourceEndpoint resourceEndpoint = resourceMonitor.assignResource(scaleOutReq.getRequiredMemory(),
+                    scaleOutReq.getOriginEndpoint());
+
             // initialize the state replication streams for the new computation
             if (faultToleranceEnabled && clone instanceof AbstractGeoSpatialStreamProcessor) {
                 AbstractGeoSpatialStreamProcessor streamProcessor = (AbstractGeoSpatialStreamProcessor) clone;

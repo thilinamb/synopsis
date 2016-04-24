@@ -296,7 +296,7 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
             try {
                 // register with the resource to enable monitoring
                 initializeProtocolProcessors();
-                this.scalingContext = new ScalingContext(getInstanceIdentifier());
+                this.scalingContext = new ScalingContext(this);
                 ManagedResource resource = ManagedResource.getInstance();
                 resource.registerStreamProcessor(this);
                 this.faultToleranceEnabled = resource.isFaultToleranceEnabled();
@@ -392,7 +392,7 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
      * @return {@code true} if it triggered a scaling operation. {@code false} if no scaling operation is
      * triggered.
      */
-    public synchronized boolean recommendScaling(double excess) {
+    public synchronized boolean recommendScaling(double excess, boolean memoryBased) {
         // try to get the lock first
         if (!mutex.tryAcquire()) {
             if (logger.isDebugEnabled()) {
@@ -401,19 +401,19 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
             }
             return false;
         }
+
         // if the lock is acquired successfully
-        if (logger.isDebugEnabled()) {
-            logger.debug(String.format("[%s] Successfully acquired the mutex for scale in/out operation. Excess: %.3f",
-                    getInstanceIdentifier(), excess));
-        }
+        logger.info(String.format("[%s] Attempting a scaling operation. Mode: %s, Excess: %.3f",
+                getInstanceIdentifier(), memoryBased ? "Memory" : "Backlog", excess));
         try {
             // in the case of scaling out
             if (excess > 0) {
-                List<String> prefixesForScalingOut = scalingContext.getPrefixesForScalingOut(excess);
+                List<String> prefixesForScalingOut = scalingContext.getPrefixesForScalingOut(excess, memoryBased);
+                logger.info(String.format("[%s] Chosen Prefix Count: %d", getInstanceIdentifier(), prefixesForScalingOut.size()));
                 if (!prefixesForScalingOut.isEmpty()) {
                     // We assume we use the same message type throughout the graph.
                     String streamType = scalingContext.getMonitoredPrefix(prefixesForScalingOut.get(0)).getStreamType();
-                    initiateScaleOut(prefixesForScalingOut, streamType);
+                    initiateScaleOut(prefixesForScalingOut, streamType, memoryBased, excess);
                     return true;
                 } else {
                     // we couldn't find any suitable prefixes
@@ -454,7 +454,7 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
         }
     }
 
-    private void initiateScaleOut(List<String> prefix, String streamType) throws ScalingException {
+    private void initiateScaleOut(List<String> prefix, String streamType, boolean isMemoryPressure, double excess) throws ScalingException {
         try {
             GeoHashPartitioner partitioner = new GeoHashPartitioner();
             String outGoingStreamId = getNewStreamIdentifier();
@@ -464,6 +464,9 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
 
             ScaleOutRequest triggerMessage = new ScaleOutRequest(getInstanceIdentifier(), outGoingStreamId,
                     topics[0].toString(), streamType);
+            if (isMemoryPressure) {
+                triggerMessage.setRequiredMemory(excess);
+            }
             scalingContext.addPendingScaleOutRequest(triggerMessage.getMessageId(), new PendingScaleOutRequest(
                     prefix, outGoingStreamId));
             ManagedResource.getInstance().sendToDeployer(triggerMessage);

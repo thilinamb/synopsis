@@ -20,6 +20,7 @@ public class ScaleOutRequest extends ControlMessage {
     private String streamId;
     private String topic;
     private String streamType;
+    private double requiredMemory = 0;
 
     public ScaleOutRequest() {
         super(ProtocolTypes.SCALE_OUT_REQ);
@@ -39,6 +40,7 @@ public class ScaleOutRequest extends ControlMessage {
         this.streamId = dataInputStream.readUTF();
         this.topic = dataInputStream.readUTF();
         this.streamType = dataInputStream.readUTF();
+        this.requiredMemory = dataInputStream.readDouble();
     }
 
     @Override
@@ -47,6 +49,7 @@ public class ScaleOutRequest extends ControlMessage {
         dataOutputStream.writeUTF(this.streamId);
         dataOutputStream.writeUTF(this.topic);
         dataOutputStream.writeUTF(this.streamType);
+        dataOutputStream.writeDouble(this.requiredMemory);
     }
 
     public String getCurrentComputation() {
@@ -63,5 +66,13 @@ public class ScaleOutRequest extends ControlMessage {
 
     public String getStreamType() {
         return streamType;
+    }
+
+    public double getRequiredMemory() {
+        return requiredMemory;
+    }
+
+    public void setRequiredMemory(double requiredMemory) {
+        this.requiredMemory = requiredMemory;
     }
 }

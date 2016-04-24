@@ -56,6 +56,7 @@ public class StateTransferMsgProcessor implements ProtocolProcessor {
             if (scalingContext.getMonitoredPrefix(childPrefix) == null) {
                 MonitoredPrefix monitoredPrefix = new MonitoredPrefix(childPrefix, null);
                 monitoredPrefix.setLastMessageSent(stateTransferMsg.getLastMessageId());
+                monitoredPrefix.setLastGeoHashSent(stateTransferMsg.getLastMessagePrefix());
                 scalingContext.addMonitoredPrefix(childPrefix, monitoredPrefix);
                 try {
                     IMap<String, SketchLocation> prefMap = streamProcessor.getHzInstance().getMap(GeoHashPrefixTree.PREFIX_MAP);

@@ -26,4 +26,6 @@ public class Constants {
     public class ZNodes {
         public static final String ZNODE_BACKUP_TOPICS = "/ft-backup-topics";
     }
+
+    public static final String MEMORY_USAGE_MAP = "mem-usage-map";
 }
