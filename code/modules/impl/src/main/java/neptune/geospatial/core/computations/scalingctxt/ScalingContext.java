@@ -115,10 +115,11 @@ public class ScalingContext {
      *
      * @param timeElapsed time elapsed since last message rate calculation
      */
-    public void updateMessageRates(double timeElapsed) {
+    public void updateStatisticsForMonitoredPrefixes(double timeElapsed) {
         for (String monitoredPrefStr : monitoredPrefixMap.keySet()) {
             MonitoredPrefix monitoredPrefix = monitoredPrefixMap.get(monitoredPrefStr);
             monitoredPrefix.updateMessageRate(timeElapsed);
+            monitoredPrefix.setConsumedMemory(processor.getMemoryConsumptionForPrefix(monitoredPrefStr));
             if (logger.isTraceEnabled()) {
                 logger.trace(String.format("[%s] Prefix: %s, Message Rate: %.3f", instanceIdentifier,
                         monitoredPrefStr, monitoredPrefix.getMessageRate()));
@@ -137,12 +138,12 @@ public class ScalingContext {
         double cumulSumOfPrefixes = 0;
         Iterator<MonitoredPrefix> itr = monitoredPrefixes.iterator();
         int locallyProcessedCount = 0;
-        while (itr.hasNext() && cumulSumOfPrefixes < excess) {
+        while (itr.hasNext() && cumulSumOfPrefixes < excess && prefixesForScalingOut.size() < 200) {
             MonitoredPrefix monitoredPrefix = itr.next();
             if (!monitoredPrefix.getIsPassThroughTraffic()) {
                 locallyProcessedCount++;
             }
-            if (!monitoredPrefix.getIsPassThroughTraffic() && prefixesForScalingOut.size() < 25 &&
+            if (!monitoredPrefix.getIsPassThroughTraffic() &&
                     monitoredPrefix.getPrefix().length() <= AbstractGeoSpatialStreamProcessor.MAX_CHARACTER_DEPTH) {
                 // let's consider the number of messages accumulated over 2s.
                 if (memoryBased) {
@@ -163,6 +164,8 @@ public class ScalingContext {
             logger.debug(String.format("[%s] Scale Out recommendation. Excess: %.3f, Chosen Prefixes: %s",
                     instanceIdentifier, excess, stringBuilder.toString()));
         }
+        logger.info(String.format("Total prefix count: %d, Locally processed count: %d, chosen count: %d, Mode: %s, Excess: %.3f Satistifed: %.3f",
+                monitoredPrefixes.size(), locallyProcessedCount, prefixesForScalingOut.size(), memoryBased ? "MEMORY" : "BACKLOG", excess, cumulSumOfPrefixes));
         return prefixesForScalingOut;
     }
 
