@@ -87,8 +87,9 @@ public class SketchProcessor extends AbstractGeoSpatialStreamProcessor {
                         Operator.STR_PREFIX, new Feature("location", prefix)));
             pq.execute(sketch.getRoot());
             pq.serializeResults(sketch.getRoot(), out);
-
             out.close();
+
+            this.sketch.geoTrie.remove(prefix);
         } catch (Exception e) {
             System.out.println("Failed to split sketch");
             e.printStackTrace();
