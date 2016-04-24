@@ -12,8 +12,8 @@ import io.sigpipe.sing.serialization.SerializationOutputStream;
 
 public class RelationalQuery extends Query {
 
-    private Set<Vertex> pruned;
-    private GraphMetrics metrics;
+    protected Set<Vertex> pruned;
+    protected GraphMetrics metrics;
 
     public RelationalQuery() {
 
@@ -56,13 +56,13 @@ public class RelationalQuery extends Query {
         }
 
         /* How many neighbors are still valid after the pruning process? */
-        int numNeighbors = 0;
+        int validNeighbors = 0;
         for (Vertex v : vertex.getAllNeighbors()) {
             if (pruned.contains(v) == false) {
-                numNeighbors++;
+                validNeighbors++;
             }
         }
-        out.writeInt(numNeighbors);
+        out.writeInt(validNeighbors);
 
         for (Vertex v : vertex.getAllNeighbors()) {
             if (pruned.contains(v) == false) {

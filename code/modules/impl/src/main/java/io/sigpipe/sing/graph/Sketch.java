@@ -132,7 +132,10 @@ public class Sketch {
             }
 
             Feature quantizedFeature = q.quantize(v.getLabel());
-            v.setLabel(new Feature(v.getLabel().getName(), quantizedFeature));
+            v.setLabel(
+                    new Feature(
+                        v.getLabel().getName().intern(),
+                        quantizedFeature));
         }
 
         checkFeatureTypes(path);
