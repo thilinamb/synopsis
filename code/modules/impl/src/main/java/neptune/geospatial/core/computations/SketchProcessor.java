@@ -21,7 +21,7 @@ import io.sigpipe.sing.graph.Path;
 import io.sigpipe.sing.graph.Sketch;
 import io.sigpipe.sing.query.Expression;
 import io.sigpipe.sing.query.Operator;
-import io.sigpipe.sing.query.RelationalQuery;
+import io.sigpipe.sing.query.PartitionQuery;
 import io.sigpipe.sing.serialization.SerializationInputStream;
 import io.sigpipe.sing.serialization.SerializationOutputStream;
 import io.sigpipe.sing.serialization.Serializer;
@@ -81,12 +81,12 @@ public class SketchProcessor extends AbstractGeoSpatialStreamProcessor {
             SerializationOutputStream out
                 = new SerializationOutputStream(new GZIPOutputStream(byteOut));
 
-            RelationalQuery rq = new RelationalQuery(this.sketch.getMetrics());
-            rq.addExpression(
+            PartitionQuery pq = new PartitionQuery(this.sketch.getMetrics());
+            pq.addExpression(
                     new Expression(
                         Operator.STR_PREFIX, new Feature("location", prefix)));
-            rq.execute(sketch.getRoot());
-            rq.serializeResults(sketch.getRoot(), out);
+            pq.execute(sketch.getRoot());
+            pq.serializeResults(sketch.getRoot(), out);
 
             out.close();
         } catch (Exception e) {
