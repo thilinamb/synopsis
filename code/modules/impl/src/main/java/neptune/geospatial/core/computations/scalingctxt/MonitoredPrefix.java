@@ -22,6 +22,7 @@ public class MonitoredPrefix implements Comparable<MonitoredPrefix> {
     private String lastGeoHashSent;
     private long terminationPoint = -1;
     private ScaleInActivateReq activateReq;
+    private double consumedMemory;
 
     public MonitoredPrefix(String prefix, String streamType) {
         this.prefix = prefix;
@@ -31,10 +32,15 @@ public class MonitoredPrefix implements Comparable<MonitoredPrefix> {
     @Override
     public int compareTo(MonitoredPrefix o) {
         // descending sort based on input rates
-        if (this.messageRate == o.messageRate) {
+        /*if (this.messageRate == o.messageRate) {
             return this.prefix.compareTo(o.prefix);
         } else {
             return -1 * (int) (this.messageRate - o.messageRate);
+        }*/
+        if (this.consumedMemory == o.consumedMemory) {
+            return this.prefix.compareTo(o.prefix);
+        } else {
+            return -1 * (new Double(this.consumedMemory).compareTo(o.consumedMemory));
         }
     }
 
@@ -137,6 +143,14 @@ public class MonitoredPrefix implements Comparable<MonitoredPrefix> {
 
     public void setActivateReq(ScaleInActivateReq activateReq) {
         this.activateReq = activateReq;
+    }
+
+    public double getConsumedMemory() {
+        return consumedMemory;
+    }
+
+    public void setConsumedMemory(double consumedMemory) {
+        this.consumedMemory = consumedMemory;
     }
 }
 

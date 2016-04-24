@@ -60,7 +60,7 @@ public class ScaleOutLockResponseProcessor implements ProtocolProcessor {
                         byte[] state = streamProcessor.split(prefix);
                         StateTransferMsg stateTransferMsg = new StateTransferMsg(prefix, lockResponse.getKey(),
                                 state, targetComputation, instanceIdentifier,
-                                StateTransferMsg.SCALE_OUT);
+                                StateTransferMsg.SCALE_OUT, monitoredPrefix.getStreamType());
                         stateTransferMsg.setLastMessageId(monitoredPrefix.getLastMessageSent());
                         stateTransferMsg.setLastMessagePrefix(monitoredPrefix.getLastGeoHashSent());
                         SendUtility.sendControlMessage(monitoredPrefix.getDestResourceCtrlEndpoint(), stateTransferMsg);

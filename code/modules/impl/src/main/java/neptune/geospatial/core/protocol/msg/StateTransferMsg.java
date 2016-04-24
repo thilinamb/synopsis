@@ -24,13 +24,14 @@ public class StateTransferMsg extends ControlMessage {
     private long lastMessageId;
     private String lastMessagePrefix;
     private boolean acked;
+    private String streamType;
 
     public StateTransferMsg() {
         super(ProtocolTypes.STATE_TRANSFER_MSG);
     }
 
     public StateTransferMsg(String prefix, String keyPrefix, byte[] serializedData, String targetComputation,
-                            String originComputation, boolean type) {
+                            String originComputation, boolean type, String streamType) {
         super(ProtocolTypes.STATE_TRANSFER_MSG);
         this.prefix = prefix;
         this.keyPrefix = keyPrefix;
@@ -38,6 +39,7 @@ public class StateTransferMsg extends ControlMessage {
         this.targetComputation = targetComputation;
         this.originComputation = originComputation;
         this.scaleType = type;
+        this.streamType = streamType;
     }
 
     @Override
@@ -53,6 +55,7 @@ public class StateTransferMsg extends ControlMessage {
         if (!scaleType) { // appears only with scale out messages.
             this.lastMessageId = dis.readLong();
             this.lastMessagePrefix = dis.readUTF();
+            this.streamType = dis.readUTF();
         }
     }
 
@@ -68,6 +71,7 @@ public class StateTransferMsg extends ControlMessage {
         if (!scaleType) {   // appears only with scale out messages.
             dos.writeLong(this.lastMessageId);
             dos.writeUTF(this.lastMessagePrefix);
+            dos.writeUTF(this.streamType);
         }
     }
 
@@ -117,5 +121,9 @@ public class StateTransferMsg extends ControlMessage {
 
     public void setAcked(boolean acked) {
         this.acked = acked;
+    }
+
+    public String getStreamType() {
+        return streamType;
     }
 }

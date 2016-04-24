@@ -195,7 +195,10 @@ public class ManagedResource {
                     }
                     if (avgMemoryUsage >= 0.5 && memoryUsage.size() > 0) {
                         SortableMetric highestMemConsumer = memoryUsage.poll();
-                        boolean success = highestMemConsumer.computation.recommendScaling(highestMemConsumer.value, true);
+                        double excessMemUsage = getExcessMemConsumption(avgMemoryUsage);
+                        logger.info(String.format("------> Chosen for scaling: Mode: MEMORY, Computation: %s, Mem. usage: %.3f, Excess. mem. usage: %s",
+                                highestMemConsumer.computation.getInstanceIdentifier(), highestMemConsumer.value, excessMemUsage));
+                        boolean success = highestMemConsumer.computation.recommendScaling(excessMemUsage, true);
                         eligibleForScaling.set(!success);
                     } else if (backlogs.size() > 0) {
                         SortableMetric longestBacklog = backlogs.poll();
@@ -216,9 +219,15 @@ public class ManagedResource {
         private long getAvailableMem() {
             MemoryUsage memUsage = ManagementFactory.getMemoryMXBean().getHeapMemoryUsage();
             logger.info(String.format("Max mem: %d, Use Mem: %d, Available Mem: %d ", memUsage.getMax(),
-                    memUsage.getUsed(),  memUsage.getMax() - memUsage.getUsed()));
+                    memUsage.getUsed(), memUsage.getMax() - memUsage.getUsed()));
             return (memUsage.getMax() - memUsage.getUsed());
         }
+
+        private double getExcessMemConsumption(double avgMemConsumption) {
+            MemoryUsage memUsage = ManagementFactory.getMemoryMXBean().getHeapMemoryUsage();
+            return (avgMemConsumption - 0.4) * memUsage.getMax();
+        }
+
 
         private double updateMemoryConsumption() {
             MemoryUsage memUsage = ManagementFactory.getMemoryMXBean().getHeapMemoryUsage();
