@@ -109,13 +109,11 @@ public class ReadMetaBlob {
                     s.getMetrics().getVertexCount(),
                     s.getMetrics().getLeafCount()));
 
-
         info.start();
         System.out.println(s.getRoot().numLeaves());
         System.out.println(s.getRoot().numDescendants());
         System.out.println(s.getRoot().numDescendantEdges());
         info.stopAndPrint();
-
 
         //scan.nextInt();
 
@@ -135,11 +133,9 @@ public class ReadMetaBlob {
                     s,
                     s.getMetrics().getVertexCount(),
                     s.getMetrics().getLeafCount()));
-
-
     }
 
-    private static void loadData(String fileName, Sketch s)
+    public static void loadData(String fileName, Sketch s)
     throws Exception {
         System.out.println("Reading metadata blob: " + fileName);
         FileInputStream fIn = new FileInputStream(fileName);
@@ -178,9 +174,9 @@ public class ReadMetaBlob {
             p.add(new Feature("location", location));
             s.addPath(p);
 
-//            if (i % 1000 == 0) {
-//                System.out.print('.');
-//            }
+            if (i % 5000 == 0) {
+                System.out.print('.');
+            }
         }
         System.out.println();
         addAllPaths.stopAndPrint();
@@ -196,6 +192,6 @@ public class ReadMetaBlob {
         int bytesPerLeaf = 8 + (8 * numFeatures * 4)
             + (8 * ((numFeatures * (numFeatures - 1)) / 2));
 
-        return (bytesPerVertex * vertices) + (bytesPerLeaf * leaves) * 1.7;
+        return ((bytesPerVertex * vertices) + (bytesPerLeaf * leaves)) * 1.7;
     }
 }
