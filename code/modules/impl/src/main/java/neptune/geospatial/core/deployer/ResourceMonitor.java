@@ -20,10 +20,15 @@ class ResourceMonitor implements EntryAddedListener<String, Double>, EntryUpdate
     private class ComparableResource implements Comparable<ComparableResource> {
         private JobDeployer.ResourceEndpoint resourceEndpoint;
         private double availableMem;
+        private int compCount;
+        private boolean availableForScheduling;
+        private int memoryUpdatesSinceLastScheduling = 0;
 
         private ComparableResource(JobDeployer.ResourceEndpoint resourceEndpoint, double availableMem) {
             this.resourceEndpoint = resourceEndpoint;
             this.availableMem = availableMem;
+            this.compCount = 0;
+            this.availableForScheduling = true;
         }
 
         @Override
@@ -35,9 +40,13 @@ class ResourceMonitor implements EntryAddedListener<String, Double>, EntryUpdate
     private Map<String, ComparableResource> resources = new HashMap<>();
     private Logger logger = Logger.getLogger(ResourceMonitor.class);
 
-    ResourceMonitor(List<JobDeployer.ResourceEndpoint> resourceEndpoints) {
+    ResourceMonitor(List<JobDeployer.ResourceEndpoint> resourceEndpoints, List<JobDeployer.ResourceEndpoint> layerOneEndpoints) {
         for (JobDeployer.ResourceEndpoint ep : resourceEndpoints) {
-            resources.put(ep.getDataEndpoint(), new ComparableResource(ep, Double.MAX_VALUE));
+            if (!layerOneEndpoints.contains(ep)) {
+                resources.put(ep.getDataEndpoint(), new ComparableResource(ep, Double.MAX_VALUE));
+            } else {
+                logger.info(String.format("Skipping the layer one endpoint: %s", ep.getDataEndpoint()));
+            }
         }
     }
 
@@ -70,32 +79,40 @@ class ResourceMonitor implements EntryAddedListener<String, Double>, EntryUpdate
         List<ComparableResource> resourceList = new ArrayList<>();
         resourceList.addAll(resources.values());
         Collections.sort(resourceList);
-        logger.info("-------------------- sorted list -------------------");
-        for (ComparableResource resource : resourceList) {
-            System.out.println(resource.resourceEndpoint.getDataEndpoint() + " --> " + resource.availableMem);
-        }
-        logger.info("----------------------------------------------------");
-        // worst case: assign the node with the highest available memory
-        ComparableResource chosen = resourceList.get(resourceList.size() - 1);
-        // try to find the resource with minimum available memory that can accomodate the requirement
-        if (requiredMem > 0) {
-            for (ComparableResource resource : resourceList) {
-                if (resource.availableMem >= requiredMem && !resource.resourceEndpoint.getControlEndpoint().equals(currentLoc)) {
-                    chosen = resource;
-                    break;
-                }
+        // assign the node with the highest available memory
+        ComparableResource chosen = null;
+        for (int i = resources.size() - 1; i >= 0; i--) {
+            ComparableResource resource = resourceList.get(i);
+            if (resource.availableMem >= requiredMem && !resource.resourceEndpoint.getControlEndpoint().equals(currentLoc)
+                    && resource.compCount < 4 && resource.availableForScheduling) {
+                resource.compCount++;
+                chosen = resource;
+                resource.availableForScheduling = false;
+                break;
             }
         }
-        logger.info(String.format("Placement request. Required mem: %.3f Assigned Mem: %.3f Endpoint:%s", requiredMem,
-                chosen.availableMem, chosen.resourceEndpoint.getDataEndpoint()));
+        //logger.info(String.format("Placement request. Required mem: %.3f Assigned Mem: %.3f Endpoint: %s", requiredMem,
+        //        chosen.availableMem, chosen.resourceEndpoint.getDataEndpoint()));
+        if (chosen == null) {
+            logger.info("No endpoints are available for scheduling.");
+            return null;
+        }
         return chosen.resourceEndpoint;
     }
 
     private synchronized void update(EntryEvent<String, Double> entryEvent) {
         if (resources.containsKey(entryEvent.getKey())) {
-            resources.get(entryEvent.getKey()).availableMem = entryEvent.getValue();
-            logger.info("Mem. Availability update: " + entryEvent.getKey() + " --> " + entryEvent.getValue() + ":" +
-                    resources.get(entryEvent.getKey()).availableMem);
+            ComparableResource resource = resources.get(entryEvent.getKey());
+            resource.availableMem = entryEvent.getValue();
+            if (!resource.availableForScheduling) {
+                resource.memoryUpdatesSinceLastScheduling++;
+                if (resource.memoryUpdatesSinceLastScheduling == 2) {
+                    resource.availableForScheduling = true;
+                    resource.memoryUpdatesSinceLastScheduling = 0;
+                }
+            }
+            logger.info("Mem. Availability update: " + entryEvent.getKey() + ", available for scheduling: " +
+                    resource.availableForScheduling + ", comp. count: " + resource.compCount);
         } else {
             logger.warn("Invalid resource endpoint: " + entryEvent.getKey());
         }

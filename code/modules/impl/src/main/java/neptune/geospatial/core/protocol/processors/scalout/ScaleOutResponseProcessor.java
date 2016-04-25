@@ -32,9 +32,16 @@ public class ScaleOutResponseProcessor implements ProtocolProcessor {
                         AbstractGeoSpatialStreamProcessor streamProcessor) {
 
         ScaleOutResponse scaleOutResp = (ScaleOutResponse) ctrlMessage;
+        if(!scaleOutResp.isSuccess()){
+            logger.warn("Failed scale out request to deployer. Exiting.");
+            streamProcessor.releaseMutex();
+            return;
+        }
         PendingScaleOutRequest pendingReq = scalingContext.getPendingScaleOutRequest(scaleOutResp.getInResponseTo());
         String instanceIdentifier = streamProcessor.getInstanceIdentifier();
         if (pendingReq != null) {
+            logger.info(String.format("[%s] New scale out location: %s, New comp: %s", instanceIdentifier,
+                    scaleOutResp.getNewLocationURL(), scaleOutResp.getNewComputationId()));
             try {
                 // send a dummy message, just to ensure the new computation is activated.
                 MonitoredPrefix monitoredPrefix = scalingContext.getMonitoredPrefix(pendingReq.getPrefixes().get(0));

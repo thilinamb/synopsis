@@ -71,7 +71,10 @@ public class NOAADataIngester extends StreamSource {
             return parse();
         } else if (indexLastReadFile < inputFiles.length && countTotal == countEmitted) { // start next file.
             startNextFile();
+            logger.info(String.format("Reading file: %d of %d", indexLastReadFile, inputFiles.length));
             return parse();
+        } else if(indexLastReadFile == inputFiles.length) {
+            logger.info("Completed reading all files.");
         }
         return null;    // completed reading all files.
     }
