@@ -5,32 +5,39 @@ import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
+import java.util.HashSet;
 import java.util.Scanner;
+import java.util.Set;
 import java.util.zip.GZIPOutputStream;
 
 import io.sigpipe.sing.dataset.Metadata;
+import io.sigpipe.sing.dataset.Quantizer;
 import io.sigpipe.sing.dataset.feature.Feature;
 import io.sigpipe.sing.dataset.feature.FeatureType;
 import io.sigpipe.sing.graph.FeatureHierarchy;
 import io.sigpipe.sing.graph.Path;
 import io.sigpipe.sing.graph.Sketch;
-import io.sigpipe.sing.graph.Vertex;
 import io.sigpipe.sing.query.Expression;
 import io.sigpipe.sing.query.Operator;
 import io.sigpipe.sing.query.PartitionQuery;
-import io.sigpipe.sing.query.RelationalQuery;
 import io.sigpipe.sing.serialization.SerializationInputStream;
 import io.sigpipe.sing.serialization.SerializationOutputStream;
 import io.sigpipe.sing.serialization.Serializer;
-import io.sigpipe.sing.stat.FeatureSurvey;
 import io.sigpipe.sing.util.Geohash;
 import io.sigpipe.sing.util.PerformanceTimer;
 import io.sigpipe.sing.util.TestConfiguration;
 
 public class ReadMetaBlob {
 
+    private static Set<String> activeFeatures = new HashSet<>();
+
     public static void main(String[] args) throws Exception {
+        for (String featureName : TestConfiguration.FEATURE_NAMES) {
+            activeFeatures.add(featureName);
+        }
+
         Scanner scan=new Scanner(System.in);
+        scan.nextInt();
 
         FeatureHierarchy fh = new FeatureHierarchy();
         for (String featureName : TestConfiguration.FEATURE_NAMES) {
@@ -58,7 +65,7 @@ public class ReadMetaBlob {
                     s.getMetrics().getVertexCount(),
                     s.getMetrics().getLeafCount()));
 
-        scan.nextInt();
+        //scan.nextInt();
 
         PerformanceTimer info = new PerformanceTimer("info");
         info.start();
@@ -102,15 +109,13 @@ public class ReadMetaBlob {
                     s.getMetrics().getVertexCount(),
                     s.getMetrics().getLeafCount()));
 
-
         info.start();
         System.out.println(s.getRoot().numLeaves());
         System.out.println(s.getRoot().numDescendants());
         System.out.println(s.getRoot().numDescendantEdges());
         info.stopAndPrint();
 
-
-        scan.nextInt();
+        //scan.nextInt();
 
         System.out.println(s.getMetrics());
 
@@ -128,11 +133,9 @@ public class ReadMetaBlob {
                     s,
                     s.getMetrics().getVertexCount(),
                     s.getMetrics().getLeafCount()));
-
-
     }
 
-    private static void loadData(String fileName, Sketch s)
+    public static void loadData(String fileName, Sketch s)
     throws Exception {
         System.out.println("Reading metadata blob: " + fileName);
         FileInputStream fIn = new FileInputStream(fileName);
@@ -151,12 +154,27 @@ public class ReadMetaBlob {
 
             Metadata m = Serializer.deserialize(Metadata.class, payload);
 
-            Path p = new Path(m.getAttributes().toArray());
+            Path p = new Path(activeFeatures.size() + 1);
+            for (Feature f : m.getAttributes()) {
+                String featureName = f.getName();
+                if (activeFeatures.contains(featureName) == false) {
+                    continue;
+                }
+
+                Quantizer q = TestConfiguration.quantizers.get(featureName);
+                if (q == null) {
+                    continue;
+                }
+
+                Feature quantizedFeature = q.quantize(f);
+                p.add(new Feature(f.getName().intern(), quantizedFeature));
+            }
+
             String location = Geohash.encode(lat, lon, 4);
             p.add(new Feature("location", location));
             s.addPath(p);
 
-            if (i % 1000 == 0) {
+            if (i % 5000 == 0) {
                 System.out.print('.');
             }
         }
@@ -174,6 +192,6 @@ public class ReadMetaBlob {
         int bytesPerLeaf = 8 + (8 * numFeatures * 4)
             + (8 * ((numFeatures * (numFeatures - 1)) / 2));
 
-        return (bytesPerVertex * vertices) + (bytesPerLeaf * leaves) * 1.7;
+        return ((bytesPerVertex * vertices) + (bytesPerLeaf * leaves)) * 1.7;
     }
 }

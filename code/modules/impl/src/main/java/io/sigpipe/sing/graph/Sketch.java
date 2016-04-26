@@ -14,13 +14,11 @@ import java.util.Queue;
 import java.util.Set;
 
 import io.sigpipe.sing.dataset.Pair;
-import io.sigpipe.sing.dataset.Quantizer;
 import io.sigpipe.sing.dataset.feature.Feature;
 import io.sigpipe.sing.dataset.feature.FeatureType;
 import io.sigpipe.sing.serialization.SerializationException;
 import io.sigpipe.sing.serialization.SerializationInputStream;
 import io.sigpipe.sing.stat.RunningStatisticsND;
-import io.sigpipe.sing.util.TestConfiguration;
 
 public class Sketch {
 
@@ -103,39 +101,6 @@ public class Sketch {
     throws FeatureTypeMismatchException, GraphException {
         if (path.size() == 0) {
             throw new GraphException("Attempted to add empty path!");
-        }
-
-        //TODO this mess really needs to be fixed up.
-        Iterator<Vertex> it = path.iterator();
-        while (it.hasNext()) {
-            Vertex v = it.next();
-            Quantizer q = TestConfiguration.quantizers.get(
-                    v.getLabel().getName());
-            if (q == null) {
-                if (v.getLabel().getName().equals("location")) {
-                    continue;
-                }
-
-                it.remove();
-                continue;
-            }
-            boolean ok = false;
-            for (String featureName : TestConfiguration.FEATURE_NAMES) {
-                if (featureName.equals(v.getLabel().getName()) == true) {
-                    ok = true;
-                    break;
-                }
-            }
-            if (ok == false) {
-                it.remove();
-                continue;
-            }
-
-            Feature quantizedFeature = q.quantize(v.getLabel());
-            v.setLabel(
-                    new Feature(
-                        v.getLabel().getName().intern(),
-                        quantizedFeature));
         }
 
         checkFeatureTypes(path);
@@ -335,7 +300,19 @@ public class Sketch {
         return this.metrics;
     }
 
-    public void merge(Vertex vertex, SerializationInputStream in)
+    public void merge(SerializationInputStream in)
+    throws IOException, SerializationException {
+        /* Since the incoming Sketch includes a root Vertex, we need to skip
+         * over it to avoid having two roots! */
+        new Feature(in);
+        in.readBoolean();
+        int numNeighbors = in.readInt();
+        for (int i = 0; i < numNeighbors; ++i) {
+            merge(this.root, in);
+        }
+    }
+
+    private void merge(Vertex vertex, SerializationInputStream in)
     throws IOException, SerializationException {
         Feature label = new Feature(in);
         boolean hasData = in.readBoolean();
