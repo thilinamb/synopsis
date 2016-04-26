@@ -24,7 +24,7 @@ import java.io.*;
 public class NOAADataIngester extends StreamSource {
 
     private Logger logger = Logger.getLogger(NOAADataIngester.class);
-    private static final int PRECISION = 5;
+    public static final int PRECISION = 5;
 
     private File[] inputFiles;
     private int indexLastReadFile = 0;

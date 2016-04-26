@@ -33,6 +33,7 @@ import io.sigpipe.sing.serialization.Serializer;
 import io.sigpipe.sing.util.TestConfiguration;
 
 import neptune.geospatial.graph.messages.GeoHashIndexedRecord;
+import neptune.geospatial.graph.operators.NOAADataIngester;
 
 public class SketchProcessor extends AbstractGeoSpatialStreamProcessor {
 
@@ -93,7 +94,7 @@ public class SketchProcessor extends AbstractGeoSpatialStreamProcessor {
                 path.add(new Feature(f.getName().intern(), quantizedFeature));
             }
 
-            String shortLocation = event.getGeoHash().substring(0, 4);
+            String shortLocation = event.getGeoHash().substring(0, NOAADataIngester.PRECISION);
             path.add(new Feature("location", shortLocation));
             this.sketch.addPath(path);
             this.diff.addPath(path);
