@@ -29,3 +29,12 @@ Every draft version of the paper (since version 8) is tracked here.
 * Added several new related works
 
 **Last Commit**: [bce337d](https://github.com/thilinamb/neptune-geospatial/commit/bce337da0439df3a29b115a689ca33235443897e)
+
+###Version 11
+**Date**:  04/26/2016
+
+**Improvements/Modifications**:
+* Fixed typos, add graph stats table, remove unused reduction table
+* Updated Synopsis overview
+
+**Last Commit**: [5603b52](https://github.com/thilinamb/neptune-geospatial/commit/5603b5230754e5668e114fded2a0f535cca0ae43)
