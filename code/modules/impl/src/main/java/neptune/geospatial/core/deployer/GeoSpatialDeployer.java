@@ -133,14 +133,15 @@ public class GeoSpatialDeployer extends JobDeployer implements MembershipChangeL
 
         if (!resourceEndpoints.isEmpty()) {
             try {
-                if (resourceMonitor == null) {
-                    resourceMonitor = new ResourceMonitor(resourceEndpoints);
-                    resourceMonitor.init();
-                }
+                List<ResourceEndpoint> layerOneEndpoints = new ArrayList<>();
                 Map<Operation, String> assignments = new HashMap<>(operations.length);
                 // create the deployment plan
                 for (Operation op : operations) {
                     ResourceEndpoint resourceEndpoint = nextResource(op);
+                    // keep track of the layer one endpoints to skip them from scheduling for scaling out
+                    if (op instanceof AbstractGeoSpatialStreamProcessor) {
+                        layerOneEndpoints.add(resourceEndpoint);
+                    }
                     assignments.put(op, resourceEndpoint.getDataEndpoint());
                     String operatorId = op.getInstanceIdentifier();
                     computationIdToObjectMap.put(operatorId, op);
@@ -157,6 +158,11 @@ public class GeoSpatialDeployer extends JobDeployer implements MembershipChangeL
                             original = (AbstractGeoSpatialStreamProcessor) op;
                         }
                     }
+                }
+                // initialize the resource monitor
+                if (resourceMonitor == null) {
+                    resourceMonitor = new ResourceMonitor(resourceEndpoints, layerOneEndpoints);
+                    resourceMonitor.init();
                 }
 
                 // deploy an empty computation at every node, so that it can take over if the primary fails
@@ -362,6 +368,20 @@ public class GeoSpatialDeployer extends JobDeployer implements MembershipChangeL
             // deploy
             ResourceEndpoint resourceEndpoint = resourceMonitor.assignResource(scaleOutReq.getRequiredMemory(),
                     scaleOutReq.getOriginEndpoint());
+
+            // not sufficient resources available
+            if (resourceEndpoint == null) {
+                ScaleOutResponse resp = new ScaleOutResponse(scaleOutReq.getMessageId(), computationId, false);
+                try {
+                    SendUtility.sendControlMessage(scaleOutReq.getOriginEndpoint(), resp);
+                } catch (CommunicationsException | IOException e) {
+                    logger.error("Error sending out the TriggerScaleAck to " + scaleOutReq.getOriginEndpoint());
+                }
+                return;
+            }
+
+            logger.info(String.format("%s[%s] --> %s[%s]", scaleOutReq.getCurrentComputation(),
+                    scaleOutReq.getOriginEndpoint(), clone.getInstanceIdentifier(), resourceEndpoint.getDataEndpoint()));
 
             // initialize the state replication streams for the new computation
             if (faultToleranceEnabled && clone instanceof AbstractGeoSpatialStreamProcessor) {
