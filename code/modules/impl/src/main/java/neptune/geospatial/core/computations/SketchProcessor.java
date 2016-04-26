@@ -63,7 +63,6 @@ public class SketchProcessor extends AbstractGeoSpatialStreamProcessor {
     }
 
     public GraphMetrics getGraphMetrics() {
-        System.out.println(this.sketch.getRoot().numDescendants() + "," + this.sketch.getRoot().numLeaves());
         return this.sketch.getMetrics();
     }
 
