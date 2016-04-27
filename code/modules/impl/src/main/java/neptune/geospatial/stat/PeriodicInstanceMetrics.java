@@ -9,15 +9,18 @@ import java.io.IOException;
  */
 public class PeriodicInstanceMetrics extends StatisticsRecord {
 
+    private boolean instanceType;
     private double[] metrics;
 
-    public PeriodicInstanceMetrics(String instanceId, double[] metrics) {
-        super(StatMessageTypes.PERIODIC_UPDATE, instanceId);
+    public PeriodicInstanceMetrics(String instanceId, double[] metrics, boolean instanceType) {
+        super(StatConstants.MessageTypes.PERIODIC_UPDATE, instanceId);
+        this.instanceType = instanceType;
         this.metrics = metrics;
     }
 
     @Override
     public void unmarshall(DataInputStream dataInputStream) throws IOException {
+        this.instanceType = dataInputStream.readBoolean();
         this.metrics = new double[dataInputStream.readInt()];
         for(int i = 0; i < metrics.length; i++){
             this.metrics[i] = dataInputStream.readDouble();
@@ -26,13 +29,18 @@ public class PeriodicInstanceMetrics extends StatisticsRecord {
 
     @Override
     public void marshall(DataOutputStream dataOutputStream) throws IOException {
+        dataOutputStream.writeBoolean(this.instanceType);
         dataOutputStream.writeInt(this.metrics.length);
-        for(int i = 0; i < this.metrics.length; i++){
-            dataOutputStream.writeDouble(this.metrics[i]);
+        for (double metric : this.metrics) {
+            dataOutputStream.writeDouble(metric);
         }
     }
 
     public double[] getMetrics() {
         return metrics;
+    }
+
+    public boolean isInstanceType() {
+        return instanceType;
     }
 }
