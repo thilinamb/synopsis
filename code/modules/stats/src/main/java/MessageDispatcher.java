@@ -1,6 +1,7 @@
 import ds.granules.communication.direct.control.ControlMessage;
 import neptune.geospatial.core.protocol.AbstractProtocolHandler;
-import neptune.geospatial.stat.RegistrationMessage;
+import neptune.geospatial.stat.InstanceRegistration;
+import neptune.geospatial.stat.PeriodicInstanceMetrics;
 import neptune.geospatial.stat.StatMessageTypes;
 import org.apache.log4j.Logger;
 
@@ -26,10 +27,12 @@ class MessageDispatcher extends AbstractProtocolHandler {
         int type = ctrlMsg.getMessageType();
         switch (type) {
             case StatMessageTypes.REGISTER:
-                statManager.register((RegistrationMessage) ctrlMsg);
+                statManager.register((InstanceRegistration) ctrlMsg);
+                break;
+            case StatMessageTypes.PERIODIC_UPDATE:
+                statManager.updateMetrics((PeriodicInstanceMetrics)ctrlMsg);
                 break;
             default:
-
         }
     }
 

@@ -1,4 +1,5 @@
-import neptune.geospatial.stat.RegistrationMessage;
+import neptune.geospatial.stat.InstanceRegistration;
+import neptune.geospatial.stat.PeriodicInstanceMetrics;
 import org.apache.log4j.Logger;
 
 import java.util.HashMap;
@@ -14,7 +15,7 @@ class StatManager {
     private static final StatManager instance = new StatManager();
     private final Logger logger = Logger.getLogger(StatManager.class);
 
-    private Map<String, Double[]> registry = new HashMap<>();
+    private Map<String, double[]> registry = new HashMap<>();
 
     private StatManager() {
     }
@@ -23,15 +24,25 @@ class StatManager {
         return instance;
     }
 
-    synchronized void register(RegistrationMessage registerMessage) {
+    synchronized void register(InstanceRegistration registerMessage) {
         String instanceId = registerMessage.getInstanceId();
         if (!registry.containsKey(instanceId)) {
-            registry.put(instanceId, new Double[]{-1.0, -1.0, -1.0, -1.0, -1.0});
+            registry.put(instanceId, new double[]{-1.0, -1.0, -1.0, -1.0, -1.0});
             logger.info(String.format("Registered new instance. Instance Id: %s, Endpoint: %s",
                     instanceId, registerMessage.getOriginEndpoint()));
         } else {
             logger.warn(String.format("Duplicate registration message. Instance id: %s, Endpoint: %s",
-                    instanceId));
+                    instanceId, registerMessage.getOriginEndpoint()));
+        }
+    }
+
+    synchronized void updateMetrics(PeriodicInstanceMetrics msg) {
+        String instanceId = msg.getInstanceId();
+        if (registry.containsKey(instanceId)) {
+            registry.put(instanceId, msg.getMetrics());
+        } else {
+            logger.warn(String.format("Invalid metrics update. Instance Id: %s, Endpoint: %s", instanceId,
+                    msg.getOriginEndpoint()));
         }
     }
 
