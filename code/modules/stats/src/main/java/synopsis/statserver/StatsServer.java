@@ -1,3 +1,5 @@
+package synopsis.statserver;
+
 import ds.granules.communication.direct.dispatch.ControlMessageDispatcher;
 import ds.granules.communication.direct.netty.server.MessageReceiver;
 import ds.granules.communication.direct.netty.server.ServerHandler;
@@ -11,10 +13,14 @@ import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import org.apache.log4j.Logger;
+import synopsis.statserver.processors.CumulProcessedMsgCountProcessor;
+import synopsis.statserver.processors.CumulativeMemoryUsageProcessor;
 
 import java.util.concurrent.CountDownLatch;
 
 /**
+ * Statistics server: launches a server endpoint
+ *
  * @author Thilina Buddhika
  */
 public class StatsServer {
@@ -63,6 +69,7 @@ public class StatsServer {
             logger.info("StatServer is running on " + this.ctrlPort);
             future.channel().closeFuture();
             logger.info("Shutting down the stat server.");
+            StatRegistry.getInstance().shutDown();
         } catch (InterruptedException e) {
             logger.error("Error starting the statistics server. ", e);
         } finally {
@@ -81,8 +88,19 @@ public class StatsServer {
             }
         }
         StatsServer server = new StatsServer(port);
+        // register processors
+        try {
+            StatRegistry.getInstance().registerProcessor(new CumulativeMemoryUsageProcessor());
+            StatRegistry.getInstance().registerProcessor(new CumulProcessedMsgCountProcessor());
+        } catch (StatServerException e) {
+            System.err.println(e.getMessage());
+            e.printStackTrace();
+        }
+
+        // start the dispatcher
         new Thread(new MessageDispatcher(server)).start();
         boolean isDispatcherStarted = server.isDispatcherStarted();
+        // ready to accept traffic
         if (isDispatcherStarted) {
             server.start();
         } else {

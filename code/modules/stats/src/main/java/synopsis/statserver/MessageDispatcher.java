@@ -1,8 +1,10 @@
+package synopsis.statserver;
+
 import ds.granules.communication.direct.control.ControlMessage;
 import neptune.geospatial.core.protocol.AbstractProtocolHandler;
 import neptune.geospatial.stat.InstanceRegistration;
 import neptune.geospatial.stat.PeriodicInstanceMetrics;
-import neptune.geospatial.stat.StatMessageTypes;
+import neptune.geospatial.stat.StatConstants;
 import org.apache.log4j.Logger;
 
 /**
@@ -15,24 +17,25 @@ class MessageDispatcher extends AbstractProtocolHandler {
 
     private final Logger logger = Logger.getLogger(MessageDispatcher.class);
     private final StatsServer statsServer;
-    private final StatManager statManager;
+    private final StatRegistry statRegistry;
 
     MessageDispatcher(StatsServer statsServer) {
         this.statsServer = statsServer;
-        this.statManager = StatManager.getInstance();
+        this.statRegistry = StatRegistry.getInstance();
     }
 
     @Override
     public void handle(ControlMessage ctrlMsg) {
         int type = ctrlMsg.getMessageType();
         switch (type) {
-            case StatMessageTypes.REGISTER:
-                statManager.register((InstanceRegistration) ctrlMsg);
+            case StatConstants.MessageTypes.REGISTER:
+                statRegistry.register((InstanceRegistration) ctrlMsg);
                 break;
-            case StatMessageTypes.PERIODIC_UPDATE:
-                statManager.updateMetrics((PeriodicInstanceMetrics)ctrlMsg);
+            case StatConstants.MessageTypes.PERIODIC_UPDATE:
+                statRegistry.updateMetrics((PeriodicInstanceMetrics)ctrlMsg);
                 break;
             default:
+                logger.warn("Invalid message type: " + type);
         }
     }
 
