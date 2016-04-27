@@ -19,6 +19,7 @@ import ds.granules.operation.Operation;
 import ds.granules.operation.ProcessingException;
 import ds.granules.operation.ProgressTracker;
 import ds.granules.streaming.core.StreamProcessor;
+import ds.granules.streaming.core.StreamSource;
 import ds.granules.streaming.core.exception.StreamingDatasetException;
 import ds.granules.streaming.core.exception.StreamingGraphConfigurationException;
 import ds.granules.util.Constants;
@@ -140,6 +141,8 @@ public class GeoSpatialDeployer extends JobDeployer implements MembershipChangeL
                     ResourceEndpoint resourceEndpoint = nextResource(op);
                     // keep track of the layer one endpoints to skip them from scheduling for scaling out
                     if (op instanceof AbstractGeoSpatialStreamProcessor) {
+                        layerOneEndpoints.add(resourceEndpoint);
+                    } else if (op instanceof StreamSource){
                         layerOneEndpoints.add(resourceEndpoint);
                     }
                     assignments.put(op, resourceEndpoint.getDataEndpoint());
