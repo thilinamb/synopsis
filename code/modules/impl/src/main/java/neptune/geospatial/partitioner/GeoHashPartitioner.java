@@ -7,6 +7,7 @@ import neptune.geospatial.graph.messages.GeoHashIndexedRecord;
 import neptune.geospatial.util.geohash.GeoHash;
 
 import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Geo-Hash based partitioner
@@ -15,6 +16,16 @@ import java.util.ArrayList;
  */
 public class GeoHashPartitioner implements Partitioner {
 
+    private List<Character> northAmericaPrefixList = new ArrayList<>();
+
+    public GeoHashPartitioner() {
+        char[] northAmericaPrefixes = new char[]{'b', 'c', '8', 'd', 'f', '9'};
+        for (Character c : northAmericaPrefixes) {
+            northAmericaPrefixList.add(c);
+        }
+    }
+
+
     @Override
     public Topic[] partition(StreamEvent streamEvent, Topic[] topics) {
         GeoHashIndexedRecord ghIndexedRec = (GeoHashIndexedRecord) streamEvent;
@@ -22,15 +33,24 @@ public class GeoHashPartitioner implements Partitioner {
         if (ghIndexedRec.getCheckpointId() > -1) {
             return topics;
         } else {
-            int prefixLen = ghIndexedRec.getPrefixLength() * GeoHash.BITS_PER_CHAR;
-            // convert the geohash string into the corresponding bit string
-            ArrayList<Boolean> hashInBits = GeoHash.getBits(ghIndexedRec.getGeoHash());
-            int sum = 0;
-            for (int i = prefixLen - 1; i >= 0; i--) {
-                sum += Math.pow(2, prefixLen - 1 - i) * (hashInBits.get(prefixLen - 1 - i) ? 1 : 0);
+            int isInNorthAmerica = isNorthAmerica(ghIndexedRec.getGeoHash());
+            if (isInNorthAmerica == -1) {
+                int prefixLen = ghIndexedRec.getPrefixLength() * GeoHash.BITS_PER_CHAR;
+                // convert the geohash string into the corresponding bit string
+                ArrayList<Boolean> hashInBits = GeoHash.getBits(ghIndexedRec.getGeoHash());
+                int sum = 0;
+                for (int i = prefixLen - 1; i >= 0; i--) {
+                    sum += Math.pow(2, prefixLen - 1 - i) * (hashInBits.get(prefixLen - 1 - i) ? 1 : 0);
+                }
+                Topic topic = topics[sum % topics.length];
+                return new Topic[]{topic};
+            } else {
+                return new Topic[]{topics[isInNorthAmerica % topics.length]};
             }
-            Topic topic = topics[sum % topics.length];
-            return new Topic[]{topic};
         }
+    }
+
+    private int isNorthAmerica(String geoHash) {
+        return northAmericaPrefixList.indexOf(geoHash.toLowerCase().charAt(0));
     }
 }
