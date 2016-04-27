@@ -7,9 +7,9 @@ import java.io.IOException;
 /**
  * @author Thilina Buddhika
  */
-public class RegistrationMessage extends StatisticsRecord{
+public class InstanceRegistration extends StatisticsRecord{
 
-    public RegistrationMessage(String instanceId) {
+    public InstanceRegistration(String instanceId) {
         super(StatMessageTypes.REGISTER, instanceId);
     }
 
