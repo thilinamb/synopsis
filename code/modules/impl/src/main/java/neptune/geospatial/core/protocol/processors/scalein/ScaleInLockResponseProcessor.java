@@ -55,8 +55,11 @@ public class ScaleInLockResponseProcessor implements ProtocolProcessor {
                     if (lockAcquired) {
                         for (String lockedPrefix : pendingReq.getSentOutRequests().keySet()) {
                             // disable pass-through
-                            MonitoredPrefix monitoredPrefix = scalingContext.getMonitoredPrefix(prefix);
-                            monitoredPrefix.setIsPassThroughTraffic(false);
+                            MonitoredPrefix monitoredPrefix;
+                            synchronized (scalingContext) {
+                                monitoredPrefix = scalingContext.getMonitoredPrefix(prefix);
+                                monitoredPrefix.setIsPassThroughTraffic(false);
+                            }
                             FullQualifiedComputationAddr reqInfo = pendingReq.getSentOutRequests().get(lockedPrefix);
                             try {
                                 ScaleInActivateReq scaleInActivateReq = new ScaleInActivateReq(prefix,

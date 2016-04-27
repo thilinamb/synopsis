@@ -38,28 +38,30 @@ public class ScaleInActivateReqProcessor implements ProtocolProcessor {
         if (scalingContext.getPendingScalingInRequest(prefix) == null) {
             logger.warn("Invalid ScaleInActivateReq for prefix: " + prefix);
         } else {
-            String lastMessagePrefix = streamProcessor.getPrefix(activationReq.getLastGeoHashSent(),
-                    activationReq.getCurrentPrefixLength());
-            MonitoredPrefix monitoredPrefix = scalingContext.getMonitoredPrefix(lastMessagePrefix);
-            if (monitoredPrefix != null) {
-                if (monitoredPrefix.getLastMessageSent() == activationReq.getLastMessageSent()) {
-                    // we have already seen this message.
-                    propagateScaleInActivationRequests(activationReq, streamProcessor, scalingContext);
-                } else {
+            synchronized (scalingContext) {
+                String lastMessagePrefix = streamProcessor.getPrefix(activationReq.getLastGeoHashSent(),
+                        activationReq.getCurrentPrefixLength());
+                MonitoredPrefix monitoredPrefix = scalingContext.getMonitoredPrefix(lastMessagePrefix);
+                if (monitoredPrefix != null) {
+                    if (monitoredPrefix.getLastMessageSent() == activationReq.getLastMessageSent()) {
+                        // we have already seen this message.
+                        propagateScaleInActivationRequests(activationReq, streamProcessor, scalingContext);
+                    } else {
+                        monitoredPrefix.setTerminationPoint(activationReq.getLastMessageSent());
+                        monitoredPrefix.setActivateReq(activationReq);
+                    }
+                } else { // it is possible that the message has delivered yet, especially if there is a backlog
+                    monitoredPrefix = new MonitoredPrefix(lastMessagePrefix, null);
                     monitoredPrefix.setTerminationPoint(activationReq.getLastMessageSent());
                     monitoredPrefix.setActivateReq(activationReq);
-                }
-            } else { // it is possible that the message has delivered yet, especially if there is a backlog
-                monitoredPrefix = new MonitoredPrefix(lastMessagePrefix, null);
-                monitoredPrefix.setTerminationPoint(activationReq.getLastMessageSent());
-                monitoredPrefix.setActivateReq(activationReq);
-                scalingContext.addMonitoredPrefix(lastMessagePrefix, monitoredPrefix);
-                try {
-                    IMap<String, SketchLocation> prefMap = streamProcessor.getHzInstance().getMap(GeoHashPrefixTree.PREFIX_MAP);
-                    prefMap.put(lastMessagePrefix, new SketchLocation(instanceIdentifier,
-                            RivuletUtil.getCtrlEndpoint(), SketchLocation.MODE_REGISTER_NEW_PREFIX));
-                } catch (GranulesConfigurationException e) {
-                    logger.error("Error publishing to Hazelcast.", e);
+                    scalingContext.addMonitoredPrefix(lastMessagePrefix, monitoredPrefix);
+                    try {
+                        IMap<String, SketchLocation> prefMap = streamProcessor.getHzInstance().getMap(GeoHashPrefixTree.PREFIX_MAP);
+                        prefMap.put(lastMessagePrefix, new SketchLocation(instanceIdentifier,
+                                RivuletUtil.getCtrlEndpoint(), SketchLocation.MODE_REGISTER_NEW_PREFIX));
+                    } catch (GranulesConfigurationException e) {
+                        logger.error("Error publishing to Hazelcast.", e);
+                    }
                 }
             }
         }

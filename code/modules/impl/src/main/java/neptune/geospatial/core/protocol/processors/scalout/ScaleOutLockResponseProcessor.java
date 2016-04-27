@@ -51,18 +51,27 @@ public class ScaleOutLockResponseProcessor implements ProtocolProcessor {
                 }
 
                 for (String prefix : pendingReq.getPrefixes()) {
-                    MonitoredPrefix monitoredPrefix = scalingContext.getMonitoredPrefix(prefix);
-                    monitoredPrefix.setIsPassThroughTraffic(true);
-                    monitoredPrefix.setDestComputationId(targetComputation);
-                    monitoredPrefix.setDestResourceCtrlEndpoint(targetLocCtrlEndpoint);
-                    monitoredPrefix.setOutGoingStream(pendingReq.getStreamId());
+                    MonitoredPrefix monitoredPrefix;
+                    String streamType;
+                    long lastMesssageSent;
+                    String lastGeoHashSent;
+                    synchronized (scalingContext) {
+                        monitoredPrefix = scalingContext.getMonitoredPrefix(prefix);
+                        monitoredPrefix.setIsPassThroughTraffic(true);
+                        monitoredPrefix.setDestComputationId(targetComputation);
+                        monitoredPrefix.setDestResourceCtrlEndpoint(targetLocCtrlEndpoint);
+                        monitoredPrefix.setOutGoingStream(pendingReq.getStreamId());
+                        streamType = monitoredPrefix.getStreamType();
+                        lastMesssageSent = monitoredPrefix.getLastMessageSent();
+                        lastGeoHashSent = monitoredPrefix.getLastGeoHashSent();
+                    }
                     try {
                         byte[] state = streamProcessor.split(prefix);
                         StateTransferMsg stateTransferMsg = new StateTransferMsg(prefix, lockResponse.getKey(),
                                 state, targetComputation, instanceIdentifier,
-                                StateTransferMsg.SCALE_OUT, monitoredPrefix.getStreamType());
-                        stateTransferMsg.setLastMessageId(monitoredPrefix.getLastMessageSent());
-                        stateTransferMsg.setLastMessagePrefix(monitoredPrefix.getLastGeoHashSent());
+                                StateTransferMsg.SCALE_OUT, streamType);
+                        stateTransferMsg.setLastMessageId(lastMesssageSent);
+                        stateTransferMsg.setLastMessagePrefix(lastGeoHashSent);
                         SendUtility.sendControlMessage(monitoredPrefix.getDestResourceCtrlEndpoint(), stateTransferMsg);
                         // update the prefix map
                         prefMap.put(prefix, new SketchLocation(monitoredPrefix.getDestComputationId(),

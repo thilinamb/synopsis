@@ -32,7 +32,7 @@ public class ScaleOutResponseProcessor implements ProtocolProcessor {
                         AbstractGeoSpatialStreamProcessor streamProcessor) {
 
         ScaleOutResponse scaleOutResp = (ScaleOutResponse) ctrlMessage;
-        if(!scaleOutResp.isSuccess()){
+        if (!scaleOutResp.isSuccess()) {
             logger.warn("Failed scale out request to deployer. Exiting.");
             streamProcessor.releaseMutex();
             return;

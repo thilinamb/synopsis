@@ -53,22 +53,24 @@ public class StateTransferMsgProcessor implements ProtocolProcessor {
             String childPrefix = streamProcessor.getPrefix(stateTransferMsg.getLastMessagePrefix(),
                     stateTransferMsg.getPrefix().length());
             // handling the case where no messages are sent after scaling out.
-            if (scalingContext.getMonitoredPrefix(childPrefix) == null) {
-                MonitoredPrefix monitoredPrefix = new MonitoredPrefix(childPrefix, stateTransferMsg.getStreamType());
-                monitoredPrefix.setLastMessageSent(stateTransferMsg.getLastMessageId());
-                monitoredPrefix.setLastGeoHashSent(stateTransferMsg.getLastMessagePrefix());
-                scalingContext.addMonitoredPrefix(childPrefix, monitoredPrefix);
-                try {
-                    IMap<String, SketchLocation> prefMap = streamProcessor.getHzInstance().getMap(GeoHashPrefixTree.PREFIX_MAP);
-                    prefMap.put(childPrefix, new SketchLocation(instanceIdentifier, RivuletUtil.getCtrlEndpoint(),
-                            SketchLocation.MODE_REGISTER_NEW_PREFIX));
-                } catch (GranulesConfigurationException e) {
-                    logger.error("Error publishing to Hazelcast.", e);
-                }
-                if (logger.isDebugEnabled()) {
-                    logger.debug(String.format("[%s] Messages haven't arrived after scaling out. " +
-                                    "Setting last message scene to: %d", instanceIdentifier,
-                            stateTransferMsg.getLastMessageId()));
+            synchronized (scalingContext) {
+                if (scalingContext.getMonitoredPrefix(childPrefix) == null) {
+                    MonitoredPrefix monitoredPrefix = new MonitoredPrefix(childPrefix, stateTransferMsg.getStreamType());
+                    monitoredPrefix.setLastMessageSent(stateTransferMsg.getLastMessageId());
+                    monitoredPrefix.setLastGeoHashSent(stateTransferMsg.getLastMessagePrefix());
+                    scalingContext.addMonitoredPrefix(childPrefix, monitoredPrefix);
+                    try {
+                        IMap<String, SketchLocation> prefMap = streamProcessor.getHzInstance().getMap(GeoHashPrefixTree.PREFIX_MAP);
+                        prefMap.put(childPrefix, new SketchLocation(instanceIdentifier, RivuletUtil.getCtrlEndpoint(),
+                                SketchLocation.MODE_REGISTER_NEW_PREFIX));
+                    } catch (GranulesConfigurationException e) {
+                        logger.error("Error publishing to Hazelcast.", e);
+                    }
+                    if (logger.isDebugEnabled()) {
+                        logger.debug(String.format("[%s] Messages haven't arrived after scaling out. " +
+                                        "Setting last message scene to: %d", instanceIdentifier,
+                                stateTransferMsg.getLastMessageId()));
+                    }
                 }
             }
             if (!stateTransferMsg.isAcked()) {

@@ -35,6 +35,7 @@ public class ScalingContext {
     private final Map<String, PendingScaleOutRequest> pendingScaleOutRequests = new HashMap<>();
     private final Map<String, PendingScaleInRequest> pendingScaleInRequests = new HashMap<>();
     private HazelcastInstance hzInstance;
+    private int locallyProcessedPrefixCount;
 
     /**
      * @param processor underlying computation
@@ -50,7 +51,7 @@ public class ScalingContext {
      * @param prefix Prefix
      * @return {@code MonitoredPrefix} instance or null if the prefix is not being monitored
      */
-    public MonitoredPrefix getMonitoredPrefix(String prefix) {
+    public synchronized MonitoredPrefix getMonitoredPrefix(String prefix) {
         return monitoredPrefixMap.get(prefix);
     }
 
@@ -60,9 +61,10 @@ public class ScalingContext {
      * @param prefix          Prefix string
      * @param monitoredPrefix {@code MonitoredPrefix} object
      */
-    public void addMonitoredPrefix(String prefix, MonitoredPrefix monitoredPrefix) {
+    public synchronized void addMonitoredPrefix(String prefix, MonitoredPrefix monitoredPrefix) {
         monitoredPrefixMap.put(prefix, monitoredPrefix);
         monitoredPrefixes.add(monitoredPrefix);
+        locallyProcessedPrefixCount++;
     }
 
     /**
@@ -70,11 +72,11 @@ public class ScalingContext {
      *
      * @param prefix Prefix String
      */
-    public void removeMonitoredPrefix(String prefix) {
+    public synchronized void removeMonitoredPrefix(String prefix) {
         monitoredPrefixes.remove(monitoredPrefixMap.remove(prefix));
     }
 
-    public boolean hasSeenBefore(String prefix, long seqNo) {
+    public synchronized boolean hasSeenBefore(String prefix, long seqNo) {
         MonitoredPrefix monitoredPrefix = monitoredPrefixMap.get(prefix);
         if (monitoredPrefix != null) {
             long lastMessageSent = monitoredPrefix.getLastMessageSent();
@@ -89,7 +91,7 @@ public class ScalingContext {
      * @param prefix    prefix
      * @param className Type of the record
      */
-    public void updateMessageCount(String prefix, String className) {
+    public synchronized void updateMessageCount(String prefix, String className) {
         MonitoredPrefix monitoredPrefix;
         if (monitoredPrefixMap.containsKey(prefix)) {
             monitoredPrefix = monitoredPrefixMap.get(prefix);
@@ -97,6 +99,7 @@ public class ScalingContext {
             monitoredPrefix = new MonitoredPrefix(prefix, className);
             monitoredPrefixes.add(monitoredPrefix);
             monitoredPrefixMap.put(prefix, monitoredPrefix);
+            locallyProcessedPrefixCount++;
             try {
                 IMap<String, SketchLocation> prefMap = getHzInstance().getMap(GeoHashPrefixTree.PREFIX_MAP);
                 prefMap.put(prefix, new SketchLocation(instanceIdentifier, RivuletUtil.getCtrlEndpoint(),
@@ -115,7 +118,7 @@ public class ScalingContext {
      *
      * @param timeElapsed time elapsed since last message rate calculation
      */
-    public void updateStatisticsForMonitoredPrefixes(double timeElapsed) {
+    public synchronized void updateStatisticsForMonitoredPrefixes(double timeElapsed) {
         for (String monitoredPrefStr : monitoredPrefixMap.keySet()) {
             MonitoredPrefix monitoredPrefix = monitoredPrefixMap.get(monitoredPrefStr);
             monitoredPrefix.updateMessageRate(timeElapsed);
@@ -133,16 +136,12 @@ public class ScalingContext {
      * @param excess A measure of the excess load
      * @return List of prefixes chosen for scaling out
      */
-    public List<String> getPrefixesForScalingOut(Double excess, boolean memoryBased) {
+    public synchronized List<String> getPrefixesForScalingOut(Double excess, boolean memoryBased) {
         List<String> prefixesForScalingOut = new ArrayList<>();
         double cumulSumOfPrefixes = 0;
         Iterator<MonitoredPrefix> itr = monitoredPrefixes.iterator();
-        int locallyProcessedCount = 0;
         while (itr.hasNext() && cumulSumOfPrefixes < excess && prefixesForScalingOut.size() < 200) {
             MonitoredPrefix monitoredPrefix = itr.next();
-            if (!monitoredPrefix.getIsPassThroughTraffic()) {
-                locallyProcessedCount++;
-            }
             if (!monitoredPrefix.getIsPassThroughTraffic() &&
                     monitoredPrefix.getPrefix().length() <= AbstractGeoSpatialStreamProcessor.MAX_CHARACTER_DEPTH) {
                 // let's consider the number of messages accumulated over 2s.
@@ -165,7 +164,7 @@ public class ScalingContext {
                     instanceIdentifier, excess, stringBuilder.toString()));
         }
         logger.info(String.format("Total prefix count: %d, Locally processed count: %d, chosen count: %d, Mode: %s, Excess: %.3f Satistifed: %.3f",
-                monitoredPrefixes.size(), locallyProcessedCount, prefixesForScalingOut.size(), memoryBased ? "MEMORY" : "BACKLOG", excess, cumulSumOfPrefixes));
+                monitoredPrefixes.size(), locallyProcessedPrefixCount, prefixesForScalingOut.size(), memoryBased ? "MEMORY" : "BACKLOG", excess, cumulSumOfPrefixes));
         return prefixesForScalingOut;
     }
 
@@ -175,7 +174,7 @@ public class ScalingContext {
      * @param excess Extra load the current computation can take in
      * @return List of chosen prefixes
      */
-    public List<String> getPrefixesForScalingIn(Double excess) {
+    public synchronized List<String> getPrefixesForScalingIn(Double excess) {
         // find the prefixes with the lowest input rates that are pass-through traffic
         Iterator<MonitoredPrefix> itr = monitoredPrefixes.iterator();
         List<String> chosenPrefixes = new ArrayList<>();
@@ -196,7 +195,7 @@ public class ScalingContext {
      * @param prefix Parent prefix
      * @return List of child prefixes
      */
-    public List<MonitoredPrefix> getChildPrefixesForScalingIn(String prefix) {
+    public synchronized List<MonitoredPrefix> getChildPrefixesForScalingIn(String prefix) {
         List<MonitoredPrefix> childPrefixes = new ArrayList<>();
         for (String monitoredPrefix : monitoredPrefixMap.keySet()) {
             if (monitoredPrefix.startsWith(prefix)) {
@@ -206,27 +205,28 @@ public class ScalingContext {
         return childPrefixes;
     }
 
-    public void addPendingScaleOutRequest(String key, PendingScaleOutRequest pendingScaleOutRequest) {
+    public synchronized void addPendingScaleOutRequest(String key, PendingScaleOutRequest pendingScaleOutRequest) {
         pendingScaleOutRequests.put(key, pendingScaleOutRequest);
     }
 
-    public PendingScaleOutRequest getPendingScaleOutRequest(String key) {
+    public synchronized PendingScaleOutRequest getPendingScaleOutRequest(String key) {
         return pendingScaleOutRequests.get(key);
     }
 
-    public void completeScalingOut(String key) {
+    public synchronized void completeScalingOut(String key) {
+        locallyProcessedPrefixCount = locallyProcessedPrefixCount - pendingScaleOutRequests.get(key).getPrefixes().size();
         pendingScaleOutRequests.remove(key);
     }
 
-    public void addPendingScalingInRequest(String key, PendingScaleInRequest scaleInRequest) {
+    public synchronized void addPendingScalingInRequest(String key, PendingScaleInRequest scaleInRequest) {
         pendingScaleInRequests.put(key, scaleInRequest);
     }
 
-    public PendingScaleInRequest getPendingScalingInRequest(String key) {
+    public synchronized PendingScaleInRequest getPendingScalingInRequest(String key) {
         return pendingScaleInRequests.get(key);
     }
 
-    public void removePendingScaleInRequest(String key) {
+    public synchronized void removePendingScaleInRequest(String key) {
         pendingScaleInRequests.remove(key);
     }
 
@@ -251,7 +251,7 @@ public class ScalingContext {
      *
      * @return List of outgoing streams covering all child computations
      */
-    public List<String> getOutgoingStreams() {
+    public synchronized List<String> getOutgoingStreams() {
         Set<String> uniqueComputations = new HashSet<>();
         List<String> outgoingStreams = new ArrayList<>();
         for (String monitoredPrefixStr : monitoredPrefixMap.keySet()) {
