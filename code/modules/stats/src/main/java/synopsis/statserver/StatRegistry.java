@@ -2,11 +2,18 @@ package synopsis.statserver;
 
 import neptune.geospatial.stat.InstanceRegistration;
 import neptune.geospatial.stat.PeriodicInstanceMetrics;
+import neptune.geospatial.stat.ScaleActivity;
 import neptune.geospatial.stat.StatConstants;
 import org.apache.log4j.Logger;
+import synopsis.statserver.processors.ScaleActivityProcessor;
 
-import java.io.*;
+import java.io.BufferedWriter;
+import java.io.FileNotFoundException;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -16,22 +23,33 @@ import java.util.concurrent.atomic.AtomicBoolean;
  *
  * @author Thilina Buddhika
  */
-public class StatRegistry implements Runnable {
+class StatRegistry implements Runnable {
 
     private static final StatRegistry instance = new StatRegistry();
     private final Logger logger = Logger.getLogger(StatRegistry.class);
 
     private Map<String, double[]> processorRegistry = new HashMap<>();
     private Map<String, double[]> ingesterRegistry = new HashMap<>();
-    private Map<MetricProcessor, BufferedWriter> processors = new HashMap();
+    private Map<MetricProcessor, BufferedWriter> processors = new HashMap<>();
 
     private AtomicBoolean shutdownFlag = new AtomicBoolean(false);
     private CountDownLatch shutdownLatch = new CountDownLatch(1);
     private ScheduledExecutorService periodMetricCalcService = Executors.newScheduledThreadPool(1);
     private Future periodicCalTaskFuture;
     private boolean zeroRegistrations = true;
+    private List<ScalingActivity> completedScalingActivities = new ArrayList<>();
+    private Map<String, ScalingActivity> onGoingActivities = new HashMap<>();
+    private ScaleActivityProcessor scaleActivityProcessor;
+    private BufferedWriter scaleActivityBuff;
 
     private StatRegistry() {
+        scaleActivityProcessor = new ScaleActivityProcessor();
+        try {
+            scaleActivityBuff = new BufferedWriter(new FileWriter("/tmp/" + scaleActivityProcessor.getOutputFileName()
+                    + ".stat"));
+        } catch (IOException e) {
+            logger.error("Error creating output buffer for scale activity monitor.", e);
+        }
     }
 
     static StatRegistry getInstance() {
@@ -80,7 +98,7 @@ public class StatRegistry implements Runnable {
                         msg.getOriginEndpoint()));
             }
         }
-        if(zeroRegistrations){
+        if (zeroRegistrations) {
             zeroRegistrations = false;
             periodicCalTaskFuture = periodMetricCalcService.scheduleAtFixedRate(this, 0, 4000, TimeUnit.MILLISECONDS);
         }
@@ -98,6 +116,23 @@ public class StatRegistry implements Runnable {
         }
     }
 
+    synchronized void processScalingActivity(ScaleActivity msg) {
+        long now = System.currentTimeMillis();
+        if (msg.isEventType() == StatConstants.ScaleActivityEvent.START) {
+            ScalingActivity activityObj = new ScalingActivity(msg.getInstanceId(), msg.isActivityType(), now);
+            onGoingActivities.put(msg.getInstanceId(), activityObj);
+        } else {
+            ScalingActivity activity = onGoingActivities.remove(msg.getInstanceId());
+            if (activity == null) {
+                logger.error(String.format("END event for invalid scaling activity. Instance id: %s, Endpoint: %s",
+                        msg.getInstanceId(), msg.getOriginEndpoint()));
+                return;
+            }
+            activity.setEndTime(now);
+            completedScalingActivities.add(activity);
+        }
+    }
+
     @Override
     public void run() {
         try {
@@ -105,7 +140,7 @@ public class StatRegistry implements Runnable {
                 long ts = System.currentTimeMillis();
                 for (MetricProcessor processor : processors.keySet()) {
                     try {
-                        if(processor.isForIngesters()){
+                        if (processor.isForIngesters()) {
                             processor.process(ingesterRegistry, ts, processors.get(processor));
                         } else {
                             processor.process(processorRegistry, ts, processors.get(processor));
@@ -114,6 +149,7 @@ public class StatRegistry implements Runnable {
                         logger.error(String.format("Processor %s failed", processor.getClass().toString()));
                     }
                 }
+                scaleActivityProcessor.process(completedScalingActivities, scaleActivityBuff);
             }
             for (BufferedWriter buffW : processors.values()) {
                 try {
@@ -123,7 +159,8 @@ public class StatRegistry implements Runnable {
                     logger.error("Error flushing the output stream.", e);
                 }
             }
-            if(shutdownFlag.get()){
+            scaleActivityBuff.flush();
+            if (shutdownFlag.get()) {
                 for (BufferedWriter buffW : processors.values()) {
                     try {
                         buffW.close();
@@ -139,9 +176,9 @@ public class StatRegistry implements Runnable {
         }
     }
 
-    public void shutDown(){
+    void shutDown() {
         shutdownFlag.set(true);
-        if(periodicCalTaskFuture != null){
+        if (periodicCalTaskFuture != null) {
             periodicCalTaskFuture.cancel(false);
             try {
                 shutdownLatch.await();
