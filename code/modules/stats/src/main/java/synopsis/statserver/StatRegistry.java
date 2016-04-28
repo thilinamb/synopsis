@@ -118,14 +118,20 @@ class StatRegistry implements Runnable {
 
     synchronized void processScalingActivity(ScaleActivity msg) {
         long now = System.currentTimeMillis();
+        String instanceId = msg.getInstanceId();
         if (msg.isEventType() == StatConstants.ScaleActivityEvent.START) {
-            ScalingActivity activityObj = new ScalingActivity(msg.getInstanceId(), msg.isActivityType(), now);
-            onGoingActivities.put(msg.getInstanceId(), activityObj);
+            if(onGoingActivities.containsKey(instanceId)){
+                logger.error(String.format("START event is already recorded for instance %s. Endpoint: %s",
+                        instanceId, msg.getOriginEndpoint()));
+                return;
+            }
+            ScalingActivity activityObj = new ScalingActivity(instanceId, msg.isActivityType(), now);
+            onGoingActivities.put(instanceId, activityObj);
         } else {
-            ScalingActivity activity = onGoingActivities.remove(msg.getInstanceId());
+            ScalingActivity activity = onGoingActivities.remove(instanceId);
             if (activity == null) {
                 logger.error(String.format("END event for invalid scaling activity. Instance id: %s, Endpoint: %s",
-                        msg.getInstanceId(), msg.getOriginEndpoint()));
+                        instanceId, msg.getOriginEndpoint()));
                 return;
             }
             activity.setEndTime(now);
