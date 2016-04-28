@@ -10,7 +10,7 @@ import java.util.Map;
 /**
  * @author Thilina Buddhika
  */
-public class SketchletCountHistogramGenerator implements MetricProcessor {
+public class InstanceSnapshotProcessor implements MetricProcessor {
     @Override
     public boolean isForIngesters() {
         return false;
