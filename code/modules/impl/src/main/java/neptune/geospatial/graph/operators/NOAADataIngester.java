@@ -10,11 +10,19 @@ import io.sigpipe.sing.serialization.SerializationInputStream;
 import neptune.geospatial.core.resource.ManagedResource;
 import neptune.geospatial.graph.Constants;
 import neptune.geospatial.graph.messages.GeoHashIndexedRecord;
+import neptune.geospatial.stat.InstanceRegistration;
+import neptune.geospatial.stat.PeriodicInstanceMetrics;
+import neptune.geospatial.stat.StatClient;
+import neptune.geospatial.stat.StatConstants;
 import neptune.geospatial.util.RivuletUtil;
 import neptune.geospatial.util.geohash.GeoHash;
 import org.apache.log4j.Logger;
 
 import java.io.*;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * Stream ingester for NOAA dataset.
@@ -56,24 +64,32 @@ public class NOAADataIngester extends StreamSource {
         GeoHashIndexedRecord record = nextRecord();
         if (record != null) {
             writeToStream(Constants.Streams.NOAA_DATA_STREAM, record);
-            countEmitted++;
+            countEmittedFromCurrentFile++;
+            totalEmittedMsgCount.incrementAndGet();
+            totalEmittedBytes.addAndGet(record.getPayload().length);
+            if(totalEmittedMsgCount.get() == 1){
+                statPublisherService.scheduleAtFixedRate(new StatPublisher(), 0, 2, TimeUnit.SECONDS);
+            }
+            onSuccessfulEmission();
         }
     }
+
+    public void onSuccessfulEmission(){}
 
     protected GeoHashIndexedRecord nextRecord() {
         if (inputFiles.length == 0) { // no input files, return
             return null;
         }
-        if (indexLastReadFile == 0 && countTotal == 0) { // reading the very first record
+        if (indexLastReadFile == 0 && totalMessagesInCurrentFile == 0) { // reading the very first record
             startNextFile();
             return parse();
-        } else if (countEmitted < countTotal) { // in the middle of a file
+        } else if (countEmittedFromCurrentFile < totalMessagesInCurrentFile) { // in the middle of a file
             return parse();
-        } else if (indexLastReadFile < inputFiles.length && countTotal == countEmitted) { // start next file.
+        } else if (indexLastReadFile < inputFiles.length && totalMessagesInCurrentFile == countEmittedFromCurrentFile) { // start next file.
             startNextFile();
             logger.info(String.format("Reading file: %d of %d", indexLastReadFile, inputFiles.length));
             return parse();
-        } else if(indexLastReadFile == inputFiles.length) {
+        } else if (indexLastReadFile == inputFiles.length) {
             logger.info("Completed reading all files.");
         }
         return null;    // completed reading all files.
@@ -84,8 +100,8 @@ public class NOAADataIngester extends StreamSource {
             FileInputStream fIn = new FileInputStream(inputFiles[indexLastReadFile++]);
             BufferedInputStream bIn = new BufferedInputStream(fIn);
             this.inStream = new SerializationInputStream(bIn);
-            this.countTotal = inStream.readInt();
-            countEmitted = 0;
+            this.totalMessagesInCurrentFile = inStream.readInt();
+            countEmittedFromCurrentFile = 0;
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -119,5 +135,6 @@ public class NOAADataIngester extends StreamSource {
         }
     }
 
-    public void handleControlMessage(ControlMessage ctrlMsg){}
+    public void handleControlMessage(ControlMessage ctrlMsg) {
+    }
 }

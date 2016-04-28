@@ -62,7 +62,7 @@ public class ThrottledStreamIngester extends NOAADataIngester {
                     logger.debug("Resuming after swithcing to secondary topic.");
                 }
             }
-            countEmitted++;
+            countEmittedFromCurrentFile++;
             long sentCount = counter.incrementAndGet();
             long now = System.currentTimeMillis();
 
