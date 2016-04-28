@@ -17,6 +17,7 @@ import org.apache.log4j.Logger;
 import synopsis.statserver.processors.CumulProcessedMsgCountProcessor;
 import synopsis.statserver.processors.CumulThroughputProcessor;
 import synopsis.statserver.processors.CumulativeMemoryUsageProcessor;
+import synopsis.statserver.processors.SketchletCounter;
 
 import java.util.concurrent.CountDownLatch;
 
@@ -90,6 +91,7 @@ public class StatsServer {
             StatRegistry.getInstance().registerProcessor(new CumulativeMemoryUsageProcessor());
             StatRegistry.getInstance().registerProcessor(new CumulProcessedMsgCountProcessor());
             StatRegistry.getInstance().registerProcessor(new CumulThroughputProcessor());
+            StatRegistry.getInstance().registerProcessor(new SketchletCounter());
             // start the dispatcher
             MessageDispatcher dispatcher = new MessageDispatcher(this);
             new Thread(dispatcher).start();
