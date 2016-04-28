@@ -96,9 +96,10 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
                 double backlog = getBacklogLength();
                 double memUsage = getMemoryConsumptionForAllPrefixes();
                 double locallyProcessedPrefCount = scalingContext.getLocallyProcessedPrefixCount();
+                double prefixLength = scalingContext.getPrefixLength();
                 PeriodicInstanceMetrics periodicInstanceMetrics = new PeriodicInstanceMetrics(instanceId,
                         StatConstants.ProcessorTypes.PROCESSOR,
-                        new double[]{backlog, memUsage, locallyProcessedPrefCount, throughput});
+                        new double[]{backlog, memUsage, locallyProcessedPrefCount, throughput, prefixLength});
                 statClient.publish(periodicInstanceMetrics);
             }
         }

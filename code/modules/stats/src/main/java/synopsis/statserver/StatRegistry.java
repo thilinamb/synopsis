@@ -61,7 +61,7 @@ class StatRegistry implements Runnable {
         String originEndpoint = registerMessage.getOriginEndpoint();
         if (registerMessage.isInstanceType() == StatConstants.ProcessorTypes.PROCESSOR) {
             if (!processorRegistry.containsKey(instanceId)) {
-                processorRegistry.put(instanceId, new double[]{-1.0, -1.0, -1.0, -1.0});
+                processorRegistry.put(instanceId, new double[]{-1.0, -1.0, -1.0, -1.0, -1.0});
                 logger.info(String.format("Registered new processor instance. Instance Id: %s, Endpoint: %s " +
                         "Registered Processor count: %d", instanceId, originEndpoint, processorRegistry.size()));
             } else {

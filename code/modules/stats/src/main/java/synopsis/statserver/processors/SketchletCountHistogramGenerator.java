@@ -23,14 +23,23 @@ public class SketchletCountHistogramGenerator implements MetricProcessor {
 
     @Override
     public void process(Map<String, double[]> metricData, long ts, BufferedWriter buffW) throws IOException {
-        StringBuilder sBuilder = new StringBuilder(ts + "");
-        for(String instance : metricData.keySet()){
-            double val = metricData.get(instance)[StatConstants.RegistryIndices.PROC_LOCALLY_PROCESSED_PREF_COUNT];
-            if(val != -1){
-                sBuilder.append(",");
-                sBuilder.append(val);
+        buffW.write(":" + ts + "\n");
+        for (String instance : metricData.keySet()) {
+            double[] metrics = metricData.get(instance);
+            double val = metrics[StatConstants.RegistryIndices.PROC_LOCALLY_PROCESSED_PREF_COUNT];
+            if (val != -1) {
+                String metricStr = instance + "," + String.valueOf(val) +
+                        "," +
+                        metrics[StatConstants.RegistryIndices.PROC_PREFIX_LENGTH] +
+                        "," +
+                        metrics[StatConstants.RegistryIndices.PROC_THROUGHPUT] +
+                        "," +
+                        metrics[StatConstants.RegistryIndices.PROC_MEMORY] +
+                        "," +
+                        metrics[StatConstants.RegistryIndices.PROC_BACKLOG];
+                buffW.write(metricStr);
+                buffW.write('\n');
             }
         }
-        buffW.write(sBuilder.toString());
     }
 }

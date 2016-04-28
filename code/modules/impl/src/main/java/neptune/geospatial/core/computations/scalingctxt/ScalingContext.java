@@ -36,6 +36,7 @@ public class ScalingContext {
     private final Map<String, PendingScaleInRequest> pendingScaleInRequests = new HashMap<>();
     private HazelcastInstance hzInstance;
     private int locallyProcessedPrefixCount;
+    private int prefixLength = -1;
 
     /**
      * @param processor underlying computation
@@ -64,6 +65,9 @@ public class ScalingContext {
     public synchronized void addMonitoredPrefix(String prefix, MonitoredPrefix monitoredPrefix) {
         monitoredPrefixMap.put(prefix, monitoredPrefix);
         monitoredPrefixes.add(monitoredPrefix);
+        if(monitoredPrefixes.size() == 1){
+            this.prefixLength = prefix.length();
+        }
         locallyProcessedPrefixCount++;
     }
 
@@ -98,8 +102,7 @@ public class ScalingContext {
             monitoredPrefix = monitoredPrefixMap.get(prefix);
         } else {
             monitoredPrefix = new MonitoredPrefix(prefix, className);
-            monitoredPrefixes.add(monitoredPrefix);
-            monitoredPrefixMap.put(prefix, monitoredPrefix);
+            addMonitoredPrefix(prefix, monitoredPrefix);
             locallyProcessedPrefixCount++;
             try {
                 IMap<String, SketchLocation> prefMap = getHzInstance().getMap(GeoHashPrefixTree.PREFIX_MAP);
@@ -269,5 +272,9 @@ public class ScalingContext {
 
     public synchronized int getLocallyProcessedPrefixCount() {
         return locallyProcessedPrefixCount;
+    }
+
+    public synchronized int getPrefixLength() {
+        return prefixLength;
     }
 }

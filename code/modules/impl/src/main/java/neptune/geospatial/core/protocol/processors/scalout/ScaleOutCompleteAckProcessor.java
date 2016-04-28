@@ -31,6 +31,7 @@ public class ScaleOutCompleteAckProcessor implements ProtocolProcessor {
             streamProcessor.onSuccessfulScaleOut(pendingReq.getPrefixes());
             streamProcessor.releaseMutex();
             ManagedResource.getInstance().scalingOperationComplete(instanceIdentifier);
+            System.gc();
         } catch (NIException ignore) {
 
         }
