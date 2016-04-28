@@ -20,7 +20,8 @@ public class ScaleActivityProcessor {
     public void process(List<ScalingActivity> completedActivities, BufferedWriter bufferedWriter) throws IOException {
         // sort based on start time of the activity
         Collections.sort(completedActivities);
-        for (ScalingActivity activity : completedActivities) {
+        while (completedActivities.size() > 0) {
+            ScalingActivity activity = completedActivities.remove(0);
             bufferedWriter.write(activity.getInstanceId() + "," + activity.getStartTime() + "," + activity.getEndTime() + "," +
                     (activity.isScaleActivityType() == StatConstants.ScaleActivityType.SCALE_OUT ? "scale-out" : "scale-in"));
         }
