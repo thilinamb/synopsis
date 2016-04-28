@@ -22,8 +22,9 @@ public class ScaleActivityProcessor {
         Collections.sort(completedActivities);
         while (completedActivities.size() > 0) {
             ScalingActivity activity = completedActivities.remove(0);
-            bufferedWriter.write(activity.getInstanceId() + "," + activity.getStartTime() + "," + activity.getEndTime() + "," +
-                    (activity.isScaleActivityType() == StatConstants.ScaleActivityType.SCALE_OUT ? "scale-out" : "scale-in"));
+            bufferedWriter.write(activity.getInstanceId() + "," + activity.getHostname() + "," +
+                    activity.getStartTime() + "," + activity.getEndTime() + "," +
+                    (activity.isScaleActivityType() == StatConstants.ScaleActivityType.SCALE_OUT ? "scale-out" : "scale-in") + "\n");
         }
     }
 }

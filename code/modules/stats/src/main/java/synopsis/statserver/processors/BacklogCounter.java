@@ -30,6 +30,6 @@ public class BacklogCounter implements MetricProcessor{
                 cumulativeBacklogSize += val;
             }
         }
-        buffW.write(ts + "," + cumulativeBacklogSize + "," + metricData.size());
+        buffW.write(ts + "," + cumulativeBacklogSize);
     }
 }

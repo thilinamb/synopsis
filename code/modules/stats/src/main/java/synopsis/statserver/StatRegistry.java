@@ -125,7 +125,7 @@ class StatRegistry implements Runnable {
                         instanceId, msg.getOriginEndpoint()));
                 return;
             }
-            ScalingActivity activityObj = new ScalingActivity(instanceId, msg.isActivityType(), now);
+            ScalingActivity activityObj = new ScalingActivity(instanceId, msg.getOriginEndpoint(), msg.isActivityType(), now);
             onGoingActivities.put(instanceId, activityObj);
         } else {
             ScalingActivity activity = onGoingActivities.remove(instanceId);
@@ -174,6 +174,7 @@ class StatRegistry implements Runnable {
                         logger.error("Error closing the output stream.", e);
                     }
                 }
+                scaleActivityBuff.close();
                 shutdownLatch.countDown();
             }
 

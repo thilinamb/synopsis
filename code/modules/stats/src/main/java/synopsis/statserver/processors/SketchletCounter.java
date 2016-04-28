@@ -30,6 +30,6 @@ public class SketchletCounter implements MetricProcessor {
                 uniqueSketchletCount++;
             }
         }
-        buffW.write(ts + "," + uniqueSketchletCount);
+        buffW.write(ts + "," + uniqueSketchletCount + "," + metricData.size());
     }
 }

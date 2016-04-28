@@ -5,12 +5,14 @@ package synopsis.statserver;
  */
 public class ScalingActivity implements Comparable<ScalingActivity> {
     private String instanceId;
+    private String hostname;
     private boolean scaleActivityType;
     private long startTime;
     private long endTime;
 
-    public ScalingActivity(String instanceId, boolean scaleActivityType, long startTime) {
+    public ScalingActivity(String instanceId, String hostname, boolean scaleActivityType, long startTime) {
         this.instanceId = instanceId;
+        this.hostname = hostname;
         this.scaleActivityType = scaleActivityType;
         this.startTime = startTime;
     }
@@ -55,6 +57,10 @@ public class ScalingActivity implements Comparable<ScalingActivity> {
 
     public long getEndTime() {
         return endTime;
+    }
+
+    public String getHostname() {
+        return hostname;
     }
 
     public void setEndTime(long endTime) {

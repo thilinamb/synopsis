@@ -30,6 +30,6 @@ public class CumulThroughputProcessor implements MetricProcessor {
                 cumulThroughput += val;
             }
         }
-        buffW.write(ts + "," + cumulThroughput);
+        buffW.write(ts + "," + String.format("%.3f", cumulThroughput));
     }
 }
