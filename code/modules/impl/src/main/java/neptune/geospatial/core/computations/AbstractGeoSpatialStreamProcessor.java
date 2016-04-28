@@ -91,7 +91,7 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
                     throughput = (currentCount - previousThroughput) * 1000.0 / (now - previousThroughputTS);
                 }
                 previousThroughputTS = now;
-                previousThroughputTS = currentCount;
+                previousThroughput = currentCount;
 
                 double backlog = getBacklogLength();
                 double memUsage = getMemoryConsumptionForAllPrefixes();
