@@ -13,6 +13,7 @@ import neptune.geospatial.core.computations.scalingctxt.ScalingContext;
 import neptune.geospatial.core.protocol.msg.scalein.ScaleInActivateReq;
 import neptune.geospatial.core.protocol.msg.StateTransferMsg;
 import neptune.geospatial.core.protocol.processors.ProtocolProcessor;
+import neptune.geospatial.graph.messages.GeoHashIndexedRecord;
 import neptune.geospatial.hazelcast.type.SketchLocation;
 import neptune.geospatial.util.RivuletUtil;
 import neptune.geospatial.util.trie.GeoHashPrefixTree;
@@ -51,7 +52,7 @@ public class ScaleInActivateReqProcessor implements ProtocolProcessor {
                         monitoredPrefix.setActivateReq(activationReq);
                     }
                 } else { // it is possible that the message has delivered yet, especially if there is a backlog
-                    monitoredPrefix = new MonitoredPrefix(lastMessagePrefix, null);
+                    monitoredPrefix = new MonitoredPrefix(lastMessagePrefix, GeoHashIndexedRecord.class.getName());
                     monitoredPrefix.setTerminationPoint(activationReq.getLastMessageSent());
                     monitoredPrefix.setActivateReq(activationReq);
                     scalingContext.addMonitoredPrefix(lastMessagePrefix, monitoredPrefix);
@@ -79,7 +80,7 @@ public class ScaleInActivateReqProcessor implements ProtocolProcessor {
         }
         for (String lockedPrefix : pendingReq.getSentOutRequests().keySet()) {
             // disable pass-through
-            MonitoredPrefix monitoredPrefix = scalingContext.getMonitoredPrefix(prefix);
+            MonitoredPrefix monitoredPrefix = scalingContext.getMonitoredPrefix(lockedPrefix);
             monitoredPrefix.setIsPassThroughTraffic(false);
             FullQualifiedComputationAddr reqInfo = pendingReq.getSentOutRequests().get(lockedPrefix);
 
@@ -108,7 +109,7 @@ public class ScaleInActivateReqProcessor implements ProtocolProcessor {
             byte[] state = streamProcessor.split(localPrefix);
             StateTransferMsg stateTransMsg = new StateTransferMsg(localPrefix, prefix, state,
                     activationReq.getOriginComputationOfScalingOperation(), instanceIdentifier,
-                    StateTransferMsg.SCALE_IN, null);
+                    StateTransferMsg.SCALE_IN, GeoHashIndexedRecord.class.getName());
             try {
                 SendUtility.sendControlMessage(activationReq.getOriginNodeOfScalingOperation(), stateTransMsg);
                 if (logger.isDebugEnabled()) {
