@@ -24,9 +24,9 @@ public class SketchletCounter implements MetricProcessor {
     @Override
     public void process(Map<String, double[]> metricData, long ts, BufferedWriter buffW) throws IOException {
         int uniqueSketchletCount = 0;
-        for(String instance : metricData.keySet()){
+        for (String instance : metricData.keySet()) {
             double val = metricData.get(instance)[StatConstants.RegistryIndices.PROC_LOCALLY_PROCESSED_PREF_COUNT];
-            if(val != -1){
+            if (val > 0) {
                 uniqueSketchletCount++;
             }
         }
