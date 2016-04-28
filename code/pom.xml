@@ -84,6 +84,7 @@
         <module>modules/impl</module>
         <module>modules/distribution</module>
         <module>modules/benchmarks</module>
+        <module>modules/stats</module>
     </modules>
 
 </project>
