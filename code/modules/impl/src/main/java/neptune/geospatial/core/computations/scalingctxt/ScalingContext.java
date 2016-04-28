@@ -265,4 +265,8 @@ public class ScalingContext {
         }
         return outgoingStreams;
     }
+
+    public synchronized int getLocallyProcessedPrefixCount() {
+        return locallyProcessedPrefixCount;
+    }
 }
