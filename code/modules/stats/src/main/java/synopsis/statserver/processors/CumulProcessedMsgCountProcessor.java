@@ -3,7 +3,7 @@ package synopsis.statserver.processors;
 import neptune.geospatial.stat.StatConstants;
 import synopsis.statserver.MetricProcessor;
 
-import java.io.DataOutputStream;
+import java.io.BufferedWriter;
 import java.io.IOException;
 import java.util.Map;
 
@@ -22,7 +22,7 @@ public class CumulProcessedMsgCountProcessor implements MetricProcessor {
     }
 
     @Override
-    public void process(Map<String, double[]> metricData, long ts, DataOutputStream dos) throws IOException {
+    public void process(Map<String, double[]> metricData, long ts, BufferedWriter buffW) throws IOException {
         double totalProcessed = 0.0;
         for (double[] metrics : metricData.values()) {
             double val = metrics[StatConstants.RegistryIndices.ING_SENT_MSG_COUNT];
@@ -30,7 +30,6 @@ public class CumulProcessedMsgCountProcessor implements MetricProcessor {
                 totalProcessed += val;
             }
         }
-        dos.writeLong(ts);
-        dos.writeDouble(totalProcessed);
+        buffW.write(ts + "," + totalProcessed);
     }
 }

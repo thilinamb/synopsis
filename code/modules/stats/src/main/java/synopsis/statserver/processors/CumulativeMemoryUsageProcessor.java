@@ -3,7 +3,7 @@ package synopsis.statserver.processors;
 import neptune.geospatial.stat.StatConstants;
 import synopsis.statserver.MetricProcessor;
 
-import java.io.DataOutputStream;
+import java.io.BufferedWriter;
 import java.io.IOException;
 import java.util.Map;
 
@@ -25,7 +25,7 @@ public class CumulativeMemoryUsageProcessor implements MetricProcessor {
     }
 
     @Override
-    public void process(Map<String, double[]> metricData, long ts, DataOutputStream dos) throws IOException {
+    public void process(Map<String, double[]> metricData, long ts, BufferedWriter buffW) throws IOException {
         double cumulMemoryConsumption = 0.0;
         for (String instanceId : metricData.keySet()) {
             double val = metricData.get(instanceId)[StatConstants.RegistryIndices.PROC_MEMORY];
@@ -33,7 +33,6 @@ public class CumulativeMemoryUsageProcessor implements MetricProcessor {
                 cumulMemoryConsumption += val;
             }
         }
-        dos.writeLong(ts);
-        dos.writeDouble(cumulMemoryConsumption);
+        buffW.write(ts + "," + String.format("%.3f", cumulMemoryConsumption / (1024 * 1024)));
     }
 }

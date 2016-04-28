@@ -1,6 +1,6 @@
 package synopsis.statserver;
 
-import java.io.DataOutputStream;
+import java.io.BufferedWriter;
 import java.io.IOException;
 import java.util.Map;
 
@@ -13,5 +13,5 @@ public interface MetricProcessor {
 
     String getOutputFileName();
 
-    void process(Map<String, double[]> metricData, long ts, DataOutputStream dos) throws IOException;
+    void process(Map<String, double[]> metricData, long ts, BufferedWriter buffW) throws IOException;
 }

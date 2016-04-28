@@ -5,10 +5,7 @@ import neptune.geospatial.stat.PeriodicInstanceMetrics;
 import neptune.geospatial.stat.StatConstants;
 import org.apache.log4j.Logger;
 
-import java.io.DataOutputStream;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.IOException;
+import java.io.*;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.*;
@@ -26,7 +23,7 @@ public class StatRegistry implements Runnable {
 
     private Map<String, double[]> processorRegistry = new HashMap<>();
     private Map<String, double[]> ingesterRegistry = new HashMap<>();
-    private Map<MetricProcessor, DataOutputStream> processors = new HashMap();
+    private Map<MetricProcessor, BufferedWriter> processors = new HashMap();
 
     private AtomicBoolean shutdownFlag = new AtomicBoolean(false);
     private CountDownLatch shutdownLatch = new CountDownLatch(1);
@@ -92,10 +89,12 @@ public class StatRegistry implements Runnable {
     synchronized void registerProcessor(MetricProcessor processor) throws StatServerException {
         String outputFileName = String.format("/tmp/%s.stat", processor.getOutputFileName());
         try {
-            this.processors.put(processor, new DataOutputStream(new FileOutputStream(outputFileName)));
+            this.processors.put(processor, new BufferedWriter(new FileWriter(outputFileName)));
         } catch (FileNotFoundException e) {
             String errMsg = "Error openning output stream to write results from " + processor.getClass().getName();
             throw new StatServerException(errMsg, e);
+        } catch (IOException e) {
+            e.printStackTrace();
         }
     }
 
@@ -116,18 +115,18 @@ public class StatRegistry implements Runnable {
                     }
                 }
             }
-            for (DataOutputStream outStreams : processors.values()) {
+            for (BufferedWriter buffW : processors.values()) {
                 try {
-                    outStreams.write('\n');
-                    outStreams.flush();
+                    buffW.write('\n');
+                    buffW.flush();
                 } catch (IOException e) {
                     logger.error("Error flushing the output stream.", e);
                 }
             }
             if(shutdownFlag.get()){
-                for (DataOutputStream outStreams : processors.values()) {
+                for (BufferedWriter buffW : processors.values()) {
                     try {
-                        outStreams.close();
+                        buffW.close();
                     } catch (IOException e) {
                         logger.error("Error closing the output stream.", e);
                     }
