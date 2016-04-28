@@ -90,6 +90,8 @@ public class StatsServer {
             StatRegistry.getInstance().registerProcessor(new CumulThroughputProcessor());
             StatRegistry.getInstance().registerProcessor(new SketchletCounter());
             StatRegistry.getInstance().registerProcessor(new BacklogCounter());
+            StatRegistry.getInstance().registerProcessor(new SketchletCountHistogramGenerator());
+            
             // start the dispatcher
             MessageDispatcher dispatcher = new MessageDispatcher(this);
             new Thread(dispatcher).start();
