@@ -478,6 +478,7 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
                 if (chosenToScaleIn.size() > 0) {
                     for (String chosenPrefix : chosenToScaleIn) {
                         initiateScaleIn(scalingContext.getMonitoredPrefix(chosenPrefix));
+                        break;
                     }
                     return true;
                 } else {
