@@ -11,6 +11,10 @@ public class InstanceRegistration extends StatisticsRecord{
 
     private boolean instanceType;
 
+    public InstanceRegistration() {
+        super(StatConstants.MessageTypes.REGISTER, null);
+    }
+
     public InstanceRegistration(String instanceId, boolean instanceType) {
         super(StatConstants.MessageTypes.REGISTER, instanceId);
         this.instanceType = instanceType;

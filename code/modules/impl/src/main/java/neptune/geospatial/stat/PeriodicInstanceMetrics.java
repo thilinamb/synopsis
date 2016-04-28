@@ -12,7 +12,11 @@ public class PeriodicInstanceMetrics extends StatisticsRecord {
     private boolean instanceType;
     private double[] metrics;
 
-    public PeriodicInstanceMetrics(String instanceId, double[] metrics, boolean instanceType) {
+    public PeriodicInstanceMetrics() {
+        super(StatConstants.MessageTypes.PERIODIC_UPDATE, null);
+    }
+
+    public PeriodicInstanceMetrics(String instanceId, boolean instanceType, double[] metrics) {
         super(StatConstants.MessageTypes.PERIODIC_UPDATE, instanceId);
         this.instanceType = instanceType;
         this.metrics = metrics;
