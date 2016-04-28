@@ -15,6 +15,7 @@ import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import org.apache.log4j.Logger;
 import synopsis.statserver.processors.CumulProcessedMsgCountProcessor;
+import synopsis.statserver.processors.CumulThroughputProcessor;
 import synopsis.statserver.processors.CumulativeMemoryUsageProcessor;
 
 import java.util.concurrent.CountDownLatch;
@@ -88,6 +89,7 @@ public class StatsServer {
         try {
             StatRegistry.getInstance().registerProcessor(new CumulativeMemoryUsageProcessor());
             StatRegistry.getInstance().registerProcessor(new CumulProcessedMsgCountProcessor());
+            StatRegistry.getInstance().registerProcessor(new CumulThroughputProcessor());
             // start the dispatcher
             MessageDispatcher dispatcher = new MessageDispatcher(this);
             new Thread(dispatcher).start();

@@ -73,23 +73,32 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
         private boolean firstAttempt = true;
         private String instanceId = getInstanceIdentifier();
         private StatClient statClient = StatClient.getInstance();
+        private long previousThroughput = 0;
+        private long previousThroughputTS = -1;
 
         @Override
         public void run() {
-            if(firstAttempt){
+            if (firstAttempt) {
                 InstanceRegistration registration = new InstanceRegistration(instanceId,
                         StatConstants.ProcessorTypes.PROCESSOR);
                 statClient.publish(registration);
                 firstAttempt = false;
-            }
-            else {
+            } else {
+                long now = System.currentTimeMillis();
+                long currentCount = processedCount.get();
+                double throughput = -1;
+                if (previousThroughputTS != -1) {
+                    throughput = (currentCount - previousThroughput) * 1000.0 / (now - previousThroughputTS);
+                }
+                previousThroughputTS = now;
+                previousThroughputTS = currentCount;
+
                 double backlog = getBacklogLength();
                 double memUsage = getMemoryConsumptionForAllPrefixes();
                 double locallyProcessedPrefCount = scalingContext.getLocallyProcessedPrefixCount();
-                double totalProcessed = processedCount.get();
                 PeriodicInstanceMetrics periodicInstanceMetrics = new PeriodicInstanceMetrics(instanceId,
                         StatConstants.ProcessorTypes.PROCESSOR,
-                        new double[]{backlog, memUsage, locallyProcessedPrefCount, totalProcessed});
+                        new double[]{backlog, memUsage, locallyProcessedPrefCount, throughput});
                 statClient.publish(periodicInstanceMetrics);
             }
         }
