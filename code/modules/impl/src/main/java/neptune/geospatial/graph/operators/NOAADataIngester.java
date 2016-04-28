@@ -31,15 +31,40 @@ import java.util.concurrent.atomic.AtomicLong;
  */
 public class NOAADataIngester extends StreamSource {
 
+    private class StatPublisher implements Runnable {
+
+        private String instanceId = getInstanceIdentifier();
+        private boolean firstAttempt = true;
+        private StatClient statClient = StatClient.getInstance();
+
+        @Override
+        public void run() {
+            if (firstAttempt) {
+                InstanceRegistration instanceRegistration = new InstanceRegistration(instanceId,
+                        StatConstants.ProcessorTypes.INGESTER);
+                statClient.publish(instanceRegistration);
+                firstAttempt = false;
+            } else {
+                double[] metrics = new double[]{totalEmittedMsgCount.doubleValue(), totalEmittedMsgCount.doubleValue()};
+                PeriodicInstanceMetrics periodicInstanceMetrics = new PeriodicInstanceMetrics(instanceId,
+                        StatConstants.ProcessorTypes.INGESTER, metrics);
+                statClient.publish(periodicInstanceMetrics);
+            }
+        }
+    }
+
     private Logger logger = Logger.getLogger(NOAADataIngester.class);
     public static final int PRECISION = 5;
 
     private File[] inputFiles;
     private int indexLastReadFile = 0;
-    private int countTotal = 0;
-    protected int countEmitted = 0;
+    private int totalMessagesInCurrentFile = 0;
+    protected int countEmittedFromCurrentFile = 0;
+    private AtomicLong totalEmittedMsgCount = new AtomicLong(0);
+    private AtomicLong totalEmittedBytes = new AtomicLong(0);
     private SerializationInputStream inStream;
     private long messageSeqId = 0;
+    private ScheduledExecutorService statPublisherService = Executors.newScheduledThreadPool(1);
 
     public NOAADataIngester() {
         String hostname = RivuletUtil.getHostInetAddress().getHostName();
