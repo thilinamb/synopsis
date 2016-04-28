@@ -74,6 +74,7 @@ public class ScalingContext {
      */
     public synchronized void removeMonitoredPrefix(String prefix) {
         monitoredPrefixes.remove(monitoredPrefixMap.remove(prefix));
+        monitoredPrefixMap.remove(prefix);
     }
 
     public synchronized boolean hasSeenBefore(String prefix, long seqNo) {
