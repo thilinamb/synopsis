@@ -34,7 +34,7 @@ public class SketchletCountHistogramGenerator implements MetricProcessor {
                         "," +
                         metrics[StatConstants.RegistryIndices.PROC_THROUGHPUT] +
                         "," +
-                        metrics[StatConstants.RegistryIndices.PROC_MEMORY] +
+                        metrics[StatConstants.RegistryIndices.PROC_MEMORY]/(1024 * 1024 * 1024) +
                         "," +
                         metrics[StatConstants.RegistryIndices.PROC_BACKLOG];
                 buffW.write(metricStr);
