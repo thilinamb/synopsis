@@ -129,6 +129,14 @@ public class ResourceProtocolHandler extends AbstractProtocolHandler {
                 }
                 managedResource.dispatchControlMessage(checkpointAck.getTargetComputation(), checkpointAck);
                 break;
+            case ProtocolTypes.PREFIX_ONLY_SCALE_OUT_COMPLETE:
+                PrefixOnlyScaleOutCompleteAck prefixOnlyScaleOutCompleteAck = (PrefixOnlyScaleOutCompleteAck) ctrlMsg;
+                if(logger.isDebugEnabled()){
+                    logger.debug("Received a PrefixOnlyScaleOutCompleteAck from " +
+                            prefixOnlyScaleOutCompleteAck.getOriginEndpoint());
+                }
+                managedResource.dispatchPrefixOnlyScaleOutAck(prefixOnlyScaleOutCompleteAck);
+                break;
             default:
                 logger.warn("Unsupported message type: " + type);
         }
