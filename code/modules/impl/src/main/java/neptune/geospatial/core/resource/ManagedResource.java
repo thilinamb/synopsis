@@ -17,6 +17,7 @@ import neptune.geospatial.core.computations.AbstractGeoSpatialStreamProcessor;
 import neptune.geospatial.core.protocol.AbstractProtocolHandler;
 import neptune.geospatial.core.protocol.msg.StateTransferMsg;
 import neptune.geospatial.core.protocol.msg.scaleout.DeploymentAck;
+import neptune.geospatial.core.protocol.msg.scaleout.PrefixOnlyScaleOutCompleteAck;
 import neptune.geospatial.core.protocol.msg.scaleout.ScaleOutLockRequest;
 import neptune.geospatial.core.protocol.msg.scaleout.StateTransferCompleteAck;
 import neptune.geospatial.ft.protocol.CheckpointAck;
@@ -500,6 +501,15 @@ public class ManagedResource {
                             ctrlMessage.getMessageType()));
                 }
             }
+        }
+    }
+
+    public void dispatchPrefixOnlyScaleOutAck(PrefixOnlyScaleOutCompleteAck scaleOutComplete) {
+        String ingesterId = scaleOutComplete.getIngesterId();
+        if (registeredIngesters.containsKey(ingesterId)) {
+            registeredIngesters.get(ingesterId).handlePrefixOnlyScaleOutAck(scaleOutComplete);
+        } else {
+            logger.warn("Invalid PrefixOnlyScaleOutCompleteAck. Ingester id: " + ingesterId);
         }
     }
 
