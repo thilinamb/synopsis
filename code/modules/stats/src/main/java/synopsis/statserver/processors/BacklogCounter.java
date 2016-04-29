@@ -8,12 +8,9 @@ import java.io.IOException;
 import java.util.Map;
 
 /**
- * Calculate the cumulative memory consumption at a given ts
- *
  * @author Thilina Buddhika
  */
-public class CumulativeMemoryUsageProcessor implements MetricProcessor {
-
+public class BacklogCounter implements MetricProcessor{
     @Override
     public boolean isForIngesters() {
         return false;
@@ -21,18 +18,18 @@ public class CumulativeMemoryUsageProcessor implements MetricProcessor {
 
     @Override
     public String getOutputFileName() {
-        return "cumul-memory-usage";
+        return "cumul-backlog";
     }
 
     @Override
     public void process(Map<String, double[]> metricData, long ts, BufferedWriter buffW) throws IOException {
-        double cumulMemoryConsumption = 0.0;
-        for (String instanceId : metricData.keySet()) {
-            double val = metricData.get(instanceId)[StatConstants.RegistryIndices.PROC_MEMORY];
-            if (val != -1) {
-                cumulMemoryConsumption += val;
+        double cumulativeBacklogSize = 0.0;
+        for(String instance: metricData.keySet()){
+            double val = metricData.get(instance)[StatConstants.RegistryIndices.PROC_BACKLOG];
+            if(val > 0){
+                cumulativeBacklogSize += val;
             }
         }
-        buffW.write(ts + "," + String.format("%.3f", cumulMemoryConsumption / (1024 * 1024)));
+        buffW.write(ts + "," + cumulativeBacklogSize);
     }
 }

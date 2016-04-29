@@ -168,7 +168,7 @@ public class ThrottledStreamIngester extends NOAADataIngester implements FaultTo
                     logger.debug("Resuming after swithcing to secondary topic.");
                 }
             }
-            countEmitted++;
+            countEmittedFromCurrentFile++;
             long sentCount = counter.incrementAndGet();
 
             if (tsLastEmitted == -1) {

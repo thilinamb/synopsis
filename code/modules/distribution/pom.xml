@@ -22,6 +22,11 @@
             <artifactId>neptune-geospatial-impl</artifactId>
             <version>${project.version}</version>
         </dependency>
+        <dependency>
+            <groupId>edu.colostate.cs.dsg</groupId>
+            <artifactId>statistics</artifactId>
+            <version>${project.version}</version>
+        </dependency>
     </dependencies>
 
     <build>

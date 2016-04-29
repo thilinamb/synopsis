@@ -39,6 +39,10 @@ import neptune.geospatial.graph.messages.GeoHashIndexedRecord;
 import neptune.geospatial.hazelcast.HazelcastClientInstanceHolder;
 import neptune.geospatial.hazelcast.HazelcastException;
 import neptune.geospatial.partitioner.GeoHashPartitioner;
+import neptune.geospatial.stat.InstanceRegistration;
+import neptune.geospatial.stat.PeriodicInstanceMetrics;
+import neptune.geospatial.stat.StatClient;
+import neptune.geospatial.stat.StatConstants;
 import neptune.geospatial.util.Mutex;
 import neptune.geospatial.util.RivuletUtil;
 import org.apache.log4j.Logger;
@@ -63,6 +67,43 @@ import java.util.concurrent.atomic.AtomicLong;
  */
 public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor implements FaultTolerantStreamBase,
         MembershipChangeListener {
+
+    private class StatPublisher implements Runnable {
+
+        private boolean firstAttempt = true;
+        private String instanceId = getInstanceIdentifier();
+        private StatClient statClient = StatClient.getInstance();
+        private long previousThroughput = 0;
+        private long previousThroughputTS = -1;
+
+        @Override
+        public void run() {
+            if (firstAttempt) {
+                InstanceRegistration registration = new InstanceRegistration(instanceId,
+                        StatConstants.ProcessorTypes.PROCESSOR);
+                statClient.publish(registration);
+                firstAttempt = false;
+            } else {
+                long now = System.currentTimeMillis();
+                long currentCount = processedCount.get();
+                double throughput = -1;
+                if (previousThroughputTS != -1) {
+                    throughput = (currentCount - previousThroughput) * 1000.0 / (now - previousThroughputTS);
+                }
+                previousThroughputTS = now;
+                previousThroughput = currentCount;
+
+                double backlog = getBacklogLength();
+                double memUsage = getMemoryConsumptionForAllPrefixes();
+                double locallyProcessedPrefCount = scalingContext.getLocallyProcessedPrefixCount();
+                double prefixLength = scalingContext.getPrefixLength();
+                PeriodicInstanceMetrics periodicInstanceMetrics = new PeriodicInstanceMetrics(instanceId,
+                        StatConstants.ProcessorTypes.PROCESSOR,
+                        new double[]{backlog, memUsage, locallyProcessedPrefCount, throughput, prefixLength});
+                statClient.publish(periodicInstanceMetrics);
+            }
+        }
+    }
 
     private class CheckpointTimer implements Runnable {
 
@@ -131,6 +172,9 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
 
     private final Map<Long, PendingCheckpoint> pendingCheckpoints = new HashMap<>();
     private ScheduledExecutorService checkpointMonitors = Executors.newScheduledThreadPool(1);
+
+    private AtomicLong processedCount = new AtomicLong(0);
+    private ScheduledExecutorService statPublisher = Executors.newScheduledThreadPool(1);
 
     /**
      * Implement the specific business logic to process each
@@ -240,19 +284,22 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
         if (!initialized.get()) {
             init();
         }
-        if (messageSize.get() == -1) {
-            messageSize.set(getMessageSize(streamEvent));
-        }
+
         GeoHashIndexedRecord geoHashIndexedRecord = (GeoHashIndexedRecord) streamEvent;
         // this a dummy message sent to activate the computation after scaling out.
         if (geoHashIndexedRecord.getMessageIdentifier() == -1) {
             return;
+        }
+        // initialize message size after skipping dummy messages
+        if (messageSize.get() == -1) {
+            messageSize.set(getMessageSize(streamEvent));
         }
         // preprocess each message
         long checkpointId = geoHashIndexedRecord.getCheckpointId();
         if (checkpointId <= 0 && preprocess(geoHashIndexedRecord)) {
             // perform the business logic: do this selectively. Send through the traffic we don't process.
             process(geoHashIndexedRecord);
+            processedCount.incrementAndGet();
         }
         if (faultToleranceEnabled) {
             if (checkpointId > 0) {
@@ -306,8 +353,7 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
                     logger.debug(String.format("[%s] Initialized. Message Size: %d", getInstanceIdentifier(),
                             messageSize.get()));
                 }
-                // TODO: Remove Me
-                statPrinter.scheduleWithFixedDelay(new StatPrinter(), 10, 60, TimeUnit.SECONDS);
+                statPublisher.scheduleWithFixedDelay(new StatPublisher(), 1, 2, TimeUnit.SECONDS);
             } catch (NIException e) {
                 logger.error("Error retrieving the resource instance.", e);
             } catch (GranulesConfigurationException e) {
@@ -345,7 +391,6 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
             }
         }
         if (!processLocally) {
-            forwardedCount.incrementAndGet();
             record.setPrefixLength(record.getPrefixLength() + 1);
             // send to the child node
             if (logger.isTraceEnabled()) {
@@ -400,7 +445,7 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
      * @return {@code true} if it triggered a scaling operation. {@code false} if no scaling operation is
      * triggered.
      */
-    public boolean recommendScaling(double excess, boolean memoryBased) {
+    public synchronized boolean recommendScaling(double excess, boolean memoryBased) {
         // try to get the lock first
         if (!tryAcquireMutex()) {
             if (logger.isDebugEnabled()) {
@@ -429,11 +474,11 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
                     return false;
                 }
             } else {    // in the case of scaling down
-                // TODO: Remove after merging bug is fixed
                 List<String> chosenToScaleIn = scalingContext.getPrefixesForScalingIn(excess);
                 if (chosenToScaleIn.size() > 0) {
                     for (String chosenPrefix : chosenToScaleIn) {
                         initiateScaleIn(scalingContext.getMonitoredPrefix(chosenPrefix));
+                        break;
                     }
                     return true;
                 } else {
@@ -452,7 +497,7 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
         }
     }
 
-    public void processCtrlMessage(ControlMessage ctrlMsg) {
+    public synchronized void processCtrlMessage(ControlMessage ctrlMsg) {
         int type = ctrlMsg.getMessageType();
         ProtocolProcessor protocolProcessor = protocolProcessors.get(type);
         if (protocolProcessor != null) {
@@ -580,7 +625,7 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
             byte[] state = split(localPrefix);
             StateTransferMsg stateTransMsg = new StateTransferMsg(localPrefix, prefix, state,
                     activationReq.getOriginComputationOfScalingOperation(), getInstanceIdentifier(),
-                    StateTransferMsg.SCALE_IN, null);
+                    StateTransferMsg.SCALE_IN, GeoHashIndexedRecord.class.getName());
             try {
                 SendUtility.sendControlMessage(activationReq.getOriginNodeOfScalingOperation(), stateTransMsg);
                 if (logger.isDebugEnabled()) {
@@ -915,4 +960,6 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
             }
         }
     }
+
+
 }

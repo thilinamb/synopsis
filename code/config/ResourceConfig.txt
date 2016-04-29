@@ -65,3 +65,6 @@ rivulet-hazelcast-serializer-neptune.geospatial.hazelcast.type.SketchLocation=ne
 
 # Rivulet deployment
 #deployer-config=/Users/thilina/csu/research/dsg/source/vldb/neptune-geospatial/code/config/deployer_config.json
+
+# stat server
+stat-server-endpoint=lattice-59:12345

@@ -1,0 +1,38 @@
+#!/bin/bash
+
+java_opts="-Xmx1024m"
+
+if [[ -e "../lib/" ]]; then
+    PRG="$0"
+    PRGDIR=`dirname "$PRG"`
+    export GRANULES_HOME=`cd "$PRGDIR/.." ; pwd`
+else
+    echo "Could not locate Granules!  Please configure the GRANULES_HOME"
+    echo "environment variable and ensure Granules.jar exists."
+    exit 1
+fi
+
+# initialize the classpath
+GRANULES_CLASSPATH=""
+for f in "$GRANULES_HOME"/lib/*
+do
+  if [ "$GRANULES_CLASSPATH" == "" ]
+    then
+    GRANULES_CLASSPATH=$f
+  else
+    GRANULES_CLASSPATH="$GRANULES_CLASSPATH":$f
+  fi
+done
+
+# location of the log4j properties file
+log4j_conf_file='file:'${GRANULES_HOME}'/lib/log4j_dep.properties'
+# append it to java opts
+java_opts=${java_opts}' -Dlog4j.configuration='${log4j_conf_file}
+
+# get the classname
+run='synopsis.statserver.StatsServer'
+
+java \
+    ${java_opts} \
+    -cp ${GRANULES_CLASSPATH} \
+    ${run} "${@}"

@@ -1,8 +1,5 @@
 package neptune.geospatial.benchmarks.sketch;
 
-import ds.granules.streaming.core.exception.StreamingDatasetException;
-import neptune.geospatial.graph.Constants;
-import neptune.geospatial.graph.messages.GeoHashIndexedRecord;
 import neptune.geospatial.graph.operators.NOAADataIngester;
 import org.apache.log4j.Logger;
 
@@ -34,7 +31,7 @@ public class ThrottledStreamIngester extends NOAADataIngester {
     }
 
     @Override
-    public void emit() throws StreamingDatasetException {
+    public void onSuccessfulEmission() {
         if (tsLastEmitted == -1) {
             try {
                 Thread.sleep(20 * 1000);
@@ -43,27 +40,22 @@ public class ThrottledStreamIngester extends NOAADataIngester {
 
             }
         }
-        GeoHashIndexedRecord record = nextRecord();
-        if (record != null) {
-            writeToStream(Constants.Streams.NOAA_DATA_STREAM, record);
-            countEmitted++;
-            long sentCount = counter.incrementAndGet();
-            long now = System.currentTimeMillis();
+        long sentCount = counter.incrementAndGet();
+        long now = System.currentTimeMillis();
 
-            if (tsLastEmitted == -1) {
+        if (tsLastEmitted == -1) {
+            tsLastEmitted = now;
+        } else if (now - tsLastEmitted > 3000) {
+            try {
+                bufferedWriter.write(now + "," + sentCount * 1000.0 / (now - tsLastEmitted) + "\n");
+                bufferedWriter.flush();
                 tsLastEmitted = now;
-            } else if (now - tsLastEmitted > 3000) {
-                try {
-                    bufferedWriter.write(now + "," + sentCount * 1000.0 / (now - tsLastEmitted) + "\n");
-                    bufferedWriter.flush();
-                    tsLastEmitted = now;
-                    counter.set(0);
-                } catch (IOException e) {
-                    logger.error("Error writing stats.", e);
-                }
+                counter.set(0);
+            } catch (IOException e) {
+                logger.error("Error writing stats.", e);
             }
-            busywait();
         }
+        busywait();
     }
 
     private void busywait() {

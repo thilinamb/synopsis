@@ -4,6 +4,7 @@ import ds.granules.communication.direct.control.ControlMessage;
 import neptune.geospatial.core.protocol.AbstractProtocolHandler;
 import neptune.geospatial.stat.InstanceRegistration;
 import neptune.geospatial.stat.PeriodicInstanceMetrics;
+import neptune.geospatial.stat.ScaleActivity;
 import neptune.geospatial.stat.StatConstants;
 import org.apache.log4j.Logger;
 
@@ -33,6 +34,9 @@ class MessageDispatcher extends AbstractProtocolHandler {
                 break;
             case StatConstants.MessageTypes.PERIODIC_UPDATE:
                 statRegistry.updateMetrics((PeriodicInstanceMetrics)ctrlMsg);
+                break;
+            case StatConstants.MessageTypes.STAT_ACTIVITY:
+                statRegistry.processScalingActivity((ScaleActivity)ctrlMsg);
                 break;
             default:
                 logger.warn("Invalid message type: " + type);

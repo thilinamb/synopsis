@@ -29,6 +29,18 @@ public class ScaleInCompleteMsgProcessor implements ProtocolProcessor {
         ScaleInComplete scaleInCompleteMsg = (ScaleInComplete) ctrlMsg;
         String instanceIdentifier = streamProcessor.getInstanceIdentifier();
         PendingScaleInRequest pendingReq = scalingContext.getPendingScalingInRequest(scaleInCompleteMsg.getPrefix());
+        // one of the siblings have not released the lock
+        if(pendingReq == null){
+            streamProcessor.releaseMutex();
+            ScaleInCompleteAck ack = new ScaleInCompleteAck(scaleInCompleteMsg.getPrefix(),
+                    scaleInCompleteMsg.getParentComputation());
+            try {
+                SendUtility.sendControlMessage(scaleInCompleteMsg.getOriginEndpoint(), ack);
+            } catch (CommunicationsException | IOException e) {
+                logger.error("error sending ScaleInCompleteAck back to parent.", e);
+            }
+            return;
+        }
 
         if (pendingReq.getSentOutRequests().entrySet().size() > 0) {
             pendingReq.setReceivedCount(0);
@@ -64,7 +76,7 @@ public class ScaleInCompleteMsgProcessor implements ProtocolProcessor {
                             instanceIdentifier));
                 }
             } catch (CommunicationsException | IOException e) {
-                e.printStackTrace();
+                logger.error("error sending ScaleInCompleteAck back to parent.", e);
             }
         }
     }
