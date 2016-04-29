@@ -28,4 +28,10 @@ public class Constants {
     }
 
     public static final String MEMORY_USAGE_MAP = "mem-usage-map";
+
+    public class RecordHeaders {
+        public static final int PREFIX_ONLY = 0;
+        public static final int SCALE_OUT = 1;
+        public static final int PAYLOAD = 2;
+    }
 }
