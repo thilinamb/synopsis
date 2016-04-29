@@ -22,7 +22,7 @@ public class ThrottledStreamIngester extends NOAADataIngester {
     private BufferedWriter bufferedWriter;
 
     public ThrottledStreamIngester() {
-        super();
+        super(true);
         try {
             bufferedWriter = new BufferedWriter(new FileWriter("/tmp/throughput-profile.stat"));
         } catch (IOException e) {
