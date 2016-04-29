@@ -18,20 +18,22 @@ public class ScaleOutResponse extends ControlMessage {
     private String targetEndpoint;
     private String newComputationId;
     private String newLocationURL;
+    private int prefixOnlyScaleOutOpId;
 
     public ScaleOutResponse() {
         super(ProtocolTypes.SCALE_OUT_RESP);
     }
 
-    public ScaleOutResponse(String inResponseTo, String targetComputation, boolean success) {
+    public ScaleOutResponse(String inResponseTo, String targetComputation, boolean success, int prefixOnlyScaleOutOpId) {
         super(ProtocolTypes.SCALE_OUT_RESP);
         this.inResponseTo = inResponseTo;
         this.targetComputation = targetComputation;
         this.success = success;
+        this.prefixOnlyScaleOutOpId = prefixOnlyScaleOutOpId;
     }
 
     public ScaleOutResponse(String inResponseTo, String targetComputation, String targetEndpoint,
-                            boolean success, String newComputationId, String newLocationURL) {
+                            boolean success, String newComputationId, String newLocationURL, int prefixOnlyScaleOutOpId) {
         super(ProtocolTypes.SCALE_OUT_RESP);
         this.inResponseTo = inResponseTo;
         this.targetComputation = targetComputation;
@@ -39,6 +41,7 @@ public class ScaleOutResponse extends ControlMessage {
         this.success = success;
         this.newComputationId = newComputationId;
         this.newLocationURL = newLocationURL;
+        this.prefixOnlyScaleOutOpId = prefixOnlyScaleOutOpId;
     }
 
     @Override
@@ -50,6 +53,7 @@ public class ScaleOutResponse extends ControlMessage {
             this.newComputationId = dis.readUTF();
             this.newLocationURL = dis.readUTF();
         }
+        this.prefixOnlyScaleOutOpId = dis.readInt();
     }
 
     @Override
@@ -61,6 +65,7 @@ public class ScaleOutResponse extends ControlMessage {
             dos.writeUTF(this.newComputationId);
             dos.writeUTF(this.newLocationURL);
         }
+        dos.writeInt(this.prefixOnlyScaleOutOpId);
     }
 
     public String getInResponseTo() {
@@ -85,5 +90,9 @@ public class ScaleOutResponse extends ControlMessage {
 
     public boolean isSuccess() {
         return success;
+    }
+
+    public int getPrefixOnlyScaleOutOpId() {
+        return prefixOnlyScaleOutOpId;
     }
 }
