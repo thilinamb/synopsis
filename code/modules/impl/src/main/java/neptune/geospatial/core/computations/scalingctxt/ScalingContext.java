@@ -65,7 +65,7 @@ public class ScalingContext {
     public synchronized void addMonitoredPrefix(String prefix, MonitoredPrefix monitoredPrefix) {
         monitoredPrefixMap.put(prefix, monitoredPrefix);
         //monitoredPrefixes.add(monitoredPrefix);
-        if(monitoredPrefixMap.size() == 1){
+        if (monitoredPrefixMap.size() == 1) {
             this.prefixLength = prefix.length();
         }
         locallyProcessedPrefixCount++;
@@ -96,7 +96,7 @@ public class ScalingContext {
      * @param prefix    prefix
      * @param className Type of the record
      */
-    public synchronized void updateMessageCount(String prefix, String className) {
+    public synchronized void updateMessageCount(String prefix, String className, boolean active) {
         MonitoredPrefix monitoredPrefix;
         if (monitoredPrefixMap.containsKey(prefix)) {
             monitoredPrefix = monitoredPrefixMap.get(prefix);
@@ -114,6 +114,7 @@ public class ScalingContext {
                 logger.error("Error retrieving the ctrl endpoint.", e);
             }
         }
+        monitoredPrefix.setActive(active);
         monitoredPrefix.incrementMessageCount();
     }
 
@@ -140,14 +141,17 @@ public class ScalingContext {
      * @param excess A measure of the excess load
      * @return List of prefixes chosen for scaling out
      */
-    public synchronized List<String> getPrefixesForScalingOut(Double excess, boolean memoryBased) {
+    public synchronized List<String> getPrefixesForScalingOut(double excess, boolean memoryBased, boolean prefixOnly) {
         List<String> prefixesForScalingOut = new ArrayList<>();
         List<MonitoredPrefix> prefixList = new ArrayList<>();
         prefixList.addAll(monitoredPrefixMap.values());
 
         Collections.sort(prefixList);
         double cumulSumOfPrefixes = 0;
-        for (MonitoredPrefix monitoredPrefix: prefixList) {
+        for (MonitoredPrefix monitoredPrefix : prefixList) {
+            if (!prefixOnly && !monitoredPrefix.isActive()) {
+                continue;
+            }
             if (!monitoredPrefix.getIsPassThroughTraffic() &&
                     monitoredPrefix.getPrefix().length() <= AbstractGeoSpatialStreamProcessor.MAX_CHARACTER_DEPTH) {
                 // let's consider the number of messages accumulated over 2s.
@@ -158,7 +162,7 @@ public class ScalingContext {
                     cumulSumOfPrefixes += monitoredPrefix.getMessageRate() * 2;
                     prefixesForScalingOut.add(monitoredPrefix.getPrefix());
                 }
-                if(cumulSumOfPrefixes < excess && prefixesForScalingOut.size() < 200){
+                if (cumulSumOfPrefixes < excess && prefixesForScalingOut.size() < 200) {
                     break;
                 }
             }
@@ -188,7 +192,7 @@ public class ScalingContext {
         List<String> chosenPrefixes = new ArrayList<>();
         for (String prefix : monitoredPrefixMap.keySet()) {
             MonitoredPrefix monitoredPrefix = monitoredPrefixMap.get(prefix);
-            if (monitoredPrefix.getIsPassThroughTraffic()) {
+            if (monitoredPrefix.getIsPassThroughTraffic() && monitoredPrefix.isActive()) {
                 chosenPrefixes.add(monitoredPrefix.getPrefix());
                 // FIXME: Scale in just one computation, just to make sure protocol works
                 break;

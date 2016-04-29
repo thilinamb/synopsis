@@ -23,6 +23,7 @@ public class MonitoredPrefix implements Comparable<MonitoredPrefix> {
     private long terminationPoint = -1;
     private ScaleInActivateReq activateReq;
     private double consumedMemory;
+    private boolean active;
 
     public MonitoredPrefix(String prefix, String streamType) {
         this.prefix = prefix;
@@ -151,6 +152,14 @@ public class MonitoredPrefix implements Comparable<MonitoredPrefix> {
 
     public void setConsumedMemory(double consumedMemory) {
         this.consumedMemory = consumedMemory;
+    }
+
+    public boolean isActive() {
+        return active;
+    }
+
+    public void setActive(boolean active) {
+        this.active = active;
     }
 }
 

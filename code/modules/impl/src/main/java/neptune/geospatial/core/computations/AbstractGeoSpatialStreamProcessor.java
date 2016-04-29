@@ -22,6 +22,7 @@ import neptune.geospatial.core.protocol.ProtocolTypes;
 import neptune.geospatial.core.protocol.msg.StateTransferMsg;
 import neptune.geospatial.core.protocol.msg.scalein.ScaleInActivateReq;
 import neptune.geospatial.core.protocol.msg.scalein.ScaleInLockRequest;
+import neptune.geospatial.core.protocol.msg.scaleout.PrefixOnlyScaleOutCompleteAck;
 import neptune.geospatial.core.protocol.msg.scaleout.ScaleOutRequest;
 import neptune.geospatial.core.protocol.processors.ProtocolProcessor;
 import neptune.geospatial.core.protocol.processors.StateTransferMsgProcessor;
@@ -78,6 +79,9 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
 
         @Override
         public void run() {
+            if (!hasStartedReceivingData.get()) {
+                return;
+            }
             if (firstAttempt) {
                 InstanceRegistration registration = new InstanceRegistration(instanceId,
                         StatConstants.ProcessorTypes.PROCESSOR);
@@ -175,6 +179,10 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
 
     private AtomicLong processedCount = new AtomicLong(0);
     private ScheduledExecutorService statPublisher = Executors.newScheduledThreadPool(1);
+    private Map<Integer, FullQualifiedComputationAddr> pendingPrefixOnlyScaleOutOps = Collections.synchronizedMap(
+            new HashMap<Integer, FullQualifiedComputationAddr>());
+    private int prefixOnlyScaleOutOpId = 1;
+    private AtomicBoolean hasStartedReceivingData = new AtomicBoolean(false);
 
     /**
      * Implement the specific business logic to process each
@@ -286,6 +294,32 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
         }
 
         GeoHashIndexedRecord geoHashIndexedRecord = (GeoHashIndexedRecord) streamEvent;
+        int header = geoHashIndexedRecord.getHeader();
+
+        if (header == Constants.RecordHeaders.PREFIX_ONLY) {
+            preprocess(geoHashIndexedRecord);
+            return;
+        }
+
+        if (header == Constants.RecordHeaders.SCALE_OUT) {
+            List<String> prefixesForScalingOut = scalingContext.getPrefixesForScalingOut(Double.MAX_VALUE, false, true);
+            logger.info(String.format("[%s] Prefix only scaling out. " +
+                    "Chosen Prefix Count: %d", getInstanceIdentifier(), prefixesForScalingOut.size()));
+            if (!prefixesForScalingOut.isEmpty()) {
+                try {
+                    pendingPrefixOnlyScaleOutOps.put(prefixOnlyScaleOutOpId, new FullQualifiedComputationAddr(
+                            geoHashIndexedRecord.getIngesterEndpoint(), geoHashIndexedRecord.getIngesterId()));
+                    // We assume we use the same message type throughout the graph.
+                    String streamType = scalingContext.getMonitoredPrefix(prefixesForScalingOut.get(0)).getStreamType();
+                    initiateScaleOut(prefixesForScalingOut, streamType, false, 0, prefixOnlyScaleOutOpId);
+                    prefixOnlyScaleOutOpId++;
+                } catch (ScalingException e) {
+                    logger.error("Error performing prefix only scaling out.", e);
+                }
+            }
+            return;
+        }
+
         // this a dummy message sent to activate the computation after scaling out.
         if (geoHashIndexedRecord.getMessageIdentifier() == -1) {
             return;
@@ -293,6 +327,7 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
         // initialize message size after skipping dummy messages
         if (messageSize.get() == -1) {
             messageSize.set(getMessageSize(streamEvent));
+            hasStartedReceivingData.set(true);
         }
         // preprocess each message
         long checkpointId = geoHashIndexedRecord.getCheckpointId();
@@ -362,6 +397,7 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
         }
     }
 
+
     /**
      * Preprocess every record to extract meta-data such as triggering
      * scale out operations. This is prior to performing actual processing
@@ -417,7 +453,8 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
         if (hasSeenBefore) {
             processLocally = false;
         }
-        if (monitoredPrefix.getTerminationPoint() == monitoredPrefix.getLastMessageSent()) {
+        if (record.getHeader() == Constants.RecordHeaders.PAYLOAD &&
+                monitoredPrefix.getTerminationPoint() == monitoredPrefix.getLastMessageSent()) {
             propagateScaleInActivationRequests(monitoredPrefix.getActivateReq());
         }
 
@@ -446,6 +483,9 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
      * triggered.
      */
     public synchronized boolean recommendScaling(double excess, boolean memoryBased) {
+        if (!hasStartedReceivingData.get()) {
+            return false;
+        }
         // try to get the lock first
         if (!tryAcquireMutex()) {
             if (logger.isDebugEnabled()) {
@@ -461,19 +501,19 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
         try {
             // in the case of scaling out
             if (excess > 0) {
-                List<String> prefixesForScalingOut = scalingContext.getPrefixesForScalingOut(excess, memoryBased);
+                List<String> prefixesForScalingOut = scalingContext.getPrefixesForScalingOut(excess, memoryBased, false);
                 logger.info(String.format("[%s] Chosen Prefix Count: %d", getInstanceIdentifier(), prefixesForScalingOut.size()));
                 if (!prefixesForScalingOut.isEmpty()) {
                     // We assume we use the same message type throughout the graph.
                     String streamType = scalingContext.getMonitoredPrefix(prefixesForScalingOut.get(0)).getStreamType();
-                    initiateScaleOut(prefixesForScalingOut, streamType, memoryBased, excess);
+                    initiateScaleOut(prefixesForScalingOut, streamType, memoryBased, excess, -1);
                     return true;
                 } else {
                     // we couldn't find any suitable prefixes
                     releaseMutex();
                     return false;
                 }
-            } else {    // in the case of scaling down
+            } /* else {    // in the case of scaling down
                 List<String> chosenToScaleIn = scalingContext.getPrefixesForScalingIn(excess);
                 if (chosenToScaleIn.size() > 0) {
                     for (String chosenPrefix : chosenToScaleIn) {
@@ -489,7 +529,9 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
                     }
                     return false;
                 }
-            }
+            } */
+            releaseMutex();
+            return false;
         } catch (Throwable e) { // Defending against any runtime exception.
             logger.error("Scaling Error.", e);
             releaseMutex();
@@ -508,7 +550,8 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
         }
     }
 
-    private void initiateScaleOut(List<String> prefix, String streamType, boolean isMemoryPressure, double excess) throws ScalingException {
+    private void initiateScaleOut(List<String> prefix, String streamType, boolean isMemoryPressure, double excess,
+                                  int prefixOnlyScaleOutOpId) throws ScalingException {
         try {
             GeoHashPartitioner partitioner = new GeoHashPartitioner();
             String outGoingStreamId = getNewStreamIdentifier();
@@ -518,6 +561,9 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
 
             ScaleOutRequest triggerMessage = new ScaleOutRequest(getInstanceIdentifier(), outGoingStreamId,
                     topics[0].toString(), streamType);
+            if (prefixOnlyScaleOutOpId > 0) {
+                triggerMessage.setPrefixOnlyScaleOutOperationId(prefixOnlyScaleOutOpId);
+            }
             if (isMemoryPressure) {
                 triggerMessage.setRequiredMemory(excess);
             }
@@ -667,7 +713,8 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
     }
 
     private void updateIncomingRatesForSubPrefixes(String prefix, GeoHashIndexedRecord record) {
-        scalingContext.updateMessageCount(prefix, record.getClass().getName());
+        scalingContext.updateMessageCount(prefix, record.getClass().getName(),
+                record.getHeader() == Constants.RecordHeaders.PAYLOAD);
         long timeNow = System.currentTimeMillis();
         if (tsLastUpdated.get() == 0) {
             tsLastUpdated.set(timeNow);
@@ -961,5 +1008,20 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
         }
     }
 
+    public void ackPrefixOnlyScaleOut(int prefixOnlyScaleOutOpId) {
+        if (pendingPrefixOnlyScaleOutOps.containsKey(prefixOnlyScaleOutOpId)) {
+            FullQualifiedComputationAddr fullQualifiedComputationAddr = pendingPrefixOnlyScaleOutOps.remove(prefixOnlyScaleOutOpId);
+            PrefixOnlyScaleOutCompleteAck ack = new PrefixOnlyScaleOutCompleteAck(fullQualifiedComputationAddr.getComputationId());
+            try {
+                SendUtility.sendControlMessage(fullQualifiedComputationAddr.getCtrlEndpointAddr(), ack);
+                logger.info(String.format("[%s]Completed PrefixOnly scaling out. Sent acknowledgement back to the ingester.",
+                        getInstanceIdentifier()));
+            } catch (CommunicationsException | IOException e) {
+                logger.error("Error sending PrefixOnlyScaleOutCompleteAck to the ingester.", e);
+            }
 
+        } else {
+            logger.warn("Invalid prefixOnlyScaleOutOpId: " + prefixOnlyScaleOutOpId);
+        }
+    }
 }
