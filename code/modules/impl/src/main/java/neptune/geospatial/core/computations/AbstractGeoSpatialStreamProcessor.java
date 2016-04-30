@@ -557,7 +557,7 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
             String outGoingStreamId = getNewStreamIdentifier();
             declareStream(outGoingStreamId, streamType);
             // initialize the meta-data
-            Topic[] topics = deployStream(outGoingStreamId, 1, partitioner);
+            Topic[] topics = deployStream(outGoingStreamId, new int[]{ManagedResource.getInstance().getNextSeqNo()}, partitioner);
 
             ScaleOutRequest triggerMessage = new ScaleOutRequest(getInstanceIdentifier(), outGoingStreamId,
                     topics[0].toString(), streamType);

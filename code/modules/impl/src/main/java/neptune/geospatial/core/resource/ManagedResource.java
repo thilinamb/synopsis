@@ -31,6 +31,7 @@ import java.io.File;
 import java.io.IOException;
 import java.lang.management.ManagementFactory;
 import java.lang.management.MemoryUsage;
+import java.net.InetAddress;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -280,6 +281,8 @@ public class ManagedResource {
     private long tsActiveScalingStarted;
     private long checkpointTimeoutPeriod;
     private ScheduledFuture future;
+    private int seqNoStart;
+    private int seqNoEnd;
 
     private Map<String, NOAADataIngester> registeredIngesters = new HashMap<>();
 
@@ -341,6 +344,9 @@ public class ManagedResource {
             ChannelToStreamDeMultiplexer.getInstance().registerCallback(Constants.DEPLOYMENT_REQ,
                     new DeployerCallback(this));
             countDownLatch.await();
+
+            // initiate seq. no generation
+            setUpSeqNoGenerator();
         } catch (GranulesConfigurationException | InterruptedException e) {
             logger.error(e.getMessage(), e);
         }
@@ -541,5 +547,28 @@ public class ManagedResource {
 
     public long getStateReplicationInterval() {
         return stateReplicationInterval;
+    }
+
+    private synchronized void setUpSeqNoGenerator() {
+        InetAddress inetAddress = RivuletUtil.getHostInetAddress();
+        if (inetAddress.isLoopbackAddress()) {
+            try {
+                String port = RivuletUtil.getCtrlEndpoint().split(":")[1];
+                seqNoStart = Integer.parseInt(port);
+            } catch (GranulesConfigurationException e1) {
+                // worst case, resort to a random number
+                seqNoStart = new Random(System.currentTimeMillis()).nextInt();
+            }
+        } else {
+            String[] ipAddr = RivuletUtil.getHostInetAddress().getHostAddress().trim().split("\\.");
+            seqNoStart = Integer.parseInt(ipAddr[2] + ipAddr[3]);
+        }
+        seqNoStart = seqNoStart * 1000;
+        seqNoEnd = seqNoStart + 1000;
+        logger.info(String.format("Seq. No. Range for topic creation: [%d - %d)", seqNoStart, seqNoEnd));
+    }
+
+    public synchronized int getNextSeqNo() {
+        return (++seqNoStart < seqNoEnd) ? seqNoStart : -1;
     }
 }
