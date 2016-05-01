@@ -25,7 +25,7 @@ Similarly, the sketch for the region \emph{DJKJ} is moved out of node C into nod
 It should be noted that the depth and span of the distributed sketch are dynamic and are constantly evolving according to the workload and operating conditions.
 
 As the tree grows, having parent nodes pass traffic through to their children becomes inefficient because of higher bandwidth consumption as well as increased latency due to additional network hops the packets have to travel through.
-To circumvent this, we use short circuiting to direct traffic from stream ingesters straight to child nodes.
+To circumvent this, we allow \emph{short circuiting}, which directs traffic from stream ingesters straight to child nodes.
 This is depicted in Figure~\ref{fig:stream-partitioning}, where the stream ingester directly sends data to node E instead of sending it through nodes A and C.
 We use our gossiping subsystem to update parent nodes on child state information, which is useful for scaling in as explained in Section~\ref{subsec:scaling-in}.
 
