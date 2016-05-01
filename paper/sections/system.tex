@@ -7,7 +7,7 @@ In this section, we will briefly introduce Neptune followed by a discussion on t
 Neptune is a distributed stream processing system that is designed to cope with application requirements such as high volumes of small stream packets, high and variable data rates, and heterogeneity within stream processing jobs.
 Satisfying these requirements imposes various system level challenges including possible buffer overflow errors, increased number of context switches, object creation overhead and memory management issues.
 Neptune takes a holistic approach that considers CPU, memory, network and kernel issues to address these challenges.
-This is achieved through optimizations such as application level buffering, batched scheduling, object reuse, built-in support for backpressure and selective compression to ensure better utilization of system resources.
+This is achieved through optimizations such as application level buffering, batched scheduling, object reuse, built-in support for backpressure and selective compression to ensure better utilization of system resources \cite{buddhika2016neptune}.
 
 Users can deploy stream processing jobs as directed acyclic graphs in Neptune.
 A stream processing graph consists of a set of stream ingestion points and stream processors (vertices) and streams connecting these operators (edges).
