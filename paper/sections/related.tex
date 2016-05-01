@@ -14,7 +14,7 @@ Further, we do not interrupt the data flow through \textsc{Synopsis} when dynami
 
 StreamCloud~\cite{gulisano2012streamcloud} relies on a global threshold-based scheme to implement elasticity where a query is partitioned into sub-queries which run on separate clusters.
 StreamCloud relies on a centralized component, the Elastic Manager, to initiate the elastic reconfiguration protocol, whereas in Synopsis each node independently initiates the dynamic scaling protocol.
-This difference is mainly due to different optimization objectives of the two systems; StreamCloud tries to optimize the average CPU usage per cluster while Synopsis attempts to maintain stability at each node.
+This difference is mainly due to different optimization objectives of the two systems; StreamCloud tries to optimize the average CPU usage per cluster while \textsc{Synopsis} attempts to maintain stability at each node.
 The state recreation protocol of StreamCloud is conceptually similar to our state transfer protocol, except in StreamCloud the tuples are buffered at the new location until the state transfer is complete, whereas in \textsc{Synopsis} the new node starts building the state (sketch) which is later merged with the asynchronously transferred state from the previous node.
 
 Gedik et al.~\cite{schneider2009elastic} also uses a threshold-based local scheme similar to \textsc{Synopsis}. Additionally, this approach keeps track of the past performance achieved at different operating conditions in order to avoid oscillations in scaling activities.
