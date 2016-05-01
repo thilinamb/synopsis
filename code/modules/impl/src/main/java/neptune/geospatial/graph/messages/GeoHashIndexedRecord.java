@@ -1,6 +1,7 @@
 package neptune.geospatial.graph.messages;
 
 import ds.granules.streaming.core.datatype.AbstractStreamEvent;
+import neptune.geospatial.graph.Constants;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
@@ -12,6 +13,11 @@ import java.io.IOException;
  * @author Thilina Buddhika
  */
 public class GeoHashIndexedRecord extends AbstractStreamEvent {
+
+    /**
+     * Type of the geohash record
+     */
+    private int header = Constants.RecordHeaders.PAYLOAD;
 
     /**
      * Geohash for the record
@@ -41,7 +47,23 @@ public class GeoHashIndexedRecord extends AbstractStreamEvent {
 
     private String parentEndpoint;
 
+    private String ingesterId;
+
+    private String ingesterEndpoint;
+
     public GeoHashIndexedRecord() {
+    }
+
+    public GeoHashIndexedRecord(int header, String ingesterId, String ingesterEndpoint) {
+        this.header = header;
+        this.ingesterId = ingesterId;
+        this.ingesterEndpoint = ingesterEndpoint;
+    }
+
+    public GeoHashIndexedRecord(int header, String geoHash, int prefixLength) {
+        this.header = header;
+        this.geoHash = geoHash;
+        this.prefixLength = prefixLength;
     }
 
     public GeoHashIndexedRecord(long checkpointId, String parentId, String parentEndpoint) {
@@ -60,33 +82,51 @@ public class GeoHashIndexedRecord extends AbstractStreamEvent {
 
     @Override
     protected void readValues(DataInputStream dataInputStream) throws IOException {
-        this.checkpointId = dataInputStream.readLong();
-        if (this.checkpointId > -1) {
-            this.parentId = dataInputStream.readUTF();
-            this.parentEndpoint = dataInputStream.readUTF();
-        } else {
+        this.header = dataInputStream.readInt();
+        if (this.header == Constants.RecordHeaders.PAYLOAD) {
+            this.checkpointId = dataInputStream.readLong();
+            if (this.checkpointId > -1) {
+                this.parentId = dataInputStream.readUTF();
+                this.parentEndpoint = dataInputStream.readUTF();
+            } else {
+                this.geoHash = dataInputStream.readUTF();
+                this.prefixLength = dataInputStream.readInt();
+                this.messageIdentifier = dataInputStream.readLong();
+                this.tsIngested = dataInputStream.readLong();
+                this.payload = new byte[dataInputStream.readInt()];
+                dataInputStream.readFully(this.payload);
+            }
+        } else if (header == Constants.RecordHeaders.PREFIX_ONLY) {
             this.geoHash = dataInputStream.readUTF();
             this.prefixLength = dataInputStream.readInt();
-            this.messageIdentifier = dataInputStream.readLong();
-            this.tsIngested = dataInputStream.readLong();
-            this.payload = new byte[dataInputStream.readInt()];
-            dataInputStream.readFully(this.payload);
+        } else {
+            this.ingesterId = dataInputStream.readUTF();
+            this.ingesterEndpoint = dataInputStream.readUTF();
         }
     }
 
     @Override
     protected void writeValues(DataOutputStream dataOutputStream) throws IOException {
-        dataOutputStream.writeLong(this.checkpointId);
-        if (this.checkpointId > -1) {
-            dataOutputStream.writeUTF(this.parentId);
-            dataOutputStream.writeUTF(this.parentEndpoint);
-        } else {
+        dataOutputStream.writeInt(header);
+        if (header == Constants.RecordHeaders.PAYLOAD) {
+            dataOutputStream.writeLong(this.checkpointId);
+            if (this.checkpointId > -1) {
+                dataOutputStream.writeUTF(this.parentId);
+                dataOutputStream.writeUTF(this.parentEndpoint);
+            } else {
+                dataOutputStream.writeUTF(this.geoHash);
+                dataOutputStream.writeInt(this.prefixLength);
+                dataOutputStream.writeLong(this.messageIdentifier);
+                dataOutputStream.writeLong(this.tsIngested);
+                dataOutputStream.writeInt(this.payload.length);
+                dataOutputStream.write(this.payload);
+            }
+        } else if (header == Constants.RecordHeaders.PREFIX_ONLY) {
             dataOutputStream.writeUTF(this.geoHash);
             dataOutputStream.writeInt(this.prefixLength);
-            dataOutputStream.writeLong(this.messageIdentifier);
-            dataOutputStream.writeLong(this.tsIngested);
-            dataOutputStream.writeInt(this.payload.length);
-            dataOutputStream.write(this.payload);
+        } else {
+            dataOutputStream.writeUTF(this.getIngesterId());
+            dataOutputStream.writeUTF(this.getIngesterEndpoint());
         }
     }
 
@@ -128,5 +168,17 @@ public class GeoHashIndexedRecord extends AbstractStreamEvent {
 
     public String getParentEndpoint() {
         return parentEndpoint;
+    }
+
+    public int getHeader() {
+        return header;
+    }
+
+    public String getIngesterId() {
+        return ingesterId;
+    }
+
+    public String getIngesterEndpoint() {
+        return ingesterEndpoint;
     }
 }

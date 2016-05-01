@@ -1,12 +1,15 @@
 package neptune.geospatial.graph.operators;
 
 import ds.funnel.data.format.FormatReader;
+import ds.funnel.data.format.FormatWriter;
 import ds.granules.communication.direct.control.ControlMessage;
+import ds.granules.exception.GranulesConfigurationException;
 import ds.granules.neptune.interfere.core.NIException;
 import ds.granules.streaming.core.StreamSource;
 import ds.granules.streaming.core.exception.StreamingDatasetException;
 import ds.granules.streaming.core.exception.StreamingGraphConfigurationException;
 import io.sigpipe.sing.serialization.SerializationInputStream;
+import neptune.geospatial.core.protocol.msg.scaleout.PrefixOnlyScaleOutCompleteAck;
 import neptune.geospatial.core.resource.ManagedResource;
 import neptune.geospatial.graph.Constants;
 import neptune.geospatial.graph.messages.GeoHashIndexedRecord;
@@ -19,9 +22,11 @@ import neptune.geospatial.util.geohash.GeoHash;
 import org.apache.log4j.Logger;
 
 import java.io.*;
+import java.util.List;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
@@ -65,10 +70,25 @@ public class NOAADataIngester extends StreamSource {
     private SerializationInputStream inStream;
     private long messageSeqId = 0;
     private ScheduledExecutorService statPublisherService = Executors.newScheduledThreadPool(1);
+    private boolean doPrefixOnlyInit = false;
+    private AtomicInteger completedRounds = new AtomicInteger(0);
+    private String prefixFilePath;
+    private BufferedReader prefixFileBuffReader;
+    private AtomicInteger remainingPhase1ScaleOutAckCount = new AtomicInteger(0);
 
     public NOAADataIngester() {
+        init();
+    }
+
+    public NOAADataIngester(boolean doPrefixOnlyInit) {
+        init();
+        this.doPrefixOnlyInit = doPrefixOnlyInit;
+    }
+
+    private void init() {
         String hostname = RivuletUtil.getHostInetAddress().getHostName();
         String dataDirPath = "/s/" + hostname + "/b/nobackup/galileo/noaa-dataset/bundles/";
+        prefixFilePath = "/s/chopin/a/grad/thilinab/research/data/noaa_nam_pts.txt";
         File dataDir = new File(dataDirPath);
         if (dataDir.exists()) {
             inputFiles = dataDir.listFiles(new FilenameFilter() {
@@ -86,20 +106,44 @@ public class NOAADataIngester extends StreamSource {
 
     @Override
     public void emit() throws StreamingDatasetException {
-        GeoHashIndexedRecord record = nextRecord();
-        if (record != null) {
-            writeToStream(Constants.Streams.NOAA_DATA_STREAM, record);
-            countEmittedFromCurrentFile++;
-            totalEmittedMsgCount.incrementAndGet();
-            totalEmittedBytes.addAndGet(record.getPayload().length);
-            if(totalEmittedMsgCount.get() == 1){
-                statPublisherService.scheduleAtFixedRate(new StatPublisher(), 0, 2, TimeUnit.SECONDS);
+        if (doPrefixOnlyInit && completedRounds.get() < 2 && remainingPhase1ScaleOutAckCount.get() == 0) {
+            logger.info(String.format("[%s] Prefix Only initialization is set. Starting round :%d",
+                    getInstanceIdentifier(), completedRounds.get()));
+            GeoHashIndexedRecord prefRecord = getNextPrefixOnlyRecord();
+            while (prefRecord != null) {
+                writeToStream(Constants.Streams.NOAA_DATA_STREAM, prefRecord);
+                prefRecord = getNextPrefixOnlyRecord();
             }
-            onSuccessfulEmission();
+            logger.info(String.format("[%s] Completed emitting prefixes for round: %d",
+                    getInstanceIdentifier(), completedRounds.get()));
+            // trigger the scale out
+            try {
+                remainingPhase1ScaleOutAckCount.set(getLayer1ReceiverCount());
+                writeToStream(Constants.Streams.NOAA_DATA_STREAM,
+                        new GeoHashIndexedRecord(Constants.RecordHeaders.SCALE_OUT, getInstanceIdentifier(),
+                                RivuletUtil.getCtrlEndpoint()));
+                logger.info(String.format("[%s] Triggered prefix only scale out for round: %d", getInstanceIdentifier(),
+                        completedRounds.get()));
+            } catch (GranulesConfigurationException e) {
+                logger.error("Error sending out the scale out at prefix init phase.", e);
+            }
+        } else {
+            GeoHashIndexedRecord record = nextRecord();
+            if (record != null) {
+                writeToStream(Constants.Streams.NOAA_DATA_STREAM, record);
+                countEmittedFromCurrentFile++;
+                totalEmittedMsgCount.incrementAndGet();
+                totalEmittedBytes.addAndGet(record.getPayload().length);
+                if (totalEmittedMsgCount.get() == 1) {
+                    statPublisherService.scheduleAtFixedRate(new StatPublisher(), 0, 2, TimeUnit.SECONDS);
+                }
+                onSuccessfulEmission();
+            }
         }
     }
 
-    public void onSuccessfulEmission(){}
+    public void onSuccessfulEmission() {
+    }
 
     protected GeoHashIndexedRecord nextRecord() {
         if (inputFiles.length == 0) { // no input files, return
@@ -152,7 +196,13 @@ public class NOAADataIngester extends StreamSource {
     }
 
     @Override
+    protected void serializedMemberVariables(FormatWriter formatWriter) {
+        formatWriter.writeBool(doPrefixOnlyInit);
+    }
+
+    @Override
     protected void deserializeMemberVariables(FormatReader formatReader) {
+        this.doPrefixOnlyInit = formatReader.readBool();
         try {
             ManagedResource.getInstance().registerIngester(this);
         } catch (NIException e) {
@@ -161,5 +211,45 @@ public class NOAADataIngester extends StreamSource {
     }
 
     public void handleControlMessage(ControlMessage ctrlMsg) {
+    }
+
+    private GeoHashIndexedRecord getNextPrefixOnlyRecord() {
+        try {
+            if (prefixFileBuffReader == null) {
+                prefixFileBuffReader = new BufferedReader(new FileReader(prefixFilePath));
+            }
+            String line = prefixFileBuffReader.readLine();
+            if (line != null) {
+                return parse(line);
+            }
+        } catch (IOException e) {
+            logger.error("Error reading the prefix file.", e);
+        }
+        return null;
+    }
+
+    private GeoHashIndexedRecord parse(String line) {
+        String[] locSegments = line.split("   ");
+        GeoHashIndexedRecord record = null;
+        if (locSegments.length == 2) {
+            String geoHash = GeoHash.encode(Float.parseFloat(locSegments[0]), Float.parseFloat(locSegments[1]),
+                    PRECISION);
+            record = new GeoHashIndexedRecord(Constants.RecordHeaders.PREFIX_ONLY, geoHash, 2);
+        }
+        return record;
+    }
+
+    private int getLayer1ReceiverCount() {
+        List<StreamDisseminationMetadata> metaData = metadataRegistry.get(Constants.Streams.NOAA_DATA_STREAM);
+        return metaData.get(0).topics.length;
+    }
+
+    public void handlePrefixOnlyScaleOutAck(PrefixOnlyScaleOutCompleteAck ack) {
+        int remainingCount = remainingPhase1ScaleOutAckCount.decrementAndGet();
+        if (remainingCount == 0) {
+            completedRounds.incrementAndGet();
+        }
+        logger.info(String.format("Received a PrefixOnlyScaleOutCompleteAck from %s, " +
+                "remaining count: %d, current round: %d", ack.getOriginEndpoint(), remainingCount, completedRounds.get()));
     }
 }

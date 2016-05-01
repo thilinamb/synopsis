@@ -374,7 +374,8 @@ public class GeoSpatialDeployer extends JobDeployer implements MembershipChangeL
 
             // not sufficient resources available
             if (resourceEndpoint == null) {
-                ScaleOutResponse resp = new ScaleOutResponse(scaleOutReq.getMessageId(), computationId, false);
+                ScaleOutResponse resp = new ScaleOutResponse(scaleOutReq.getMessageId(), computationId, false,
+                        scaleOutReq.getPrefixOnlyScaleOutOperationId());
                 try {
                     SendUtility.sendControlMessage(scaleOutReq.getOriginEndpoint(), resp);
                 } catch (CommunicationsException | IOException e) {
@@ -400,7 +401,7 @@ public class GeoSpatialDeployer extends JobDeployer implements MembershipChangeL
             // deploy the operation in the chosen Granules resource
             computationIdToObjectMap.put(clone.getInstanceIdentifier(), clone);
             ack = new ScaleOutResponse(scaleOutReq.getMessageId(), computationId, scaleOutReq.getOriginEndpoint(), true,
-                    clone.getInstanceIdentifier(), resourceEndpoint.getControlEndpoint());
+                    clone.getInstanceIdentifier(), resourceEndpoint.getControlEndpoint(), scaleOutReq.getPrefixOnlyScaleOutOperationId());
             pendingDeployments.add(ack);
             deployOperation(this.jobId, resourceEndpoint.getDataEndpoint(), clone);
             if (logger.isDebugEnabled()) {
@@ -415,7 +416,7 @@ public class GeoSpatialDeployer extends JobDeployer implements MembershipChangeL
             throw new GeoSpatialDeployerException("Error writing the deployment data to ZK.", e);
         } finally {
             if (ack == null) {
-                ack = new ScaleOutResponse(scaleOutReq.getMessageId(), computationId, false);
+                ack = new ScaleOutResponse(scaleOutReq.getMessageId(), computationId, false, scaleOutReq.getPrefixOnlyScaleOutOperationId());
                 try {
                     SendUtility.sendControlMessage(scaleOutReq.getOriginEndpoint(), ack);
                 } catch (CommunicationsException | IOException e) {

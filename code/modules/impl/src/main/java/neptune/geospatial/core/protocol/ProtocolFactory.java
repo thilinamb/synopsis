@@ -97,6 +97,9 @@ public class ProtocolFactory {
                 case StatConstants.MessageTypes.STAT_ACTIVITY:
                     message = new ScaleActivity();
                     break;
+                case ProtocolTypes.PREFIX_ONLY_SCALE_OUT_COMPLETE:
+                    message = new PrefixOnlyScaleOutCompleteAck();
+                    break;
                 default:
                     String errorMsg = "Unsupported message type: " + messageType;
                     throw new ProtocolException(errorMsg);

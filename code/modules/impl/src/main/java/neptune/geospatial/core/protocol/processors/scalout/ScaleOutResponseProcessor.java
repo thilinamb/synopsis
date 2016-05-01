@@ -37,6 +37,23 @@ public class ScaleOutResponseProcessor implements ProtocolProcessor {
             streamProcessor.releaseMutex();
             return;
         }
+        if (scaleOutResp.getPrefixOnlyScaleOutOpId() > 0) {
+            streamProcessor.ackPrefixOnlyScaleOut(scaleOutResp.getPrefixOnlyScaleOutOpId());
+            PendingScaleOutRequest pendingReq = scalingContext.getPendingScaleOutRequest(scaleOutResp.getInResponseTo());
+            for (String prefix : pendingReq.getPrefixes()) {
+                MonitoredPrefix monitoredPrefix;
+                synchronized (scalingContext) {
+                    monitoredPrefix = scalingContext.getMonitoredPrefix(prefix);
+                    monitoredPrefix.setIsPassThroughTraffic(true);
+                    monitoredPrefix.setDestComputationId(scaleOutResp.getNewComputationId());
+                    monitoredPrefix.setDestResourceCtrlEndpoint(scaleOutResp.getNewLocationURL());
+                    monitoredPrefix.setOutGoingStream(pendingReq.getStreamId());
+                }
+            }
+            streamProcessor.onSuccessfulScaleOut(pendingReq.getPrefixes());
+            scalingContext.completeScalingOut(scaleOutResp.getInResponseTo());
+            return;
+        }
         PendingScaleOutRequest pendingReq = scalingContext.getPendingScaleOutRequest(scaleOutResp.getInResponseTo());
         String instanceIdentifier = streamProcessor.getInstanceIdentifier();
         if (pendingReq != null) {
