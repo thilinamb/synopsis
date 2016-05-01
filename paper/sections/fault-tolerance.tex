@@ -5,8 +5,8 @@ Support for fault tolerance is implemented by augmenting the data processing gra
 State replication graph is a two stage graph where stage one operator (\textit{state replication source}) periodically sends changes to the state of its associated \textsc{Synopsis} node since its last message to the stage two operator.
 This incremental checkpointing scheme forms an edit stream between the two stages.
 This consumes a less bandwidth compared to a periodic checkpointing scheme~ which replicates the entire state every time\cite{castro2013integrating}.
-The stage two operator which is also known as the \textit{state replication sink} serializes the messages received via the edit stream to a persistence storage.
-By default, \textsc{Synopsis} uses the disk of the machine which hosts the state replication sink operator as the persistence storage.
+The stage two operator which is also known as the \textit{state replication sink} serializes the messages received via the edit stream to persistent storage.
+By default, \textsc{Synopsis} uses the disk of the machine which hosts the state replication sink operator for persistent storage.
 But necessary API level provisions are included to support high available storage implementations like HDFS~\cite{borthakur2008hdfs}.
 Even though there is a state replication source attached to every \textsc{Synopsis} node, there is one state replication sink per Neptune process.
 While in operation, state replication sink operator can fan out to more instances to support higher replication levels.
