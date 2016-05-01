@@ -37,12 +37,9 @@ In this paper, we present a framework for real-time query evaluations over volum
 
 \item   Dynamic scaling of the sketch in response to data arrival rates, with upscaling operations that support targeted alleviation of hotspots. Our framework manages the complexity of identifying these hotspots, splitting portions of the sketch, and migrating the relevant subsets to nodes with higher capacity. Most importantly, the framework achieves this while maintaining acceptable levels of accuracy in query evaluations.
 
-\item   Support for discrete and continuous evaluations of the observational space. Query evaluations can target arbitrarily sized (chronological) window sizes and geospatial scopes.
-
-\item   Support for high-throughput, distributed evaluation of queries.
-
-To our knowledge, \textsc{Synopsis} is the first sketch designed specifically for geospatial observational data. We have validated the suitability of our approach through a comprehensive set of benchmarks with real observational data. 
+\item   Support for discrete and continuous query evaluations across the observational space. Query evaluations can target arbitrarily sized (chronological) window sizes and geospatial scopes.
 \end{itemize}
+To our knowledge, \textsc{Synopsis} is the first sketch designed specifically for geospatial observational data. We have validated the suitability of our approach through a comprehensive set of benchmarks with real observational data. 
 
 \subsection{Paper Organization}
 The remainder of this paper is organized as follows...
