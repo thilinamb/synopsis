@@ -22,8 +22,8 @@ Users can use their own policy for defining the period between the incremental c
 
 Membership management in Neptune is implemented using Zookeeper~\cite{hunt2010zookeeper}, which is leveraged to detect failed nodes.
 Upon receiving notifications from the system about node failures, an upstream node switches to a secondary child node if necessary.The secondary child node is a \textsc{Synopsis} node running on the process where a state replication sink was running; hence can access the persisted replicated state.
-The secondary will start processing messages immediately and start populating its state from the persistence storage in the background.
+The secondary will start processing messages immediately and start populating its state from the persistent storage in the background.
 Due to this mode of operation, there may be a small window of time during which the correctness of queries are affected.
 But it will be rectified quickly once the stored state is loaded to the memory and replay of the upstream backup is completed.
-Sketch's ability of correctly processing out of order messages and support for merging with other sketches is useful during this failure recovery process.
+The sketch's ability to correctly process out of order messages and support for merging with other sketches is useful during this failure recovery process.
 
