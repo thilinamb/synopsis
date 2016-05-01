@@ -75,6 +75,7 @@ Ending protocol within a short period of time is important because it can releas
 \end{figure}
 %
 \subsection{Downscaling}
+\label{subsec:scaling-in}
 During Scaling in, \textsc{Synopsis} nodes attempt to take back some of the sub-regions it scaled out previously to other \textsc{Synopsis} nodes.
 This ensures better resource utilization in the system in addition to efficient query evaluations by having to contact less number of nodes.
 Scaling in operations are also guarded by the same mutual exclusive lock used for scale out (only one scale out or scale in operation takes place at a given time) and followed by a stabilization period.
