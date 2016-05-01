@@ -14,6 +14,7 @@ Support for real-time evaluation of queries --– discrete and continuous --– 
 \end{itemize}
 
 \subsection{Research Questions}
+The challenges associated with implementing this functionality led us to formulate the following research questions:
 \begin{enumerate}
     \item   How can we generate compact, memory-resident representations of the observational space? These \emph{sketches} must be amenable to fast, continuous updates to ensure they are representative of the observational space.
     \item   How can we scale effectively in situations where the observations arrive at a rate faster than the rate at which the sketch can be updated? The density and arrival rates for observations vary based on the geospatial characteristics of the data. For example, in a smart-city setting, New York City would have a far higher rate of observations than Denver, Colorado.
