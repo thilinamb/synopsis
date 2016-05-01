@@ -18,10 +18,10 @@ Node E, which is three edges deep from the stream ingester, is responsible for a
 
 \textsc{Synopsis} is designed to ensure that regions corresponding to larger portions of the input streams (hence, more frequent updates) are moved to dedicated or less crowded nodes.
 If a node decides to scale out a portion of the region it is currently responsible for, then the corresponding state (sketchlet and related metadata) is transferred over to the new computation and it starts to treat the stream packets corresponding to the scaled out region as pass-through traffic (Scaling out is explained in section~\ref{subsec:scaling-out}).
-More specifically, it will not process the stream packet, instead updates its statistics based on the headers of the packet and forwards it to the child node . 
+More specifically, it will not process the stream packet, instead updates its statistics based on the headers of the packet and forwards it to the child node. 
 For instance, node A in Figure~\ref{fig:stream-partitioning} have scaled out two regions (\emph{DJK} and \emph{DJM}) to nodes C and D.
 After these two scaling out operations, node A is responsible for all sub-regions in \emph{DJ} except for \emph{DJK} and \emph{DJM}.
-Similarly the sketch for the region \emph{DJKJ} is moved out of node C into node E as a result of subsequent scale out operation.
+Similarly, the sketch for the region \emph{DJKJ} is moved out of node C into node E as a result of subsequent scale out operation.
 It should be noted that the depth and span of the distributed sketch are dynamic and are constantly evolving according to the workload and operating conditions.
 
 As the tree grows, having parent nodes pass traffic through to their children becomes inefficient because of higher bandwidth consumption as well as increased latency due to additional network hops the packets have to travel through.
