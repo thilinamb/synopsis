@@ -6,7 +6,7 @@ Our subject dataset was sourced from the NOAA North American Mesoscale (NAM) For
 
 Our performance evaluation was carried out on a 75-node heterogeneous cluster consisting of 45 HP DL160 servers (Xeon E5620, 12 GB RAM) and 30 HP DL320e servers (Xeon E3-1220 V2, 8 GB RAM) running Fedora 23. \textsc{Synopsis} was executed under the OpenJDK Java runtime, version 1.8.0\_72.
 
-\subsection{Micro benchmarks}
+\subsection{Microbenchmarks}
 \subsubsection{Dynamic Scaling}
 We evaluated how \textsc{Synopsis} dynamically scales when the data ingestion rate is varied.
 An artificial computation logic was used in place of regular \textsc{Synopsis} sketch update function to gain a better control over the throughput of a \textsc{Synopsis} node.
@@ -35,6 +35,39 @@ It also demonstrates the infrequent rapid scaling out activities and the continu
     \caption{How scaling out enables maintaining stability at \textsc{Synopsis} nodes.}
     \label{fig:stability-backlog}
 \end{figure}
+
+\subsubsection{Sketch Query Evaluation}
+\begin{table}[h!]
+    \renewcommand{\arraystretch}{1.3}
+    \caption{Query evaluation times for each query type.}
+    \label{tbl:query-times}
+    \begin{center}
+        \begin{tabular}{|l|c|c|}
+            \hline
+            \textbf{Query Type}      & \textbf{Eval. (ms)} & \textbf{Std. Dev.} \\
+            \hline
+            Density                  & 0.007                    & 0.005 \\
+            \hline
+            Set Cardinality          & 0.154                    & 0.088 \\
+            \hline
+            Set Frequency            & 0.036                    & 0.019 \\
+            \hline
+            Set Membership           & 0.015                    & 0.009 \\
+            \hline
+            Statistics               & 0.002                    & 0.001 \\
+            \hline
+            SubSketch Stat. (5 km$^2$)& 46.357                  & 1.287 \\
+            \hline
+            Relational (5 km$^2$)    & 40.510                   & 6.937 \\
+            \hline
+            Relational (25 km$^2$)   & 47.619                   & 6.355 \\
+            \hline
+            Relational (800 km$^2$)  & 53.620                   & 6.818 \\
+            \hline
+        \end{tabular}
+    \end{center}
+\end{table}
+
 
 
 \subsection{System Benchmarks}
