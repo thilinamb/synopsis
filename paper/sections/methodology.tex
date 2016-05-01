@@ -10,7 +10,7 @@
 \label{subsec:scaling-out}
 There are two primary approaches to scaling a node that is experiencing high traffic: \emph{replication} and \emph{load migration}. In replication-based scaling, new nodes are spawned during high data arrival rates that are responsible for identical spatial scopes as their originating node. Assimilation of the newly-created node involves partitioning inbound streams directed to the original node. The upstream node is responsible for this partitioning, which may be performed in a skewed fashion with the new node receiving a larger portion of the inbound stream.  Alternatively, inbound streams to the original node may also be partitioned in a round-robin fashion between the original and the newly-created node.
 
-In targeted load migration, particular geospatial scopes are evicted from the original node to the newly created node during heavy traffic. The decision about the spatial scopes to be migrated is based on data arrival rates and the rates at which particular portions of the sketch are being updated.
+In targeted load migration, particular geospatial scopes are evicted from the original node to the newly created node during heavy traffic. Deciding which spatial scopes to migrate is based on data arrival rates and the rates at which particular portions of the sketch are being updated.
 
 %[malensek] NOTE: I removed this because it contradicts our discussion on the ability of the sketch to merge arbitrary states (even duplicated state -- in fact, that makes things easier). I think there are plenty of other reasons why replication-based scaling is weaker anyway.
 %Replication-based scaling introduces a challenge during query evaluations in that the query must be forwarded to all nodes responsible for a particular scope and the results merged; depending on the nature of these queries (for e.g., correlation analysis and inferential queries) merging of results may be difficult to accomplish without extensive state synchronizations.
@@ -38,34 +38,30 @@ Scaling out recommendations are provided if either of the following rules are co
 \end{itemize}
 
 Upon receiving a scaling out recommendation from the monitoring task, the \textsc{Synopsis} node executes the planning and execution phases.
-During the planning phase, the node chooses the portion(s) of the region within its current purview to be handed over to another node.
-For this task, the node relies on metadata it maintains for each subregion (corresponding to longer Geohash strings) and a numeric value provided along with the scale out recommendation, which is a measure of how much load should be migrated.
+During the planning phase, the node chooses portion(s) of the region within its current purview to be handed over to another node.
+For this task, the node relies on metadata it maintains for each subregion (corresponding to longer Geohash strings) and a numeric value provided by the scale out recommendation that measures how much load should be migrated.
 This metadata includes the data rate and the timestamp of the last processed message for each subregion.
-A \textsc{Synopsis} node updates these metadata with each message it processes.
-Often a \textsc{Synopsis} node migrates several prefixes during a single scale out operation.
+A \textsc{Synopsis} node updates these metadata records with each message it processes.
+Nodes often migrate several prefixes during a scale out operation.
 
 Only a single scale out operation takes place at a given time per node, which is controlled by a mutex lock.
 Further, every scaling operation is followed by a stabilization period where no scaling operation takes place and system does not enter the monitoring phase for the next MAPE cycle.
-The objective of these constraints is to avoid oscillations in scaling activities.
-For instance, if system aggressively scales out in the presence of a memory pressure without a stabilization period, it is possible that the system ends up in a state where it is underprovisioned. As a result of this, it will start aggressively scaling in and run again into an overprovisioned state.
+The objective of these constraints is to avoid oscillations in scaling activities; for instance, aggressively scaling out in the presence of memory pressure could result in underprovisioning, which would then lead to aggressive downscaling.
 
 Figure~\ref{fig:scale-out-protocol} depicts the phases of the scale out protocol.
-Once a \textsc{Synopsis} node decides on the subregions, it initiates the scale out protocol by contacting the deployer.
+Once the \textsc{Synopsis} node decides on subregions to scale, it initiates the scale out protocol by contacting the \emph{deployer} node, which is responsible for launching tasks.
 In this message, it includes a list of preferred \textsc{Synopsis} nodes for the load migration as well as memory requirements and expected message rate for the load.
-The preferred node set includes the \textsc{Synopsis} nodes that already holds its subregions.
-The objective is to minimize the number of \textsc{Synopsis} nodes responsible for holding sketches for a given geographical region, because it reduces the number of \textsc{Synopsis} nodes to contact during a query evaluation for that region.
-The \textsc{Synopsis} deployer component has an approximate view of the entire system gathered through gossip messages which includes the memory pressure and cumulative backlog information of each node.
-Based on this view and the information present in the request, deployer replies back with a set of target \textsc{Synopsis} nodes.
-If it cannot find a suitable node out of the existing set, the deployer will launch a new \textsc{Synopsis} node and include its location in the new request.
-Upon receiving the response from the deployer, \textsc{Synopsis} node contacts the target node and tries to acquire the mutex.
-A lock will be granted if no other scaling operations takes place in the Neptune process which holds the \textsc{Synopsis} node and it can accommodate the migrated load.
-The second condition is checked again because the deployer may not have most up-to-date metrics regarding the target \textsc{Synopsis} node due to the eventually consistent nature of its system view.
-If the lock acquisition is failed, another node from the list of attempted.
-Else the original \textsc{Synopsis} node will create a pass-through channel and direct traffic towards the target node.
-In the same time, it will initiate a state transfer using a different channel in the background.
-This will ensure that the state transfer doesn't affect the stream data flow and it happens asynchronously and the protocol ends without waiting for state transfer to complete.
-Even if the state transfer is not complete, the target \textsc{Synopsis} node updates its memory utilization metric to account for the pending state transfer. 
-Ending protocol within a short period of time is important because it can release mutual exclusive locks in both origin and target \textsc{Synopsis} nodes quickly and participate in other scaling activities soon after the stabilization period.
+The preferred node set includes the \textsc{Synopsis} nodes that already hold other subregions.
+The objective here is to minimize the number of nodes responsible for each geographical region to reduce communication during query evaluations.
+
+The \textsc{Synopsis} deployer component has an approximate view of the entire system gathered through gossip messages, which includes the memory pressure and cumulative backlog information for each node.
+Based on this view and the information present in the request, the deployer replies back with a set of target \textsc{Synopsis} nodes.
+If a suitable node cannot be found, a new node will be launched that includes the location in question.
+Upon receiving a response from the deployer, the node that is scaling out contacts the target node and tries to acquire the mutex.
+A lock will be granted if the target can accommodate the load and no other scaling operations are taking place.
+If the lock acquisition fails, another node from the list is attempted; otherwise, the original \textsc{Synopsis} node will create a pass-through channel and direct traffic towards the target node.
+Once this process is complete, the source node will initiate a state transfer asynchronously using a background channel to ensure the stream data flow is not affected, and update its memory utilization metrics to account for the pending state transfer.
+%Completing the scale out protocol quickly is important because it can release mutual exclusive locks in both origin and target \textsc{Synopsis} nodes quickly and participate in other scaling activities soon after the stabilization period.
 %
 \begin{figure}
     \centerline{\includegraphics[scale=0.55]{figures/scale-out-protocol.png}}
@@ -75,37 +71,35 @@ Ending protocol within a short period of time is important because it can releas
 %
 \subsection{Downscaling}
 \label{subsec:scaling-in}
-During Scaling in, \textsc{Synopsis} nodes attempt to take back some of the sub-regions it scaled out previously to other \textsc{Synopsis} nodes.
-This ensures better resource utilization in the system in addition to efficient query evaluations by having to contact less number of nodes.
-Scaling in operations are also guarded by the same mutual exclusive lock used for scale out (only one scale out or scale in operation takes place at a given time) and followed by a stabilization period.
+During \emph{downscaling} (or scaling in), \textsc{Synopsis} nodes merge back some of the subregions scaled out previously.
+This ensures better resource utilization in the system in addition to efficient query evaluations by having to contact fewer nodes.
+Downscaling operations are also guarded by the same mutex lock used for scaling out (only one scale out or scale in operation takes place at a given time) and are followed by a stabilization period.
 
-Monitoring and analysis phases are similar to scaling out scenario except for the obvious change to the threshold-based rules.
-Now both memory pressure and backlog length metrics should consistently record values below a predefined lower threshold.
+Monitoring and analysis during downscaling proceeds similarly to scaling out, except for the obvious change to the threshold-based rules: now both memory pressure and backlog length metrics should consistently record values below a predefined lower threshold.
 When scaling in, we use a less aggressive scheme than scaling out; a single subregion is acquired during a single scale in operation.
-Scaling in is more complex than scaling out because it deals with more than one \textsc{Synopsis} node in most cases.
-Because at this point, it is possible that further scale out operations have taken place in the scaled out subregion after the initial scale out.
-For instance, if node A in Figure~\ref{fig:stream-partitioning} decides to scale in the subregion \emph{DJK}, then it has to work with both nodes C and E.
-Scale in protocol starts with a lock acquisition protocol similar to scale out protocol as illustrated in Figure~\ref{fig:scale-in-protocol}.
-But it is required to lock the entire subtree where the sketch for the given subregion is distributed across.
+Scaling in is more complex than scaling out because it involves more than one \textsc{Synopsis} node in most cases.
+At this point, it is possible that further scale out operations have taken place in the scaled out subregion after the initial scale out.
+For instance, if node A in Figure~\ref{fig:stream-partitioning} decides to scale in the subregion \emph{DJK}, then it must communicate with both nodes C and E.
+
+The downscaling protocol starts with a lock acquisition protocol similar to scaling out as illustrated in Figure~\ref{fig:scale-in-protocol}, but locking the entire subtree is required.
 As per our example, node A will have to acquire locks for nodes C and E.
 Locks are acquired in a top-to-bottom fashion where parent locks itself and then attempts to lock the child.
-If lock acquisition is failed in any part of the sub tree, then the scale in operation is aborted and the monitoring process will start the next iteration of the MAPE loop immediately.
-If the sub tree is successfully locked, then data flow to the child nodes corresponding to this subregion is immediately terminated.
-If there was a short circuit set up before, it will be removed and the data will start flow to the parent node.
+If lock acquisition is failed in any part of the subtree, then the scale in operation is aborted and the monitoring process will start the next iteration of the MAPE loop immediately.
+If the subtree is successfully locked, then data flow to the child nodes corresponding to this subregion is immediately terminated.
+
 The state acquisition phase begins next.
-To ensure that \textsc{Synopsis} does not lose any messages, the initiator node sends a termination point control message to the child node.
-Termination point is the sequence number of the last message sent to the child node either by the parent itself or by the short circuit channel.
-It may be possible that the child has already processed this message and updated its sketch by the time it receives the termination point control message.
-But in extreme cases, the termination point control message may get processed before the actual stream packet with the same sequence number.
-This is because control plane and data plane use separate channels and also due to the possibility of data plane messages are being queued before processing.
-Once the child node has processed every message up to the termination point, it sends out termination point messages to all relevant child nodes (In our example, node C sends a termination point control message to node E upon processing the stream packet corresponding to the termination point sent by node A).
-After the entire sub tree has seen all messages up to the termination point, they acknowledge the initiator node and starts transferring their states asynchronously as similar to scale out protocol.
+To ensure that \textsc{Synopsis} does not lose any messages, the initiating node sends a \emph{termination point} control message to the child node.
+The termination point is the sequence number of the last message sent to the child node either by the parent itself or by the short circuit channel.
+%It may be possible that the child has already processed this message and updated its sketch by the time it receives the termination point control message, but in extreme cases the termination point control message may get processed before the actual stream packet with the same sequence number.
+%This is because control plane and data plane use separate channels and also due to the possibility of data plane messages are being queued before processing.
+Once the child node has processed every message up to the termination point, it sends out termination point messages to all relevant child nodes. In our example, node C sends a termination point control message to node E upon processing the stream packet corresponding to the termination point sent by node A.
+After the entire subtree has seen all messages up to the termination point, they acknowledge the initiator node and start transferring their states asynchronously.
 Once the parent node receives acknowledgments from the entire subtree, it starts propagating the protocol end messages to initiate lock releasing.
-Locks are released from the bottom to top in the sub tree where parent releases its lock after noticing that every child participated in the scale in protocol has released its lock.
+Locks are released from the bottom to top in the subtree, with the parent releasing its lock after each child has released its lock.
 
 \begin{figure}
     \centerline{\includegraphics[scale=0.55]{figures/scale-in-protocol.png}}
-    \caption{Scale in protocol}
+    \caption{Downscaling protocol}
     \label{fig:scale-in-protocol}
 \end{figure}
 
