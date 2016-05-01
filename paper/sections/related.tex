@@ -6,20 +6,21 @@ CHAOS~\cite{gupta2009chaos} builds on Data Cubes in a single-host streaming envi
 
 Galileo~\cite{malensek2016analytic,malensek2015fast} is a distributed hash table that supports the storage and retrieval of multidimensional data. Given the overlap in problem domain, Galileo is faced with several of the same challenges as \textsc{Synopsis}. However, the avenues for overcoming these issues diverge significantly due to differences in storage philosophy: \textsc{Synopsis} maintains its dataset completely in main memory, avoiding the orders-of-magnitude disparity in I/O throughput associated with secondary storage systems. This makes \textsc{Synopsis} highly agile, allowing on-demand scaling to rapidly respond to changes in incoming load. Additionally, this constraint influenced the trade-off space involved when designing our algorithms, making careful and efficient memory management a priority while striving for high accuracy.
 
-Dynamic scaling and elasticity in stream processing systems are studied before~\cite{heinze2014auto, gulisano2012streamcloud, castro2013integrating, loesing2012stormy, heinze2013elastic, schneider2009elastic}.
-Heinze et al.~\cite{heinze2014auto} have explored using different dynamic scaling schemes including threshold based rules and reinforcement learning using the FUGU~\cite{heinze2013elastic} stream processing engine.
-Based on these schemes, the operators are continuously migrated between hosts in a FUGU cluster in order to optimize the resource utilization and to maintain a low latency.
+Dynamic scaling and elasticity in stream processing systems has been studied thoroughly \cite{heinze2014auto, gulisano2012streamcloud, castro2013integrating, loesing2012stormy, heinze2013elastic, schneider2009elastic}.
+Heinze et al.~\cite{heinze2014auto} explores using different dynamic scaling schemes including threshold based rules and reinforcement learning using the FUGU~\cite{heinze2013elastic} stream processing engine.
+Based on these schemes, the operators are continuously migrated between hosts in a FUGU cluster in order to optimize the resource utilization and to maintain low latency.
 Their approach is quite different from ours, because in \textsc{Synopsis} we perform a targeted load migration where the workload of a computation is dynamically adjusted instead of entirely moving it to a host with a higher or lower capacity than the current host.
-Further we do not interrupt the data flow through \textsc{Synopsis} when dynamic scaling activities are in progress whereas in FUGU predecessor operator is temporarily paused until the operator migration is complete. 
-StreamCloud~\cite{gulisano2012streamcloud} relies on a global threshold based scheme to implement elasticity where a query is partioned into sub-queries which run on separate clusters.
-StreamCloud relies on a centralized component, Elastic Manager, to initiate the elastic reconfiguration protocol whereas in Synopsis each node independently initiates the dynamic scaling protocol.
+Further, we do not interrupt the data flow through \textsc{Synopsis} when dynamic scaling activities are in progress, whereas in FUGU the predecessor operator is temporarily paused until operator migration is complete. 
+
+StreamCloud~\cite{gulisano2012streamcloud} relies on a global threshold-based scheme to implement elasticity where a query is partitioned into sub-queries which run on separate clusters.
+StreamCloud relies on a centralized component, the Elastic Manager, to initiate the elastic reconfiguration protocol, whereas in Synopsis each node independently initiates the dynamic scaling protocol.
 This difference is mainly due to different optimization objectives of the two systems; StreamCloud tries to optimize the average CPU usage per cluster while Synopsis attempts to maintain stability at each node.
-State recreation protocol of StreamCloud is conceptually similar to the state transfer protocol in Synopsis, except in StreamCloud the tuples are buffered at the new location until the state transfer is complete.
-But in Synopsis, the new node starts building the state (sketch) which is later merged with the asynchronously transferred state from the previous node.
-Gedik et al.~\cite{schneider2009elastic} also uses a threshold based local scheme similar to \textsc{Synopsis}; additionally they keep track of the past performance achieved at different operating conditions in order to avoid oscillations in scaling activities.
-The use of consistent hashing at the splitters (similar to stream partitioners of \textsc{Synopsis}) achieves both load balancing and monotonicity (elastic scaling does not move states between nodes that are present before and after the scaling activity).
-Similarly, Geohash based partitioner together with control algorithm in \textsc{Synopsis} balance the workload by alleviating hotspots and nodes with lower resource utilization.
-Also our state migration scheme doesn't require migrating states between nodes who do not participate in the scaling activity unlike with a reconfiguration of a regular hash based partitioning.
+The state recreation protocol of StreamCloud is conceptually similar to our state transfer protocol, except in StreamCloud the tuples are buffered at the new location until the state transfer is complete, whereas in \textsc{Synopsis} the new node starts building the state (sketch) which is later merged with the asynchronously transferred state from the previous node.
+
+Gedik et al.~\cite{schneider2009elastic} also uses a threshold based local scheme similar to \textsc{Synopsis}. Additionally, this approach keeps track of the past performance achieved at different operating conditions in order to avoid oscillations in scaling activities.
+The use of consistent hashing at the splitters (similar to stream partitioners in \textsc{Synopsis}) achieves both load balancing and monotonicity (elastic scaling does not move states between nodes that are present before and after the scaling activity).
+Similarly, our Geohash-based partitioner together with control algorithms in \textsc{Synopsis} balance the workload by alleviating hotspots and nodes with lower resource utilization.
+Our state migration scheme doesn't require migrating states between nodes that do not participate in the scaling activity, unlike with a reconfiguration of a regular hash-based partitioner.
 Unlike in \textsc{Synopsis}, in their implementation, the stream data flow is paused until state migration is complete using vertical and horizontal barriers.
-Also \textsc{Synopsis}' scaling schemes are placement-aware; which prefer certain nodes when performing scaling activities with the objective of reducing the span of the distributed sketch.
+Finally, \textsc{Synopsis}' scaling schemes are placement-aware, meaning certain nodes are preferred when performing scaling with the objective of reducing the span of the distributed sketch.
 
