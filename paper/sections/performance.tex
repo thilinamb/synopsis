@@ -37,9 +37,11 @@ It also demonstrates the infrequent rapid scaling out activities and the continu
 \end{figure}
 
 \subsubsection{Sketch Query Evaluation}
+To evaluate the performance of the sketch, we executed several representative query workloads across a variety of sketchlet sizes. These queries were separated into two groups: data structure lookups and graph lookups. Data structure lookups include density queries, set queries, and summary statistics for the entire sketch, while graph lookups involve targeted portions of the overall feature space. In general, queries that require a graph lookup consume more processing time, but are much more expressive; for instance, such a query could request summary statistics or feature relationships when the temperature is between 20 to 30 degrees, humidity is above 80\%, and the wind is blowing at 16 km/h, while a data structure lookup would be restricted to chronological parameters and select features of interest. Table~\ref{tbl:query-times} outlines the query times for both evaluation types. In general, data structure lookup operations require minimal processing. While graph lookups take longer to complete, it is worth noting that varying the geographical scope across sketchlet sizes from 5km to 800km did not result in a proportionate increase in processing time. Overall, the sketch is able to satisfy our goal of low-latency query evaluations for each query type.
+
 \begin{table}[h!]
     \renewcommand{\arraystretch}{1.3}
-    \caption{Query evaluation times for each query type.}
+    \caption{Query evaluation times for each query type (averaged over 1000 iterations).}
     \label{tbl:query-times}
     \begin{center}
         \begin{tabular}{|l|c|c|}
@@ -56,13 +58,14 @@ It also demonstrates the infrequent rapid scaling out activities and the continu
             \hline
             Statistics               & 0.002                    & 0.001 \\
             \hline
-            SubSketch Stat. (5 km$^2$)& 46.357                  & 1.287 \\
             \hline
-            Relational (5 km$^2$)    & 40.510                   & 6.937 \\
+            Subgraph Stat. (5 km)    & 46.357                   & 1.287 \\
             \hline
-            Relational (25 km$^2$)   & 47.619                   & 6.355 \\
+            Relational (5 km)        & 40.510                   & 6.937 \\
             \hline
-            Relational (800 km$^2$)  & 53.620                   & 6.818 \\
+            Relational (25 km)       & 47.619                   & 6.355 \\
+            \hline
+            Relational (800 km)      & 53.620                   & 6.818 \\
             \hline
         \end{tabular}
     \end{center}
