@@ -5,7 +5,7 @@ Our \emph{sketch} data structure is a multidimensional, graph-based model of inc
 \subsubsection{Graph Structure}
 Sketchlet instances are maintained as hierarchical graphs with feature values stored in the vertices. Each \emph{plane} in the graph represents a particular \emph{feature type}, and traversing through vertices in this feature hierarchy reduces the search space of a query. Paths taken through the graph during a lookup operation are influenced by the specificity of the query, with additional feature expressions constraining the \emph{query scope}. Figure~\ref{fig:sketch} demonstrates the structure of a sketch and highlights a query and its scope. Note that vertices on the same plane are connected to allow range queries, and that any subset of the graph can be retrieved and manipulated in the same fashion as the overall sketch.
 
-\begin{figure}
+\begin{figure}[b!]
     \centerline{\includegraphics[width=3.5in]{figures/sketch.pdf}}
     \caption{A simplified sketchlet with a three-plane hierarchy and sample query scope, leading to several metadata leaves. In production settings, sketchlets contain hundreds of thousands of vertices and edges.}
     \label{fig:sketch}

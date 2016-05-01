@@ -1,6 +1,6 @@
-
 \section{Methodology}
 \label{sec:methodology}
+Enabling real-time query evaluations over voluminous spatiotemporal data streams requires several individual components that must coordinate processing and scaling activities over a cluster of heterogeneous resources. This includes our distributed sketch, partitioning scheme, scaling logic, and support for fault tolerance.
 
 \input{sections/sketch}
 
@@ -46,7 +46,7 @@ Nodes often migrate several prefixes during a scale out operation.
 
 Only a single scale out operation takes place at a given time per node, which is controlled by a mutex lock.
 Further, every scaling operation is followed by a stabilization period where no scaling operation takes place and system does not enter the monitoring phase for the next MAPE cycle.
-The objective of these constraints is to avoid oscillations in scaling activities; for instance, aggressively scaling out in the presence of memory pressure could result in underprovisioning, which would then lead to aggressive downscaling.
+The objective of these constraints is to avoid oscillations in scaling activities; for instance, repetitively scaling out in the presence of memory pressure could result in overprovisioning, which would then lead to recurring downscaling.
 
 Figure~\ref{fig:scale-out-protocol} depicts the phases of the scale out protocol.
 Once the \textsc{Synopsis} node decides on subregions to scale, it initiates the scale out protocol by contacting the \emph{deployer} node, which is responsible for launching tasks.

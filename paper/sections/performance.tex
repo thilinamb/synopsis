@@ -1,10 +1,11 @@
 \section{Performance Evaluation}
 \label{sec:performance}
+To evaluate \textsc{Synopsis}, we used a real-world dataset to populate the distributed sketch. This includes dynamic scaling and an analysis of node stability as scaling operations take place, as well as query evaluation latencies for each query type. \\
 
 \subsection{Dataset and Experimental Setup}
 Our subject dataset was sourced from the NOAA North American Mesoscale (NAM) Forecast System \cite{noaa_nam}.  The NAM collects atmospheric data several times per day and includes features of interest such as surface temperature, visibility, relative humidity, snow, and precipitation. Each observation in the dataset also incorporates a relevant geographical location and time of creation. This information is used during the data ingest process to partition streams across available computing resources and preserve temporal ordering of events.
 
-Our performance evaluation was carried out on a 75-node heterogeneous cluster consisting of 45 HP DL160 servers (Xeon E5620, 12 GB RAM) and 30 HP DL320e servers (Xeon E3-1220 V2, 8 GB RAM) running Fedora 23. \textsc{Synopsis} was executed under the OpenJDK Java runtime, version 1.8.0\_72.
+Our performance evaluation was carried out on a 75-node heterogeneous cluster consisting of 45 HP DL160 servers (Xeon E5620, 12 GB RAM) and 30 HP DL320e servers (Xeon E3-1220 V2, 8 GB RAM) running Fedora 23. \textsc{Synopsis} was executed under the OpenJDK Java runtime, version 1.8.0\_72. \\
 
 \subsection{Dynamic Scaling}
 We evaluated how \textsc{Synopsis} dynamically scales when the data ingestion rate is varied.
@@ -13,31 +14,31 @@ We used the number of sketchlets created in the system to quantify the scaling a
 If the system scales out, more sketchlets will be created in child nodes after the targeted load migration.
 We started with a single \textsc{Synopsis} node and allowed the system to dynamically scale.
 As can be observed in Figure~\ref{fig:dyn-scaling}, the number of sketchlets varies with the ingestion rate.
-Since we allow aggressive scale out, it shows a rapid scale out activity during high data ingestion rates whereas scaling in takes place gradually with one sub region (hence one sketch) at a time.
+Since we allow aggressive scale out, it shows a rapid scale out activity during high data ingestion rates whereas scaling in takes place gradually with one sub region (hence one sketch) at a time. \\
 \begin{figure}
     \centerline{\includegraphics[width=3.5in]{figures/dyn-scaling.pdf}}
     \caption{The variation of number of sketchlets with the data ingestion rate.}
     \label{fig:dyn-scaling}
 \end{figure}
 
-\subsection{Stability at individual nodes}
+\subsection{Stability at Individual Nodes}
 The objective of this benchmark was to demonstrate how scaling out operations manage to maintain stability at each node under varying workload conditions.
 The same setup as in previous micro benchmark was used, but the evaluation metrics captured are corresponding to an individual node instead of the entire system.
 We captured how backlog length and throughput at an individual node vary with the input rate when dynamic scaling is enabled.
 The \textsc{Synopsis} node that was considered for the experiment immediately received data from stream ingesters, hence the input rate observed at the node closely resembled the varying data ingestion rate.
 As shown in Figure~\ref{fig:stability-backlog}, scaling out helps a node to keep up with the variations in the workload which in turn causes the backlog to stay within a safe range.
-It also demonstrates the infrequent rapid scaling out activities and the continuous gradual downscaling activities as explained in section~\ref{subsec:scaling-out}.
+It also demonstrates the infrequent rapid scaling out activities and the continuous gradual downscaling activities as explained in section~\ref{subsec:scaling-out}. \\
 \begin{figure*}
-    \centerline{\includegraphics[width=6in]{figures/stability_partial.pdf}}
+    \centerline{\includegraphics[width=6.5in]{figures/stability_partial.pdf}}
     \caption{How scaling out enables maintaining stability at \textsc{Synopsis} nodes.}
     \label{fig:stability-backlog}
 \end{figure*}
 
 \subsection{Sketch Query Evaluation}
-To evaluate the performance of the sketch, we executed several representative query workloads across a variety of sketchlet sizes. These queries were separated into two groups: data structure lookups and graph lookups. Data structure lookups include density queries, set queries, and summary statistics for the entire sketch, while graph lookups involve targeted portions of the overall feature space. In general, queries that require a graph lookup consume more processing time, but are much more expressive; for instance, such a query could request summary statistics or feature relationships when the temperature is between 20 to 30 degrees, humidity is above 80\%, and the wind is blowing at 16 km/h, while a data structure lookup would be restricted to chronological parameters and select features of interest. Table~\ref{tbl:query-times} outlines the query times for both evaluation types. In general, data structure lookup operations require minimal processing. While graph lookups take longer to complete, it is worth noting that varying the geographical scope across sketchlet sizes from 5km to 800km did not result in a proportionate increase in processing time. Overall, the sketch is able to satisfy our goal of low-latency query evaluations for each query type.
+To evaluate the performance of the sketch, we executed several representative query workloads across a variety of sketchlet sizes. These queries were separated into two groups: data structure lookups and graph lookups. Data structure lookups include density queries, set queries, and summary statistics for the entire sketch, while graph lookups involve targeted portions of the overall feature space. In general, queries that require a graph lookup consume more processing time, but are much more expressive; for instance, such a query could request summary statistics or feature relationships when the temperature is between 20 to 30 degrees, humidity is above 80\%, and the wind is blowing at 16 km/h, while a data structure lookup would be restricted to chronological parameters and select features of interest. Table~\ref{tbl:query-times} outlines the query times for both evaluation types. In general, data structure lookup operations require minimal processing. While graph lookups take longer to complete, it is worth noting that varying the geographical scope across sketchlet sizes from 5km to 800km did not result in a proportionate increase in processing time. Overall, the sketch is able to satisfy our goal of low-latency query evaluations for each query type. \\ \vspace{2.5em}
 
 \begin{table}[h!]
-    \renewcommand{\arraystretch}{1.3}
+    \renewcommand{\arraystretch}{1.4}
     \caption{Query evaluation times for each query type (averaged over 1000 iterations).}
     \label{tbl:query-times}
     \begin{center}
