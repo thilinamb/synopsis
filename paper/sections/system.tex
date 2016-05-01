@@ -21,15 +21,9 @@ A stream partitioning scheme, based on the Geohash algorithm (described in Secti
 Sketchlets ingest stream packets and construct compact, in-memory representations of the observational data by extracting metadata from individual stream packets.
 During upscaling and downscaling operations, the geographical extents managed by a sketch varies.
 
-Each sketchlet instance extends Neptune's generic stream processor to provide auxiliary services that are needed to construct, update and maintain the sketch and also to adapt to changing system conditions.
-These services are the control plane, gossip subsystem and querying subsystem as depicted in Figure~\ref{fig:rivulet-archi}.
-%
-\begin{figure}
-    \centerline{\includegraphics[scale=0.5]{figures/rivulet-archi.png}}
-    \caption{\textsc{Synopsis} is implemented as a specialized layer for geospatial data on top of Neptune stream processing system.}
-    \label{fig:rivulet-archi}
-\end{figure}
-%
+Each sketchlet instance extends Neptune's generic stream processor to provide auxiliary services that are needed to construct, update, and maintain the sketch and also to adapt to changing system conditions.
+These services include the control plane and the gossip, querying, and monitoring subsystems.
+
 \begin{description}[leftmargin=*]
 	\item[Control plane:] The control plane is responsible for orchestrating control messages exchanged between \textsc{Synopsis} nodes as part of various distributed protocols such dynamic scaling.
     It is decoupled from the generic data plane to ensure higher priority and low latency processing without being affected by buffering delays and backpressure during stream processing.
