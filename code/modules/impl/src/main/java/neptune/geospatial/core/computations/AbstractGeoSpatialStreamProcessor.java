@@ -41,7 +41,6 @@ import neptune.geospatial.hazelcast.HazelcastClientInstanceHolder;
 import neptune.geospatial.hazelcast.HazelcastException;
 import neptune.geospatial.partitioner.GeoHashPartitioner;
 import neptune.geospatial.stat.InstanceRegistration;
-import neptune.geospatial.stat.PeriodicInstanceMetrics;
 import neptune.geospatial.stat.StatClient;
 import neptune.geospatial.stat.StatConstants;
 import neptune.geospatial.util.Mutex;
@@ -49,6 +48,8 @@ import neptune.geospatial.util.RivuletUtil;
 import org.apache.log4j.Logger;
 import org.apache.zookeeper.KeeperException;
 
+import java.io.BufferedWriter;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.Executors;
@@ -76,6 +77,15 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
         private StatClient statClient = StatClient.getInstance();
         private long previousThroughput = 0;
         private long previousThroughputTS = -1;
+        private BufferedWriter buffW;
+
+        public StatPublisher() {
+            try {
+                buffW = new BufferedWriter(new FileWriter("/tmp/mem-pressure.stat"));
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
 
         @Override
         public void run() {
@@ -101,10 +111,16 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
                 double memUsage = getMemoryConsumptionForAllPrefixes();
                 double locallyProcessedPrefCount = scalingContext.getLocallyProcessedPrefixCount();
                 double prefixLength = scalingContext.getPrefixLength();
-                PeriodicInstanceMetrics periodicInstanceMetrics = new PeriodicInstanceMetrics(instanceId,
+                try {
+                    buffW.write(System.currentTimeMillis() + "," + locallyProcessedPrefCount + "," + String.format("%.3f",memUsage/(1024*1024)) + "," + processedCount.get() + "\n");
+                    buffW.flush();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+                /*PeriodicInstanceMetrics periodicInstanceMetrics = new PeriodicInstanceMetrics(instanceId,
                         StatConstants.ProcessorTypes.PROCESSOR,
                         new double[]{backlog, memUsage, locallyProcessedPrefCount, throughput, prefixLength});
-                statClient.publish(periodicInstanceMetrics);
+                statClient.publish(periodicInstanceMetrics); */
             }
         }
     }
@@ -483,6 +499,9 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
      * triggered.
      */
     public synchronized boolean recommendScaling(double excess, boolean memoryBased) {
+        if(!memoryBased){
+            return false;
+        }
         if (!hasStartedReceivingData.get()) {
             return false;
         }

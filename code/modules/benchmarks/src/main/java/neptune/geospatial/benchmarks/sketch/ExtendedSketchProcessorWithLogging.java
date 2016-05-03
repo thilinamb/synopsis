@@ -18,11 +18,26 @@ public class ExtendedSketchProcessorWithLogging extends SketchProcessor {
 
     private Logger logger = Logger.getLogger(ExtendedSketchProcessorWithLogging.class);
     private StatClient statClient = StatClient.getInstance();
+    private BufferedWriter buffW;
+
+    public ExtendedSketchProcessorWithLogging() {
+        try {
+            buffW = new BufferedWriter(new FileWriter("/tmp/scaling.stat"));
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
 
     @Override
     public void onStartOfScaleOut() {
         ScaleActivity scaleActivity = new ScaleActivity(getInstanceIdentifier(),
                 StatConstants.ScaleActivityType.SCALE_OUT, StatConstants.ScaleActivityEvent.START);
+        try {
+            buffW.write(System.currentTimeMillis() + "," + "start" + "\n");
+            buffW.flush();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
         statClient.publish(scaleActivity);
         logger.info(String.format("[%s] Starting to scale out.", getInstanceIdentifier()));
     }
@@ -39,6 +54,12 @@ public class ExtendedSketchProcessorWithLogging extends SketchProcessor {
     public void onSuccessfulScaleOut(List<String> prefixes) {
         ScaleActivity scaleActivity = new ScaleActivity(getInstanceIdentifier(),
                 StatConstants.ScaleActivityType.SCALE_OUT, StatConstants.ScaleActivityEvent.END);
+        try {
+            buffW.write(System.currentTimeMillis() + "," + "end" + "\n");
+            buffW.flush();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
         statClient.publish(scaleActivity);
         logger.info(String.format("[%s] Completed scaling out. Prefix count: %d", getInstanceIdentifier(), prefixes.size()));
     }
