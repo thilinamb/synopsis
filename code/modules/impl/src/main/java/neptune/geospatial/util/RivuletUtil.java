@@ -120,6 +120,7 @@ public class RivuletUtil {
         if (startupProps.containsKey(HAZELCAST_INTERFACE)) {
             String allowedInterface = startupProps.getProperty(HAZELCAST_INTERFACE);
             config.getNetworkConfig().getInterfaces().addInterface(allowedInterface).setEnabled(true);
+            config.getNetworkConfig().getInterfaces().addInterface("129.82.47.*").setEnabled(true);
         }
         // set the logging framework
         config.setProperty("hazelcast.logging.type", "log4j");
