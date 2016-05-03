@@ -1,11 +1,14 @@
 package neptune.geospatial.benchmarks.sketch;
 
-import neptune.geospatial.core.computations.SketchProcessor;
+import neptune.geospatial.graph.operators.SketchProcessor;
 import neptune.geospatial.stat.ScaleActivity;
 import neptune.geospatial.stat.StatClient;
 import neptune.geospatial.stat.StatConstants;
 import org.apache.log4j.Logger;
 
+import java.io.BufferedWriter;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.util.List;
 
 /**

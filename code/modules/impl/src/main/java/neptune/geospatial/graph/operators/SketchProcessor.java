@@ -1,10 +1,21 @@
-package neptune.geospatial.core.computations;
+package neptune.geospatial.graph.operators;
 
-import java.io.BufferedInputStream;
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.io.FileInputStream;
+import io.sigpipe.sing.dataset.Metadata;
+import io.sigpipe.sing.dataset.Quantizer;
+import io.sigpipe.sing.dataset.feature.Feature;
+import io.sigpipe.sing.dataset.feature.FeatureType;
+import io.sigpipe.sing.graph.*;
+import io.sigpipe.sing.query.Expression;
+import io.sigpipe.sing.query.Operator;
+import io.sigpipe.sing.query.PartitionQuery;
+import io.sigpipe.sing.serialization.SerializationInputStream;
+import io.sigpipe.sing.serialization.SerializationOutputStream;
+import io.sigpipe.sing.serialization.Serializer;
+import io.sigpipe.sing.util.ReducedTestConfiguration;
+import neptune.geospatial.core.computations.AbstractGeoSpatialStreamProcessor;
+import neptune.geospatial.graph.messages.GeoHashIndexedRecord;
+
+import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.HashSet;
@@ -13,27 +24,6 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
-
-import io.sigpipe.sing.dataset.Metadata;
-import io.sigpipe.sing.dataset.Quantizer;
-import io.sigpipe.sing.dataset.feature.Feature;
-import io.sigpipe.sing.dataset.feature.FeatureType;
-import io.sigpipe.sing.graph.CountContainer;
-import io.sigpipe.sing.graph.FeatureHierarchy;
-import io.sigpipe.sing.graph.GraphException;
-import io.sigpipe.sing.graph.GraphMetrics;
-import io.sigpipe.sing.graph.Path;
-import io.sigpipe.sing.graph.Sketch;
-import io.sigpipe.sing.query.Expression;
-import io.sigpipe.sing.query.Operator;
-import io.sigpipe.sing.query.PartitionQuery;
-import io.sigpipe.sing.serialization.SerializationInputStream;
-import io.sigpipe.sing.serialization.SerializationOutputStream;
-import io.sigpipe.sing.serialization.Serializer;
-import io.sigpipe.sing.util.TestConfiguration;
-
-import neptune.geospatial.graph.messages.GeoHashIndexedRecord;
-import neptune.geospatial.graph.operators.NOAADataIngester;
 
 public class SketchProcessor extends AbstractGeoSpatialStreamProcessor {
 
@@ -46,14 +36,14 @@ public class SketchProcessor extends AbstractGeoSpatialStreamProcessor {
         /* Populate the feature hierarchy */
         try {
             hierarchy = new FeatureHierarchy();
-            for (String featureName : TestConfiguration.FEATURE_NAMES) {
+            for (String featureName : ReducedTestConfiguration.FEATURE_NAMES) {
                 hierarchy.addFeature(featureName, FeatureType.FLOAT);
             }
             hierarchy.addFeature("location", FeatureType.STRING);
             this.sketch = new Sketch(hierarchy);
             this.diff = new Sketch(hierarchy);
 
-            for (String featureName : TestConfiguration.FEATURE_NAMES) {
+            for (String featureName : ReducedTestConfiguration.FEATURE_NAMES) {
                 activeFeatures.add(featureName);
             }
         } catch (GraphException e) {
@@ -84,7 +74,7 @@ public class SketchProcessor extends AbstractGeoSpatialStreamProcessor {
                     continue;
                 }
 
-                Quantizer q = TestConfiguration.quantizers.get(featureName);
+                Quantizer q = ReducedTestConfiguration.quantizers.get(featureName);
                 if (q == null) {
                     continue;
                 }

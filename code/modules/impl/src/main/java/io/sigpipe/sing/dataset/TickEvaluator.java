@@ -10,7 +10,7 @@ import io.sigpipe.sing.adapters.ReadMetadata;
 import io.sigpipe.sing.dataset.feature.Feature;
 import io.sigpipe.sing.stat.RunningStatistics;
 import io.sigpipe.sing.stat.SquaredError;
-import io.sigpipe.sing.util.TestConfiguration;
+import io.sigpipe.sing.util.ReducedTestConfiguration;
 
 public class TickEvaluator {
 
@@ -84,7 +84,7 @@ public class TickEvaluator {
         System.exit(0);
 
         TickEvaluator te = new TickEvaluator(
-                TestConfiguration.quantizers.get(targetFeature));
+                ReducedTestConfiguration.quantizers.get(targetFeature));
         te.train(features);
         te.evaluate(features);
     }

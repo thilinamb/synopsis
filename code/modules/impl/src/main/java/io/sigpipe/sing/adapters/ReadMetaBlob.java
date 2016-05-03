@@ -25,14 +25,14 @@ import io.sigpipe.sing.serialization.SerializationOutputStream;
 import io.sigpipe.sing.serialization.Serializer;
 import io.sigpipe.sing.util.Geohash;
 import io.sigpipe.sing.util.PerformanceTimer;
-import io.sigpipe.sing.util.TestConfiguration;
+import io.sigpipe.sing.util.ReducedTestConfiguration;
 
 public class ReadMetaBlob {
 
     private static Set<String> activeFeatures = new HashSet<>();
 
     public static void main(String[] args) throws Exception {
-        for (String featureName : TestConfiguration.FEATURE_NAMES) {
+        for (String featureName : ReducedTestConfiguration.FEATURE_NAMES) {
             activeFeatures.add(featureName);
         }
 
@@ -40,9 +40,9 @@ public class ReadMetaBlob {
         scan.nextInt();
 
         FeatureHierarchy fh = new FeatureHierarchy();
-        for (String featureName : TestConfiguration.FEATURE_NAMES) {
+        for (String featureName : ReducedTestConfiguration.FEATURE_NAMES) {
             System.out.println(
-                    TestConfiguration.quantizers.get(featureName).numTicks()
+                    ReducedTestConfiguration.quantizers.get(featureName).numTicks()
                     + "   " + featureName);
             fh.addFeature(featureName, FeatureType.FLOAT);
         }
@@ -161,7 +161,7 @@ public class ReadMetaBlob {
                     continue;
                 }
 
-                Quantizer q = TestConfiguration.quantizers.get(featureName);
+                Quantizer q = ReducedTestConfiguration.quantizers.get(featureName);
                 if (q == null) {
                     continue;
                 }

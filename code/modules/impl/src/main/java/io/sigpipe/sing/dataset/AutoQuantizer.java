@@ -37,7 +37,7 @@ import io.sigpipe.sing.dataset.feature.FeatureType;
 import io.sigpipe.sing.stat.OnlineKDE;
 import io.sigpipe.sing.stat.SquaredError;
 import io.sigpipe.sing.stat.SummaryStatistics;
-import io.sigpipe.sing.util.TestConfiguration;
+import io.sigpipe.sing.util.ReducedTestConfiguration;
 
 /**
  * Given a list of Feature values or a predefined {@link OnlineKDE} instance,
@@ -123,7 +123,7 @@ public class AutoQuantizer {
 
     public static void main(String[] args)
         throws Exception {
-        for (String name : TestConfiguration.FEATURE_NAMES) {
+        for (String name : ReducedTestConfiguration.FEATURE_NAMES) {
             List<Feature> features = new ArrayList<>();
 
             for (String fileName : args) {
