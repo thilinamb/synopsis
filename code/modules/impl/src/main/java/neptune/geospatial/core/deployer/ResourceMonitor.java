@@ -84,7 +84,7 @@ class ResourceMonitor implements EntryAddedListener<String, Double>, EntryUpdate
         for (int i = resources.size() - 1; i >= 0; i--) {
             ComparableResource resource = resourceList.get(i);
             if (resource.availableMem >= requiredMem && !resource.resourceEndpoint.getControlEndpoint().equals(currentLoc)
-                    && resource.compCount < 4 && resource.availableForScheduling) {
+                    && resource.compCount < 6 && resource.availableForScheduling) {
                 resource.compCount++;
                 chosen = resource;
                 resource.availableForScheduling = false;

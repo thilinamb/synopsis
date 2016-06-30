@@ -11,7 +11,9 @@ import org.apache.log4j.Logger;
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
+import java.util.HashSet;
 import java.util.Random;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
@@ -59,10 +61,10 @@ public class StreamIngester extends StreamSource {
             if (bfr != null) {
                 if ((line = bfr.readLine()) != null) {
                     record = parse(line);
-                } else {
+                } /*else {
                     // continuously read the file, so that we have enough data
                     bfr = new BufferedReader(new FileReader("/Users/thilina/csu/research/dsg/data/noaa_nam_pts.txt"));
-                }
+                }*/
             }
         } catch (IOException e) {
             logger.error("Error reading from the file.", e);
@@ -80,5 +82,36 @@ public class StreamIngester extends StreamSource {
                     dummyPayload);
         }
         return record;
+    }
+
+    public static void main(String[] args) {
+        StreamIngester ingester = new StreamIngester();
+        /*Map<String, Integer> dist = new HashMap<>();
+        GeoHashIndexedRecord record = ingester.getNextRecord();
+        while (record != null) {
+            String pref = record.getGeoHash().substring(0, 1);
+            if (!dist.containsKey(pref)) {
+                dist.put(pref, 1);
+            } else {
+                dist.put(pref, dist.get(pref) + 1);
+            }
+            record = ingester.getNextRecord();
+        }
+        for(String pref : dist.keySet()){
+            System.out.println(String.format("Prefix: %s, Count: %d", pref, dist.get(pref)));
+        }*/
+        Set<String> uniquePrefixes = new HashSet<>();
+        GeoHashIndexedRecord record = ingester.getNextRecord();
+        int totalCount = 0;
+        while(record != null){
+            String pref = record.getGeoHash().substring(0, 4);
+            uniquePrefixes.add(pref);
+            totalCount++;
+            if(totalCount % 100000 == 0){
+                System.out.println("Total: " + totalCount);
+            }
+            record = ingester.getNextRecord();
+        }
+        System.out.println("Total prefix count: " + uniquePrefixes.size());
     }
 }

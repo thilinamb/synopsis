@@ -149,7 +149,7 @@ public class ManagedResource {
         @Override
         public void run() {
             // terminate the monitoring task after the active scaling period is elapsed, if it's set.
-            if (enableFaultTolerance && activeScalingPeriod > 0) {
+            if (activeScalingPeriod > 0) {
                 long now = System.currentTimeMillis();
                 if (tsActiveScalingStarted == 0) {
                     tsActiveScalingStarted = now;
@@ -184,6 +184,7 @@ public class ManagedResource {
                     for (String identifier : monitoredProcessors.keySet()) {
                         MonitoredComputationState monitoredComputationState = monitoredProcessors.get(identifier);
                         double[] metrics = monitoredComputationState.update();
+                        logger.info(String.format("-----------> [%s] - backlog: %.3f, mem. consumption: %.3f", identifier, metrics[0], metrics[1]));
                         backlogs.add(new SortableMetric(monitoredComputationState.computation, metrics[0]));
                         memoryUsage.add(new SortableMetric(monitoredComputationState.computation, metrics[1]));
                             /*if (excess != 0) {
@@ -208,6 +209,8 @@ public class ManagedResource {
                             longestBacklog = backlogs.poll();
                         }
                         if (longestBacklog.value != 0) {
+                            logger.info(String.format("------> Chosen for scaling: Mode: BACKLOG, Computation: %s, Backlog: %.3f ",
+                                    longestBacklog.computation.getInstanceIdentifier(), longestBacklog.value));
                             boolean success = longestBacklog.computation.recommendScaling(longestBacklog.value, false);
                             eligibleForScaling.set(!success);
                         }
@@ -325,14 +328,15 @@ public class ManagedResource {
                                 "Monitoring Period: %d (ms), Monitored Backlog History Length: %d", scaleInThreshold,
                         scaleOutThreshold, monitoringPeriod, monitoredBackLogLength));
             }
+            activeScalingPeriod = startupProps.containsKey(ACTIVE_SCALING_PERIOD) ?
+                    Integer.parseInt(startupProps.getProperty(ACTIVE_SCALING_PERIOD)) * 60 * 1000 : -1;
+
             // if fault tolerance enabled
             enableFaultTolerance = startupProps.containsKey(ENABLE_FAULT_TOLERANCE) && Boolean.parseBoolean(
                     startupProps.getProperty(ENABLE_FAULT_TOLERANCE).toLowerCase());
             if (enableFaultTolerance) {
                 stateReplicationInterval = startupProps.containsKey(STATE_REPLICATION_INTERVAL) ?
                         Long.parseLong(startupProps.getProperty(STATE_REPLICATION_INTERVAL)) : 2000;
-                activeScalingPeriod = startupProps.containsKey(ACTIVE_SCALING_PERIOD) ?
-                        Integer.parseInt(startupProps.getProperty(ACTIVE_SCALING_PERIOD)) * 60 * 1000 : -1;
                 checkpointTimeoutPeriod = startupProps.containsKey(CHECKPOINT_TIMEOUT_PERIOD) ?
                         Long.parseLong(startupProps.getProperty(CHECKPOINT_TIMEOUT_PERIOD)) : 6000;
             }
