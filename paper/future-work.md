@@ -5,3 +5,5 @@
 # Possible updates to the related work section
 * [ADA-SKetches] (http://research.microsoft.com/en-us/um/people/mbilenko/papers/16-ada-sketches.pdf) - SIGMOD 2016
 * [Persistent Data Sketching] (http://dl.acm.org/citation.cfm?id=2749443) - SIGMOD 2015
+* [Augmented Sketch] (http://dl.acm.org/citation.cfm?id=2882948) - SIGMOD 2016
+* [Sketch Techniques for Approximate Query Processing] (http://dimacs.rutgers.edu/~graham/pubs/papers/sk.pdf)
