@@ -7,4 +7,4 @@
 * [Persistent Data Sketching] (http://dl.acm.org/citation.cfm?id=2749443) - SIGMOD 2015
 * [Augmented Sketch] (http://dl.acm.org/citation.cfm?id=2882948) - SIGMOD 2016
 * [Sketch Techniques for Approximate Query Processing] (http://dimacs.rutgers.edu/~graham/pubs/papers/sk.pdf)
-* [Simba: Efficient In-Memory Spatial Analytics](http://www.cs.utah.edu/~dongx/paper/simba-sigmod.pdf)
+* [Simba: Efficient In-Memory Spatial Analytics](http://www.cs.utah.edu/~dongx/paper/simba-sigmod.pdf) - SIGMOD 2016
