@@ -146,7 +146,7 @@ public class ScalingContext {
         List<MonitoredPrefix> prefixList = new ArrayList<>();
         prefixList.addAll(monitoredPrefixMap.values());
 
-        Collections.sort(prefixList);
+        Collections.sort(prefixList); // descending order based on memory consumption
         double cumulSumOfPrefixes = 0;
         for (MonitoredPrefix monitoredPrefix : prefixList) {
             if (!prefixOnly && !monitoredPrefix.isActive()) {
@@ -162,7 +162,7 @@ public class ScalingContext {
                     cumulSumOfPrefixes += monitoredPrefix.getMessageRate() * 2;
                     prefixesForScalingOut.add(monitoredPrefix.getPrefix());
                 }
-                if (cumulSumOfPrefixes < excess && prefixesForScalingOut.size() < 200) {
+                if (cumulSumOfPrefixes >= excess || prefixesForScalingOut.size() > 200) {
                     break;
                 }
             }
