@@ -41,6 +41,7 @@ import neptune.geospatial.hazelcast.HazelcastClientInstanceHolder;
 import neptune.geospatial.hazelcast.HazelcastException;
 import neptune.geospatial.partitioner.GeoHashPartitioner;
 import neptune.geospatial.stat.InstanceRegistration;
+import neptune.geospatial.stat.PeriodicInstanceMetrics;
 import neptune.geospatial.stat.StatClient;
 import neptune.geospatial.stat.StatConstants;
 import neptune.geospatial.util.Mutex;
@@ -111,16 +112,16 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
                 double memUsage = getMemoryConsumptionForAllPrefixes();
                 double locallyProcessedPrefCount = scalingContext.getLocallyProcessedPrefixCount();
                 double prefixLength = scalingContext.getPrefixLength();
-                try {
+                /*try {
                     buffW.write(System.currentTimeMillis() + "," + locallyProcessedPrefCount + "," + String.format("%.3f",memUsage/(1024*1024)) + "," + processedCount.get() + "\n");
                     buffW.flush();
                 } catch (IOException e) {
                     e.printStackTrace();
-                }
-                /*PeriodicInstanceMetrics periodicInstanceMetrics = new PeriodicInstanceMetrics(instanceId,
+                }*/
+                PeriodicInstanceMetrics periodicInstanceMetrics = new PeriodicInstanceMetrics(instanceId,
                         StatConstants.ProcessorTypes.PROCESSOR,
                         new double[]{backlog, memUsage, locallyProcessedPrefCount, throughput, prefixLength});
-                statClient.publish(periodicInstanceMetrics); */
+                statClient.publish(periodicInstanceMetrics);
             }
         }
     }
