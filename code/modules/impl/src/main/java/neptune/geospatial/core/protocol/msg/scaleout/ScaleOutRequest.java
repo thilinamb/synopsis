@@ -22,17 +22,20 @@ public class ScaleOutRequest extends ControlMessage {
     private String streamType;
     private double requiredMemory = 0;
     private int prefixOnlyScaleOutOperationId = -1;
+    private String[] prefixes;
 
     public ScaleOutRequest() {
         super(ProtocolTypes.SCALE_OUT_REQ);
     }
 
-    public ScaleOutRequest(String currentComputation, String streamId, String topic, String messageType) {
+    public ScaleOutRequest(String currentComputation, String streamId, String topic, String messageType,
+                           String[] prefixes) {
         super(ProtocolTypes.SCALE_OUT_REQ);
         this.currentComputation = currentComputation;
         this.streamId = streamId;
         this.topic = topic;
         this.streamType = messageType;
+        this.prefixes = prefixes;
     }
 
     @Override
@@ -43,6 +46,11 @@ public class ScaleOutRequest extends ControlMessage {
         this.streamType = dataInputStream.readUTF();
         this.requiredMemory = dataInputStream.readDouble();
         this.prefixOnlyScaleOutOperationId = dataInputStream.readInt();
+        int prefixCount = dataInputStream.readInt();
+        this.prefixes = new String[prefixCount];
+        for(int i = 0; i < prefixCount; i++){
+            this.prefixes[i] = dataInputStream.readUTF();
+        }
     }
 
     @Override
@@ -53,6 +61,10 @@ public class ScaleOutRequest extends ControlMessage {
         dataOutputStream.writeUTF(this.streamType);
         dataOutputStream.writeDouble(this.requiredMemory);
         dataOutputStream.writeInt(this.prefixOnlyScaleOutOperationId);
+        dataOutputStream.writeInt(this.prefixes.length);
+        for (int i = 0; i < this.prefixes.length; i++){
+            dataOutputStream.writeUTF(this.prefixes[i]);
+        }
     }
 
     public String getCurrentComputation() {
@@ -85,5 +97,9 @@ public class ScaleOutRequest extends ControlMessage {
 
     public void setPrefixOnlyScaleOutOperationId(int prefixOnlyScaleOutOperationId) {
         this.prefixOnlyScaleOutOperationId = prefixOnlyScaleOutOperationId;
+    }
+
+    public String[] getPrefixes() {
+        return prefixes;
     }
 }

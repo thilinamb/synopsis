@@ -580,7 +580,7 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
             Topic[] topics = deployStream(outGoingStreamId, new int[]{ManagedResource.getInstance().getNextSeqNo()}, partitioner);
 
             ScaleOutRequest triggerMessage = new ScaleOutRequest(getInstanceIdentifier(), outGoingStreamId,
-                    topics[0].toString(), streamType);
+                    topics[0].toString(), streamType, prefix.toArray(new String[prefix.size()]));
             if (prefixOnlyScaleOutOpId > 0) {
                 triggerMessage.setPrefixOnlyScaleOutOperationId(prefixOnlyScaleOutOpId);
             }
