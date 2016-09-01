@@ -12,7 +12,7 @@ communication-mode=direct
 # changing the Granules code.
 #stream-dataset-implementation=ds.granules.communication.funnel.FunnelStreamDatasetImpl
 #stream-dataset-implementation=ds.granules.communication.direct.DirectCommStreamDatasetImpl
-stream-dataset-implementation=ds.granules.communication.direct.diskbacked.DiskBackedStreamDatasetImpl.java
+stream-dataset-implementation=ds.granules.communication.direct.diskbacked.DiskBackedStreamDatasetImpl
 
 # communication layer framework launcher that needs to be invoked at the beginning
 #comm-layer-launcher=ds.granules.communication.funnel.FunnelLauncher
