@@ -116,6 +116,8 @@ public class GeoSpatialDeployer extends JobDeployer implements MembershipChangeL
     private boolean faultToleranceEnabled;
     private Map<TopicInfo, TopicInfo[]> stateReplicationTopics = new HashMap<>();
     private ResourceMonitor resourceMonitor;
+    // map of ingestion operators - used for short circuiting
+    private Map<String, String> ingestorEndpointMap = new HashMap<>();
 
     @Override
     public ProgressTracker deployOperations(Operation[] operations) throws
@@ -144,6 +146,7 @@ public class GeoSpatialDeployer extends JobDeployer implements MembershipChangeL
                         layerOneEndpoints.add(resourceEndpoint);
                     } else if (op instanceof StreamSource){
                         layerOneEndpoints.add(resourceEndpoint);
+                        ingestorEndpointMap.put(op.getInstanceIdentifier(), resourceEndpoint.getControlEndpoint());
                     }
                     assignments.put(op, resourceEndpoint.getDataEndpoint());
                     String operatorId = op.getInstanceIdentifier();
