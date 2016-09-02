@@ -137,6 +137,13 @@ public class ResourceProtocolHandler extends AbstractProtocolHandler {
                 }
                 managedResource.dispatchPrefixOnlyScaleOutAck(prefixOnlyScaleOutCompleteAck);
                 break;
+            case ProtocolTypes.ENABLE_SHORT_CIRCUITING:
+                EnableShortCircuiting shortCircuitingMsg = (EnableShortCircuiting)ctrlMsg;
+                if(logger.isDebugEnabled()){
+                    logger.debug("Received a EnableShortCircuiting from the deployer.");
+                }
+                managedResource.dispatchEnableShortCircuitingMessage(shortCircuitingMsg);
+                break;
             default:
                 logger.warn("Unsupported message type: " + type);
         }

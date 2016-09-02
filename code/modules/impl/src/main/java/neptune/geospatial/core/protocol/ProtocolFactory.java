@@ -100,6 +100,9 @@ public class ProtocolFactory {
                 case ProtocolTypes.PREFIX_ONLY_SCALE_OUT_COMPLETE:
                     message = new PrefixOnlyScaleOutCompleteAck();
                     break;
+                case ProtocolTypes.ENABLE_SHORT_CIRCUITING:
+                    message = new EnableShortCircuiting();
+                    break;
                 default:
                     String errorMsg = "Unsupported message type: " + messageType;
                     throw new ProtocolException(errorMsg);

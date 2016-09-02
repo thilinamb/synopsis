@@ -15,6 +15,7 @@ import ds.granules.util.NeptuneRuntime;
 import ds.granules.util.ParamsReader;
 import neptune.geospatial.core.computations.AbstractGeoSpatialStreamProcessor;
 import neptune.geospatial.core.protocol.AbstractProtocolHandler;
+import neptune.geospatial.core.protocol.msg.EnableShortCircuiting;
 import neptune.geospatial.core.protocol.msg.StateTransferMsg;
 import neptune.geospatial.core.protocol.msg.scaleout.DeploymentAck;
 import neptune.geospatial.core.protocol.msg.scaleout.PrefixOnlyScaleOutCompleteAck;
@@ -520,6 +521,15 @@ public class ManagedResource {
             registeredIngesters.get(ingesterId).handlePrefixOnlyScaleOutAck(scaleOutComplete);
         } else {
             logger.warn("Invalid PrefixOnlyScaleOutCompleteAck. Ingester id: " + ingesterId);
+        }
+    }
+
+    public void dispatchEnableShortCircuitingMessage(EnableShortCircuiting enableShortCircuiting) {
+        String ingesterId = enableShortCircuiting.getTarget();
+        if (registeredIngesters.containsKey(ingesterId)) {
+            registeredIngesters.get(ingesterId).handleEnableShortCircuitMessage(enableShortCircuiting);
+        } else {
+            logger.warn("Invalid EnableShortCircuiting message. Ingester id: " + ingesterId);
         }
     }
 

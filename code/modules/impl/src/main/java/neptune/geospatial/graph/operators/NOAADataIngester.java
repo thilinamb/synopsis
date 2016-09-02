@@ -9,6 +9,7 @@ import ds.granules.streaming.core.StreamSource;
 import ds.granules.streaming.core.exception.StreamingDatasetException;
 import ds.granules.streaming.core.exception.StreamingGraphConfigurationException;
 import io.sigpipe.sing.serialization.SerializationInputStream;
+import neptune.geospatial.core.protocol.msg.EnableShortCircuiting;
 import neptune.geospatial.core.protocol.msg.scaleout.PrefixOnlyScaleOutCompleteAck;
 import neptune.geospatial.core.resource.ManagedResource;
 import neptune.geospatial.graph.Constants;
@@ -251,5 +252,9 @@ public class NOAADataIngester extends StreamSource {
         }
         logger.info(String.format("Received a PrefixOnlyScaleOutCompleteAck from %s, " +
                 "remaining count: %d, current round: %d", ack.getOriginEndpoint(), remainingCount, completedRounds.get()));
+    }
+
+    public void handleEnableShortCircuitMessage(EnableShortCircuiting enableShortCircuiting){
+
     }
 }
