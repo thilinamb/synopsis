@@ -6,6 +6,7 @@ import ds.granules.streaming.core.partition.Partitioner;
 import neptune.geospatial.graph.Constants;
 import neptune.geospatial.graph.messages.GeoHashIndexedRecord;
 import neptune.geospatial.util.geohash.GeoHash;
+import org.apache.log4j.Logger;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -17,6 +18,7 @@ import java.util.List;
  */
 public class GeoHashPartitioner implements Partitioner {
 
+    private Logger logger = Logger.getLogger(GeoHashPartitioner.class);
     private List<Character> northAmericaPrefixList = new ArrayList<>();
     private boolean firstOutgoingMessage = true;
     private ShortCircuitedRoutingRegistry shortCircuitedRoutingRegistry;
@@ -54,7 +56,7 @@ public class GeoHashPartitioner implements Partitioner {
         Topic shortCircuitedTopic = shortCircuitedRoutingRegistry.getShortCircuitedRoutingRule(ghIndexedRec.getGeoHash());
         if (shortCircuitedTopic == null) {
             int prefixLen = ghIndexedRec.getPrefixLength() * GeoHash.BITS_PER_CHAR;
-            // convert the geohash string into the corresponding bit string
+            // convert the geo-hash string into the corresponding bit string
             ArrayList<Boolean> hashInBits = GeoHash.getBits(ghIndexedRec.getGeoHash());
             int sum = 0;
             for (int i = prefixLen - 1; i >= 0; i--) {
@@ -63,6 +65,9 @@ public class GeoHashPartitioner implements Partitioner {
             Topic topic = topics[sum % topics.length];
             return new Topic[]{topic};
         } else {
+            if (logger.isDebugEnabled()) {
+                logger.debug("Found a short circuited stream. Geohash: " + ghIndexedRec.getGeoHash());
+            }
             return new Topic[]{shortCircuitedTopic};
         }
     }

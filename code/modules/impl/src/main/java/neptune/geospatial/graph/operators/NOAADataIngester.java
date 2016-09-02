@@ -269,6 +269,7 @@ public class NOAADataIngester extends StreamSource {
                 // add a rule
                 routingRegistry.addShortCircuitedRoutingRule(prefix, topics[0]);
             }
+            logger.info("Added new short circuiting rules. Count: " + prefixList.length);
         } catch (StreamingGraphConfigurationException | StreamingDatasetException e) {
             logger.error("Error processing EnableShortCircuiting message.", e);
         }
