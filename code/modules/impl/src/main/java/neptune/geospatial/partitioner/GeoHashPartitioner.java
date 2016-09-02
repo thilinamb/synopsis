@@ -18,6 +18,7 @@ import java.util.List;
 public class GeoHashPartitioner implements Partitioner {
 
     private List<Character> northAmericaPrefixList = new ArrayList<>();
+    private boolean firstOutgoingMessage = true;
 
     public GeoHashPartitioner() {
         char[] northAmericaPrefixes = new char[]{'b', 'c', '8', 'd', 'f', '9'};
@@ -26,9 +27,12 @@ public class GeoHashPartitioner implements Partitioner {
         }
     }
 
-
     @Override
     public Topic[] partition(StreamEvent streamEvent, Topic[] topics) {
+        if (firstOutgoingMessage) {
+            ShortCircuitedRoutingRegistry.getInstance().registerGeoHashPartitioner(this);
+            firstOutgoingMessage = false;
+        }
         GeoHashIndexedRecord ghIndexedRec = (GeoHashIndexedRecord) streamEvent;
         if (ghIndexedRec.getHeader() == Constants.RecordHeaders.PAYLOAD) {
             // if it is a checkpointing record, then send it to all topics

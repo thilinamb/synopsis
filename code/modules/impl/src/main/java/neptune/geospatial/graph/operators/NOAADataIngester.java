@@ -2,6 +2,7 @@ package neptune.geospatial.graph.operators;
 
 import ds.funnel.data.format.FormatReader;
 import ds.funnel.data.format.FormatWriter;
+import ds.funnel.topic.Topic;
 import ds.granules.communication.direct.control.ControlMessage;
 import ds.granules.exception.GranulesConfigurationException;
 import ds.granules.neptune.interfere.core.NIException;
@@ -14,6 +15,7 @@ import neptune.geospatial.core.protocol.msg.scaleout.PrefixOnlyScaleOutCompleteA
 import neptune.geospatial.core.resource.ManagedResource;
 import neptune.geospatial.graph.Constants;
 import neptune.geospatial.graph.messages.GeoHashIndexedRecord;
+import neptune.geospatial.partitioner.ShortCircuitedRoutingRegistry;
 import neptune.geospatial.stat.InstanceRegistration;
 import neptune.geospatial.stat.PeriodicInstanceMetrics;
 import neptune.geospatial.stat.StatClient;
@@ -255,6 +257,20 @@ public class NOAADataIngester extends StreamSource {
     }
 
     public void handleEnableShortCircuitMessage(EnableShortCircuiting enableShortCircuiting){
-
+        int topicId = Integer.parseInt(enableShortCircuiting.getTopic());
+        String streamId = enableShortCircuiting.getFullStreamId();
+        try {
+            declareStream(streamId, enableShortCircuiting.getStreamType());
+            // initialize the meta-data
+            ShortCircuitedRoutingRegistry routingRegistry = ShortCircuitedRoutingRegistry.getInstance();
+            Topic[] topics = deployStream(streamId, new int[]{topicId}, routingRegistry.getPartitioner());
+            String[] prefixList = enableShortCircuiting.getPrefixList();
+            for(String prefix : prefixList){
+                // add a rule
+                routingRegistry.addShortCircuitedRoutingRule(prefix, topics[0]);
+            }
+        } catch (StreamingGraphConfigurationException | StreamingDatasetException e) {
+            logger.error("Error processing EnableShortCircuiting message.", e);
+        }
     }
 }
