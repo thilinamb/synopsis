@@ -14,27 +14,35 @@ public class ShortCircuitedRoutingRegistry {
     private GeoHashPartitioner partitioner;
     private Map<String, Topic> routingTable = new ConcurrentHashMap<>();
 
-    private ShortCircuitedRoutingRegistry(){
+    private ShortCircuitedRoutingRegistry() {
         // Singleton instance: private constructor
     }
 
-    public static ShortCircuitedRoutingRegistry getInstance(){
+    public static ShortCircuitedRoutingRegistry getInstance() {
         return instance;
     }
 
-    public void registerGeoHashPartitioner(GeoHashPartitioner partitioner){
+    public void registerGeoHashPartitioner(GeoHashPartitioner partitioner) {
         this.partitioner = partitioner;
     }
 
-    public GeoHashPartitioner getPartitioner(){
+    public GeoHashPartitioner getPartitioner() {
         return partitioner;
     }
 
-    public void addShortCircuitedRoutingRule(String prefix, Topic topic){
+    public void addShortCircuitedRoutingRule(String prefix, Topic topic) {
         routingTable.put(prefix, topic);
     }
 
-    public Topic getShortCircuitedRoutingRule(String prefix){
-        return null;
+    public Topic getShortCircuitedRoutingRule(String prefix) {
+        Topic topic = null;
+        int longestMatchPrefixLength = 0;
+        for (String shortCircuitedPrefix : routingTable.keySet()) {
+            if (prefix.startsWith(shortCircuitedPrefix) && shortCircuitedPrefix.length() > longestMatchPrefixLength) {
+                topic = routingTable.get(shortCircuitedPrefix);
+                longestMatchPrefixLength = shortCircuitedPrefix.length();
+            }
+        }
+        return topic;
     }
 }

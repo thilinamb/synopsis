@@ -19,6 +19,7 @@ public class GeoHashPartitioner implements Partitioner {
 
     private List<Character> northAmericaPrefixList = new ArrayList<>();
     private boolean firstOutgoingMessage = true;
+    private ShortCircuitedRoutingRegistry shortCircuitedRoutingRegistry;
 
     public GeoHashPartitioner() {
         char[] northAmericaPrefixes = new char[]{'b', 'c', '8', 'd', 'f', '9'};
@@ -30,7 +31,8 @@ public class GeoHashPartitioner implements Partitioner {
     @Override
     public Topic[] partition(StreamEvent streamEvent, Topic[] topics) {
         if (firstOutgoingMessage) {
-            ShortCircuitedRoutingRegistry.getInstance().registerGeoHashPartitioner(this);
+            shortCircuitedRoutingRegistry = ShortCircuitedRoutingRegistry.getInstance();
+            shortCircuitedRoutingRegistry.registerGeoHashPartitioner(this);
             firstOutgoingMessage = false;
         }
         GeoHashIndexedRecord ghIndexedRec = (GeoHashIndexedRecord) streamEvent;
@@ -49,8 +51,8 @@ public class GeoHashPartitioner implements Partitioner {
     }
 
     private Topic[] getReceiverTopics(Topic[] topics, GeoHashIndexedRecord ghIndexedRec) {
-        int isInNorthAmerica = isNorthAmerica(ghIndexedRec.getGeoHash());
-        if (isInNorthAmerica == -1) {
+        Topic shortCircuitedTopic = shortCircuitedRoutingRegistry.getShortCircuitedRoutingRule(ghIndexedRec.getGeoHash());
+        if (shortCircuitedTopic == null) {
             int prefixLen = ghIndexedRec.getPrefixLength() * GeoHash.BITS_PER_CHAR;
             // convert the geohash string into the corresponding bit string
             ArrayList<Boolean> hashInBits = GeoHash.getBits(ghIndexedRec.getGeoHash());
@@ -61,7 +63,7 @@ public class GeoHashPartitioner implements Partitioner {
             Topic topic = topics[sum % topics.length];
             return new Topic[]{topic};
         } else {
-            return new Topic[]{topics[isInNorthAmerica % topics.length]};
+            return new Topic[]{shortCircuitedTopic};
         }
     }
 
