@@ -14,6 +14,7 @@ public final class ProtocolTypes {
     public static final int STATE_TRANSFER_COMPLETE_ACK = 12106;
     public static final int DEPLOYMENT_ACK = 12107;
     public static final int PREFIX_ONLY_SCALE_OUT_COMPLETE = 12108;
+    public static final int ENABLE_SHORT_CIRCUITING = 12109;
 
     // scale in related protocol codes
     public static final int SCALE_IN_LOCK_REQ = 12201;

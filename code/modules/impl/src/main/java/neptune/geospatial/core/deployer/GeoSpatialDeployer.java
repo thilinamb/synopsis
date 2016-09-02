@@ -34,6 +34,7 @@ import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import neptune.geospatial.core.computations.AbstractGeoSpatialStreamProcessor;
+import neptune.geospatial.core.protocol.msg.EnableShortCircuiting;
 import neptune.geospatial.core.protocol.msg.scaleout.DeploymentAck;
 import neptune.geospatial.core.protocol.msg.scaleout.ScaleOutRequest;
 import neptune.geospatial.core.protocol.msg.scaleout.ScaleOutResponse;
@@ -62,6 +63,24 @@ import java.util.concurrent.CountDownLatch;
  * @author Thilina Buddhika
  */
 public class GeoSpatialDeployer extends JobDeployer implements MembershipChangeListener {
+
+    private class PendingScaleOutOperation {
+
+        private ScaleOutResponse scaleOutResponse;
+        private String topicId;
+        private String fullyQualifiedStreamId;
+        private String streamType;
+        private String[] prefixList;
+
+        public PendingScaleOutOperation(ScaleOutResponse scaleOutResponse, String topicId,
+                                        String fullyQualifiedStreamId, String streamType, String[] prefixList) {
+            this.scaleOutResponse = scaleOutResponse;
+            this.topicId = topicId;
+            this.fullyQualifiedStreamId = fullyQualifiedStreamId;
+            this.streamType = streamType;
+            this.prefixList = prefixList;
+        }
+    }
 
     private class CtrlMessageEndpoint implements Runnable {
 
@@ -110,7 +129,7 @@ public class GeoSpatialDeployer extends JobDeployer implements MembershipChangeL
     private Map<String, Operation> computationIdToObjectMap = new HashMap<>();
     private Map<String, Topic> stateReplicationOpPlacements = new HashMap<>();
     private Map<String, Topic> resourceEndpointToDefaultTopicMap = new HashMap<>();
-    private List<ScaleOutResponse> pendingDeployments = new ArrayList<>();
+    private List<PendingScaleOutOperation> pendingDeployments = new ArrayList<>();
     private String jobId;
     private DeployerConfig deployerConfig;
     private boolean faultToleranceEnabled;
@@ -144,7 +163,7 @@ public class GeoSpatialDeployer extends JobDeployer implements MembershipChangeL
                     // keep track of the layer one endpoints to skip them from scheduling for scaling out
                     if (op instanceof AbstractGeoSpatialStreamProcessor) {
                         layerOneEndpoints.add(resourceEndpoint);
-                    } else if (op instanceof StreamSource){
+                    } else if (op instanceof StreamSource) {
                         layerOneEndpoints.add(resourceEndpoint);
                         ingestorEndpointMap.put(op.getInstanceIdentifier(), resourceEndpoint.getControlEndpoint());
                     }
@@ -405,7 +424,8 @@ public class GeoSpatialDeployer extends JobDeployer implements MembershipChangeL
             computationIdToObjectMap.put(clone.getInstanceIdentifier(), clone);
             ack = new ScaleOutResponse(scaleOutReq.getMessageId(), computationId, scaleOutReq.getOriginEndpoint(), true,
                     clone.getInstanceIdentifier(), resourceEndpoint.getControlEndpoint(), scaleOutReq.getPrefixOnlyScaleOutOperationId());
-            pendingDeployments.add(ack);
+            pendingDeployments.add(new PendingScaleOutOperation(ack, scaleOutReq.getTopic(), scaleOutReq.getStreamId(),
+                    scaleOutReq.getStreamType(), scaleOutReq.getPrefixes()));
             deployOperation(this.jobId, resourceEndpoint.getDataEndpoint(), clone);
             if (logger.isDebugEnabled()) {
                 logger.debug(String.format("Sent the deployment request new instance. Instance Id: %s, Location: %s",
@@ -431,7 +451,24 @@ public class GeoSpatialDeployer extends JobDeployer implements MembershipChangeL
 
     void handleDeploymentAck(DeploymentAck deploymentAck) {
         if (!pendingDeployments.isEmpty()) {
-            ScaleOutResponse ack = pendingDeployments.remove(0);
+            PendingScaleOutOperation scaleOutOperation = pendingDeployments.remove(0);
+
+            // inform ingesters abount scaling out
+            for (String target : ingestorEndpointMap.keySet()) {
+                String endpoint = ingestorEndpointMap.get(target);
+                EnableShortCircuiting enableShortCircuiting = new EnableShortCircuiting(target,
+                        scaleOutOperation.topicId,
+                        scaleOutOperation.streamType,
+                        scaleOutOperation.fullyQualifiedStreamId,
+                        scaleOutOperation.prefixList);
+                try {
+                    SendUtility.sendControlMessage(endpoint, enableShortCircuiting);
+                } catch (CommunicationsException | IOException e) {
+                    logger.error("Error sending EnableShortCircuiting message to ingester endpoint: " + endpoint, e);
+                }
+            }
+
+            ScaleOutResponse ack = scaleOutOperation.scaleOutResponse;
             try {
                 SendUtility.sendControlMessage(ack.getTargetEndpoint(), ack);
                 if (logger.isDebugEnabled()) {
