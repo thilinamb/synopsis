@@ -1,4 +1,4 @@
-name=neptune-geo
+name=synopsis
 
 $(name).pdf: $(name).tex ./sections/* ./figures/* references.bib
 	pdflatex -interaction=batchmode $(name)
