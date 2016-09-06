@@ -4,6 +4,7 @@ import ds.funnel.data.format.FormatReader;
 import ds.funnel.data.format.FormatWriter;
 import ds.funnel.topic.Topic;
 import ds.granules.communication.direct.control.ControlMessage;
+import ds.granules.dataset.DatasetException;
 import ds.granules.exception.GranulesConfigurationException;
 import ds.granules.neptune.interfere.core.NIException;
 import ds.granules.streaming.core.StreamSource;
@@ -258,6 +259,7 @@ public class NOAADataIngester extends StreamSource {
 
     public void handleEnableShortCircuitMessage(EnableShortCircuiting enableShortCircuiting){
         int topicId = Integer.parseInt(enableShortCircuiting.getTopic());
+        // TODO: Need to keep track of this stream when performaing scaling-in, in order to flush the buffers
         String streamId = enableShortCircuiting.getFullStreamId();
         try {
             declareStream(streamId, enableShortCircuiting.getStreamType());
@@ -269,9 +271,13 @@ public class NOAADataIngester extends StreamSource {
                 // add a rule
                 routingRegistry.addShortCircuitedRoutingRule(prefix, topics[0]);
             }
+            // flush buffers of existing topics
+            flushBuffersImmediately(Constants.Streams.NOAA_DATA_STREAM);
             logger.info("Added new short circuiting rules. Count: " + prefixList.length);
         } catch (StreamingGraphConfigurationException | StreamingDatasetException e) {
             logger.error("Error processing EnableShortCircuiting message.", e);
+        } catch (DatasetException e) {
+            logger.error("Error when flushing buffers of existing outgoing topics.", e);
         }
     }
 }
