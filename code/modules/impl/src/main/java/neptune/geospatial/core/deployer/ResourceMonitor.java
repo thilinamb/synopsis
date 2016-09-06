@@ -8,6 +8,7 @@ import ds.granules.communication.direct.JobDeployer;
 import neptune.geospatial.graph.Constants;
 import neptune.geospatial.hazelcast.HazelcastClientInstanceHolder;
 import neptune.geospatial.hazelcast.HazelcastException;
+import neptune.geospatial.util.RivuletUtil;
 import org.apache.log4j.Logger;
 
 import java.util.*;
@@ -111,8 +112,10 @@ class ResourceMonitor implements EntryAddedListener<String, Double>, EntryUpdate
                     resource.memoryUpdatesSinceLastScheduling = 0;
                 }
             }
-            logger.info("Mem. Availability update: " + entryEvent.getKey() + ", available for scheduling: " +
-                    resource.availableForScheduling + ", comp. count: " + resource.compCount);
+            logger.info(entryEvent.getKey() + "-> available for scheduling: " +
+                    resource.availableForScheduling + ", available mem: " +
+                    RivuletUtil.inGigabytes(resource.availableMem) + ", comp. count: " +
+                    resource.compCount);
         } else {
             logger.warn("Invalid resource endpoint: " + entryEvent.getKey());
         }

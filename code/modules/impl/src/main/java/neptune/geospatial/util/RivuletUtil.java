@@ -128,4 +128,8 @@ public class RivuletUtil {
         HazelcastNodeInstanceHolder.init(config);
         HazelcastClientInstanceHolder.init(clientConfig);
     }
+
+    public static double inGigabytes(double bytes){
+        return bytes/(1024 * 1024 * 1024);
+    }
 }
