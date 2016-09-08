@@ -185,7 +185,9 @@ public class ManagedResource {
                     for (String identifier : monitoredProcessors.keySet()) {
                         MonitoredComputationState monitoredComputationState = monitoredProcessors.get(identifier);
                         double[] metrics = monitoredComputationState.update();
-                        logger.info(String.format("-----------> [%s] - backlog: %.3f, mem. consumption: %.3f", identifier, metrics[0], metrics[1]));
+                        if(logger.isDebugEnabled()) {
+                            logger.debug(String.format("[%s] - backlog: %.3f, mem. consumption: %.3f", identifier, metrics[0], metrics[1]));
+                        }
                         backlogs.add(new SortableMetric(monitoredComputationState.computation, metrics[0]));
                         memoryUsage.add(new SortableMetric(monitoredComputationState.computation, metrics[1]));
                             /*if (excess != 0) {
@@ -200,7 +202,7 @@ public class ManagedResource {
                     if (avgMemoryUsage >= 0.5 && memoryUsage.size() > 0) {
                         SortableMetric highestMemConsumer = memoryUsage.poll();
                         double excessMemUsage = getExcessMemConsumption(avgMemoryUsage);
-                        logger.info(String.format("------> Chosen for scaling: Mode: MEMORY, Computation: %s, Mem. usage: %.3f, Excess. mem. usage: %s",
+                        logger.info(String.format("Chosen for scaling: Mode: MEMORY, Computation: %s, Mem. usage: %.3f, Excess. mem. usage: %s",
                                 highestMemConsumer.computation.getInstanceIdentifier(), highestMemConsumer.value, excessMemUsage));
                         boolean success = highestMemConsumer.computation.recommendScaling(excessMemUsage, true);
                         eligibleForScaling.set(!success);
@@ -210,8 +212,10 @@ public class ManagedResource {
                             longestBacklog = backlogs.poll();
                         }
                         if (longestBacklog.value != 0) {
-                            logger.info(String.format("------> Chosen for scaling: Mode: BACKLOG, Computation: %s, Backlog: %.3f ",
-                                    longestBacklog.computation.getInstanceIdentifier(), longestBacklog.value));
+                            if(logger.isDebugEnabled()) {
+                                logger.debug(String.format("Chosen for scaling: Mode: BACKLOG, Computation: %s, Backlog: %.3f ",
+                                        longestBacklog.computation.getInstanceIdentifier(), longestBacklog.value));
+                            }
                             boolean success = longestBacklog.computation.recommendScaling(longestBacklog.value, false);
                             eligibleForScaling.set(!success);
                         }
@@ -224,8 +228,10 @@ public class ManagedResource {
 
         private long getAvailableMem() {
             MemoryUsage memUsage = ManagementFactory.getMemoryMXBean().getHeapMemoryUsage();
-            logger.info(String.format("Max mem: %d, Use Mem: %d, Available Mem: %d ", memUsage.getMax(),
-                    memUsage.getUsed(), memUsage.getMax() - memUsage.getUsed()));
+            logger.info(String.format("Max mem: %.3f, Used Mem: %.3f, Available Mem: %.3f ",
+                    RivuletUtil.inGigabytes(memUsage.getMax()),
+                    RivuletUtil.inGigabytes(memUsage.getUsed()),
+                    RivuletUtil.inGigabytes(memUsage.getMax() - memUsage.getUsed())));
             return (memUsage.getMax() - memUsage.getUsed());
         }
 
