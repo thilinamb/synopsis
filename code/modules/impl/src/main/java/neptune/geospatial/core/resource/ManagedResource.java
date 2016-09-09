@@ -185,7 +185,7 @@ public class ManagedResource {
                     for (String identifier : monitoredProcessors.keySet()) {
                         MonitoredComputationState monitoredComputationState = monitoredProcessors.get(identifier);
                         double[] metrics = monitoredComputationState.update();
-                        if(logger.isDebugEnabled()) {
+                        if (logger.isDebugEnabled()) {
                             logger.debug(String.format("[%s] - backlog: %.3f, mem. consumption: %.3f", identifier, metrics[0], metrics[1]));
                         }
                         backlogs.add(new SortableMetric(monitoredComputationState.computation, metrics[0]));
@@ -212,7 +212,7 @@ public class ManagedResource {
                             longestBacklog = backlogs.poll();
                         }
                         if (longestBacklog.value != 0) {
-                            if(logger.isDebugEnabled()) {
+                            if (logger.isDebugEnabled()) {
                                 logger.debug(String.format("Chosen for scaling: Mode: BACKLOG, Computation: %s, Backlog: %.3f ",
                                         longestBacklog.computation.getInstanceIdentifier(), longestBacklog.value));
                             }
@@ -228,10 +228,13 @@ public class ManagedResource {
 
         private long getAvailableMem() {
             MemoryUsage memUsage = ManagementFactory.getMemoryMXBean().getHeapMemoryUsage();
-            logger.info(String.format("Max mem: %.3f, Used Mem: %.3f, Available Mem: %.3f ",
-                    RivuletUtil.inGigabytes(memUsage.getMax()),
-                    RivuletUtil.inGigabytes(memUsage.getUsed()),
-                    RivuletUtil.inGigabytes(memUsage.getMax() - memUsage.getUsed())));
+            if (memUsage.getUsed() * 1.0 / memUsage.getMax() > 0.5) {
+                logger.info(String.format("Max mem: %.3f, Used Mem: %.3f, Available Mem: %.3f ",
+                        RivuletUtil.inGigabytes(memUsage.getMax()),
+                        RivuletUtil.inGigabytes(memUsage.getUsed()),
+                        RivuletUtil.inGigabytes(memUsage.getMax() -
+                                memUsage.getUsed())));
+            }
             return (memUsage.getMax() - memUsage.getUsed());
         }
 
