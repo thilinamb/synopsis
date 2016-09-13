@@ -79,6 +79,7 @@ public class NOAADataIngester extends StreamSource {
     private String prefixFilePath;
     private BufferedReader prefixFileBuffReader;
     private AtomicInteger remainingPhase1ScaleOutAckCount = new AtomicInteger(0);
+    private boolean readAllFiles = false;
 
     public NOAADataIngester() {
         init();
@@ -163,7 +164,10 @@ public class NOAADataIngester extends StreamSource {
             logger.info(String.format("Reading file: %d of %d", indexLastReadFile, inputFiles.length));
             return parse();
         } else if (indexLastReadFile == inputFiles.length) {
-            logger.info("Completed reading all files.");
+            if(!readAllFiles) {
+                readAllFiles = true;
+                logger.info("Completed reading all files.");
+            }
         }
         return null;    // completed reading all files.
     }
