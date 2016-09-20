@@ -453,7 +453,7 @@ public class GeoSpatialDeployer extends JobDeployer implements MembershipChangeL
         if (!pendingDeployments.isEmpty()) {
             PendingScaleOutOperation scaleOutOperation = pendingDeployments.remove(0);
 
-            // inform ingesters abount scaling out
+            // inform ingesters about scaling out
             for (String target : ingestorEndpointMap.keySet()) {
                 String endpoint = ingestorEndpointMap.get(target);
                 EnableShortCircuiting enableShortCircuiting = new EnableShortCircuiting(target,

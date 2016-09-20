@@ -43,12 +43,12 @@ public class DynamicScalingGraph {
             // vertices
             Properties senderProps = new Properties();
             senderProps.put(ds.granules.util.Constants.StreamBaseProperties.BUFFER_SIZE, Integer.toString(1024 * 1024));
-            job.addStreamSource("ingester", ThrottledStreamIngester.class, 1, senderProps);
+            job.addStreamSource("ingester", ThrottledStreamIngester.class, 12, senderProps);
 
             Properties processorProps = new Properties();
             processorProps.put(ds.granules.util.Constants.StreamBaseProperties.BUFFER_SIZE, Integer.toString(0));
             //job.addStreamProcessor("stream-processor", SketchProcessor.class, INITIAL_PROCESSOR_COUNT, processorProps);
-            job.addStreamProcessor("stream-processor", ExtendedSketchProcessorWithLogging.class, 3, processorProps);
+            job.addStreamProcessor("stream-processor", ExtendedSketchProcessorWithLogging.class, 10, processorProps);
 
             // edges
             job.addLink("ingester", "stream-processor", Constants.Streams.NOAA_DATA_STREAM,
