@@ -63,7 +63,7 @@ public class NOAADataIngester extends StreamSource {
     }
 
     private Logger logger = Logger.getLogger(NOAADataIngester.class);
-    public static final int PRECISION = 5;
+    static final int PRECISION = 5;
 
     private File[] inputFiles;
     private int indexLastReadFile = 0;
@@ -80,6 +80,8 @@ public class NOAADataIngester extends StreamSource {
     private BufferedReader prefixFileBuffReader;
     private AtomicInteger remainingPhase1ScaleOutAckCount = new AtomicInteger(0);
     private boolean readAllFiles = false;
+    private String[] years = new String[]{"2013", "2014", "2015"};
+    private int yearIndex = 0;
 
     public NOAADataIngester() {
         init();
@@ -91,20 +93,9 @@ public class NOAADataIngester extends StreamSource {
     }
 
     private void init() {
-        String hostname = RivuletUtil.getHostInetAddress().getHostName();
-        String dataDirPath = "/s/" + hostname + "/b/nobackup/galileo/noaa-dataset/bundles/";
+        String dataDirPath = getRootDataDirPath();
+        this.inputFiles = getInputFilesInDir(dataDirPath);
         prefixFilePath = "/s/chopin/a/grad/thilinab/research/data/noaa_nam_pts.txt";
-        File dataDir = new File(dataDirPath);
-        if (dataDir.exists()) {
-            inputFiles = dataDir.listFiles(new FilenameFilter() {
-                @Override
-                public boolean accept(File dir, String name) {
-                    return name.endsWith(".mblob");
-                }
-            });
-        } else {
-            inputFiles = new File[0];
-        }
         logger.info(String.format("[Stream Ingestor: %s] Number of input files: %d", getInstanceIdentifier(),
                 inputFiles.length));
     }
@@ -164,9 +155,14 @@ public class NOAADataIngester extends StreamSource {
             logger.info(String.format("Reading file: %d of %d", indexLastReadFile, inputFiles.length));
             return parse();
         } else if (indexLastReadFile == inputFiles.length) {
-            if(!readAllFiles) {
-                readAllFiles = true;
-                logger.info("Completed reading all files.");
+            if (startNextYear()) {
+                startNextFile(); // if there is data for another year
+                return parse();
+            } else {    // finished reading all the data
+                if (!readAllFiles) { // set a flag to stop flooding logs when it has completed processing data
+                    readAllFiles = true;
+                    logger.info("Completed reading all files.");
+                }
             }
         }
         return null;    // completed reading all files.
@@ -182,6 +178,38 @@ public class NOAADataIngester extends StreamSource {
         } catch (IOException e) {
             e.printStackTrace();
         }
+    }
+
+    private boolean startNextYear() {
+        if (yearIndex >= years.length) {
+            return false;
+        } else {
+            String dataDirPath = getRootDataDirPath();
+            this.inputFiles = getInputFilesInDir(dataDirPath);
+            this.indexLastReadFile = 0;
+            logger.info("Starting to read data for the year: " + years[yearIndex - 1]);
+            return true;
+        }
+    }
+
+    private File[] getInputFilesInDir(String dataDirPath) {
+        File dataDir = new File(dataDirPath);
+        if (dataDir.exists()) {
+            inputFiles = dataDir.listFiles(new FilenameFilter() {
+                @Override
+                public boolean accept(File dir, String name) {
+                    return name.endsWith(".mblob");
+                }
+            });
+        } else {
+            inputFiles = new File[0];
+        }
+        return inputFiles;
+    }
+
+    private String getRootDataDirPath() {
+        String hostname = RivuletUtil.getHostInetAddress().getHostName();
+        return "/s/" + hostname + "/b/nobackup/galileo/noaa-data/" + years[yearIndex++] + "/";
     }
 
     private GeoHashIndexedRecord parse() {
@@ -261,7 +289,7 @@ public class NOAADataIngester extends StreamSource {
                 "remaining count: %d, current round: %d", ack.getOriginEndpoint(), remainingCount, completedRounds.get()));
     }
 
-    public void handleEnableShortCircuitMessage(EnableShortCircuiting enableShortCircuiting){
+    public void handleEnableShortCircuitMessage(EnableShortCircuiting enableShortCircuiting) {
         int topicId = Integer.parseInt(enableShortCircuiting.getTopic());
         // TODO: Need to keep track of this stream when performaing scaling-in, in order to flush the buffers
         String streamId = enableShortCircuiting.getFullStreamId();
@@ -271,7 +299,7 @@ public class NOAADataIngester extends StreamSource {
             ShortCircuitedRoutingRegistry routingRegistry = ShortCircuitedRoutingRegistry.getInstance();
             Topic[] topics = deployStream(streamId, new int[]{topicId}, routingRegistry.getPartitioner());
             String[] prefixList = enableShortCircuiting.getPrefixList();
-            for(String prefix : prefixList){
+            for (String prefix : prefixList) {
                 // add a rule
                 routingRegistry.addShortCircuitedRoutingRule(prefix, topics[0]);
             }
