@@ -151,7 +151,9 @@ public class SketchProcessor extends AbstractGeoSpatialStreamProcessor {
         int bytesPerLeaf = 8 + (8 * numFeatures * 4)
             + (8 * ((numFeatures * (numFeatures - 1)) / 2));
 
-        return ((bytesPerVertex * vertices) + (bytesPerLeaf * leaves)) * 1.7;
+        // for now, let's just measure the number of leaves:
+        return leaves;
+        //return (bytesPerVertex * vertices) + (bytesPerLeaf * leaves);
     }
 
     synchronized public byte[] getSketchDiff() {
