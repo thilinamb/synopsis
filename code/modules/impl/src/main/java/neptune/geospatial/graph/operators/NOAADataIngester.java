@@ -54,7 +54,7 @@ public class NOAADataIngester extends StreamSource {
                 statClient.publish(instanceRegistration);
                 firstAttempt = false;
             } else {
-                double[] metrics = new double[]{totalEmittedMsgCount.doubleValue(), totalEmittedMsgCount.doubleValue()};
+                double[] metrics = new double[]{totalEmittedMsgCount.doubleValue(), totalEmittedBytes.doubleValue()};
                 PeriodicInstanceMetrics periodicInstanceMetrics = new PeriodicInstanceMetrics(instanceId,
                         StatConstants.ProcessorTypes.INGESTER, metrics);
                 statClient.publish(periodicInstanceMetrics);
