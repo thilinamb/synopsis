@@ -378,8 +378,6 @@ public class ManagedResource {
         try {
             IMap map = HazelcastClientInstanceHolder.getInstance().getHazelcastClientInstance().getMap(
                     GeoHashPrefixTree.PREFIX_MAP);
-            // TODO: Remove me after the micro benchmark
-            //map.addEntryListener(new GeoHashPrefixTree(), true);
             map.addEntryListener(new GeoHashPrefixTree(), true);
             memoryUsageMap = HazelcastClientInstanceHolder.getInstance().getHazelcastClientInstance().getMap(
                     neptune.geospatial.graph.Constants.MEMORY_USAGE_MAP);
