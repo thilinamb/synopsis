@@ -1,6 +1,8 @@
 package neptune.geospatial.util.trie;
 
 
+import ds.granules.exception.GranulesConfigurationException;
+import neptune.geospatial.util.RivuletUtil;
 import org.apache.log4j.Logger;
 
 import java.util.*;
@@ -63,13 +65,15 @@ class Node {
                 childNodes.put(node.prefix, node);
             } else {
                 if (this.computationId.equals(node.computationId)) {
-                    if (logger.isTraceEnabled()) {
-                        logger.trace(String.format("[%s] New prefix %s added to %s", prefix, node.prefix,
+                    if (logger.isTraceEnabled() || shouldLogToConsole()) {
+                        // todo: info -> trace
+                        logger.info(String.format("[%s] New prefix %s added to %s", prefix, node.prefix,
                                 computationId));
                     }
                 } else {
-                    if (logger.isTraceEnabled()) {
-                        logger.trace(String.format("[%s] Conflicting endpoints for the prefix. " +
+                    if (logger.isTraceEnabled() || shouldLogToConsole()) {
+                        // todo: info -> trace
+                        logger.info(String.format("[%s] Conflicting endpoints for the prefix. " +
                                         "Prefix: %s, Provided Comp: %s, Expected Comp: %s", prefix, node.prefix,
                                 node.computationId, computationId));
                     }
@@ -89,8 +93,9 @@ class Node {
         Node longestMatchingPrefix = getChildWithLongestMatchingPrefix(node.prefix);
         if (longestMatchingPrefix == null) {
             childNodes.put(node.prefix, node);
-            if(logger.isTraceEnabled()){
-                logger.trace(String.format("[%s] Prefix tree is expanded. Child Prefix: %s", this.prefix, node.prefix));
+            if (logger.isTraceEnabled() || shouldLogToConsole()) {
+                // todo: info -> trace
+                logger.info(String.format("[%s] Prefix tree is expanded. Child Prefix: %s", this.prefix, node.prefix));
             }
         } else {
             longestMatchingPrefix.expand(node);
@@ -109,8 +114,9 @@ class Node {
         } else {
             if (longestPrefixMatch.prefix.equals(node.prefix)) {
                 childNodes.remove(node.prefix);
-                if(logger.isTraceEnabled()){
-                    logger.trace(String.format("[%s] Prefix tree is shrinked. Child Prefix: %s", this.prefix, node.prefix));
+                if (logger.isTraceEnabled() || shouldLogToConsole()) {
+                    // todo: info -> trace
+                    logger.info(String.format("[%s] Prefix tree is shrinked. Child Prefix: %s", this.prefix, node.prefix));
                 }
             } else {
                 longestPrefixMatch.shrink(node);
