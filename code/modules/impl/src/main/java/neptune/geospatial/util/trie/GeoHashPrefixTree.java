@@ -98,7 +98,7 @@ public class GeoHashPrefixTree implements EntryAddedListener<String, SketchLocat
         }
     }
 
-    private String printTree(){
+    private String printTree() {
         return root.printTraverseResults(root.traverse());
     }
 
@@ -118,7 +118,19 @@ public class GeoHashPrefixTree implements EntryAddedListener<String, SketchLocat
         System.out.println(prefixTree.printTree());
         prefixTree.recordScaleOut("9X1A", computations[1], endpoints[1]);
         System.out.println(prefixTree.printTree());
-        prefixTree.recordScaleIn("9X1", computations[1], endpoints[1]);
-        System.out.println(prefixTree.printTree());
+
+        System.out.println("------------ Querying -------------------");
+        // querying
+        printNodeList(prefixTree.query("9X1A"));
+        System.out.println("");
+        printNodeList(prefixTree.query("9X1"));
+        System.out.println("");
+        printNodeList(prefixTree.query("9X"));
+    }
+
+    private static void printNodeList(Map<String, String> locs) {
+        for (String compId : locs.keySet()) {
+            System.out.println(compId + "->" + locs.get(compId));
+        }
     }
 }
