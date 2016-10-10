@@ -207,7 +207,9 @@ class Node {
             return longestMatchingChild.query(prefix);
         } else {
             List<Node> nodes = new ArrayList<>();
-            nodes.add(this);
+            if(!this.isRoot()) {
+                nodes.add(this);
+            }
             return nodes;
         }
     }

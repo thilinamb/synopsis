@@ -126,11 +126,17 @@ public class GeoHashPrefixTree implements EntryAddedListener<String, SketchLocat
         printNodeList(prefixTree.query("9X1"));
         System.out.println("");
         printNodeList(prefixTree.query("9X"));
+        System.out.println("");
+        printNodeList(prefixTree.query("A1"));
     }
 
     private static void printNodeList(Map<String, String> locs) {
-        for (String compId : locs.keySet()) {
-            System.out.println(compId + "->" + locs.get(compId));
+        if(locs.size() > 0) {
+            for (String compId : locs.keySet()) {
+                System.out.println(compId + "->" + locs.get(compId));
+            }
+        } else {
+            System.out.println("Empty map!");
         }
     }
 }
