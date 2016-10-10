@@ -5,6 +5,10 @@ import com.hazelcast.map.listener.EntryAddedListener;
 import com.hazelcast.map.listener.EntryUpdatedListener;
 import neptune.geospatial.hazelcast.type.SketchLocation;
 
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
 /**
  * A customized version of a prefix tree representing the
  * distributed sketch.
@@ -57,6 +61,21 @@ public class GeoHashPrefixTree implements EntryAddedListener<String, SketchLocat
     private synchronized void recordScaleIn(String prefix, String compId, String ctrlEp) {
         Node node = new Node(prefix, compId, ctrlEp);
         root.shrink(node);
+    }
+
+    /**
+     * Query the trie and return the list of computations and their endpoints where the
+     * sketchlets corresponding to prefixes are stored
+     * @param prefix Prefix string to be queried
+     * @return Map of ComputationId to ctrl_endpoint
+     */
+    public synchronized Map<String, String> query(String prefix) {
+        Map<String, String> locationMap = new HashMap<>();
+        List<Node> nodes = root.query(prefix);
+        for (Node n : nodes) {
+            locationMap.put(n.getComputationId(), n.getCtrlEndpoint());
+        }
+        return locationMap;
     }
 
     @Override

@@ -176,4 +176,65 @@ class Node {
     private boolean isRoot() {
         return prefix.equals("_");
     }
+
+    // TODO: remove this
+    // this is a temporary method added to make sure that the logs are printed in a single node
+    private boolean shouldLogToConsole() {
+        try {
+            return RivuletUtil.getCtrlEndpoint().startsWith("lattice-35");
+        } catch (GranulesConfigurationException e) {
+            return false;
+        }
+    }
+
+    /**
+     * Query the subtree where the current node is the root for the given prefix
+     * @param prefix Given prefix for querying
+     * @return List of nodes corresponding to the prefix (comprised of child nodes and current node)
+     */
+    public List<Node> query(String prefix) {
+        if (this.prefix.equals(prefix)) {
+            return getChildrenAsFlatList();
+        }
+        Node longestMatchingChild = getChildWithLongestMatchingPrefix(prefix);
+        if (longestMatchingChild != null) {
+            return longestMatchingChild.query(prefix);
+        } else {
+            List<Node> nodes = new ArrayList<>();
+            nodes.add(this);
+            return nodes;
+        }
+    }
+
+    /**
+     * A list of all children traversing the trie in depth first
+     * @return A flat list of child nodes - no duplicate elimination
+     */
+    private List<Node> getChildrenAsFlatList(){
+        List<Node> flatList = new ArrayList<>();
+        for(Node child: childNodes.values()){
+            flatList.addAll(child.getChildrenAsFlatList());
+        }
+        flatList.add(this);
+        return flatList;
+    }
+
+
+
+    @Override
+    public String toString() {
+        return "Node{" +
+                "prefix='" + prefix + '\'' +
+                ", computationId='" + computationId + '\'' +
+                ", ctrlEndpoint='" + ctrlEndpoint + '\'' +
+                '}';
+    }
+
+    public String getComputationId() {
+        return computationId;
+    }
+
+    public String getCtrlEndpoint() {
+        return ctrlEndpoint;
+    }
 }
