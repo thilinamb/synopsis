@@ -85,6 +85,7 @@
         <module>modules/distribution</module>
         <module>modules/benchmarks</module>
         <module>modules/stats</module>
+        <module>modules/client</module>
     </modules>
 
 </project>
