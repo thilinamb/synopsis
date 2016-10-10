@@ -155,7 +155,7 @@ public class SketchProcessor extends AbstractGeoSpatialStreamProcessor {
 
         int numFeatures = sketch.getFeatureHierarchy().size();
         int bytesPerLeaf = 8 + (8 * numFeatures * 4)
-            + (8 * ((numFeatures * (numFeatures - 1)) / 2));
+            + (8 * ((numFeatures + 1) * numFeatures) / 2);
 
         // for now, let's just measure the number of leaves:
         //return leaves;
