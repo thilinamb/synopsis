@@ -144,6 +144,12 @@ public class SketchProcessor extends AbstractGeoSpatialStreamProcessor {
         return estimateMemoryUsage(gm.getVertexCount(), gm.getLeafCount());
     }
 
+    @Override
+    public double getLeafCount() {
+        GraphMetrics gm = this.sketch.getMetrics();
+        return gm.getLeafCount();
+    }
+
     private double estimateMemoryUsage(long vertices, long leaves) {
         int bytesPerVertex = 16;
 
@@ -152,8 +158,8 @@ public class SketchProcessor extends AbstractGeoSpatialStreamProcessor {
             + (8 * ((numFeatures * (numFeatures - 1)) / 2));
 
         // for now, let's just measure the number of leaves:
-        return leaves;
-        //return (bytesPerVertex * vertices) + (bytesPerLeaf * leaves);
+        //return leaves;
+        return (bytesPerVertex * vertices) + (bytesPerLeaf * leaves);
     }
 
     synchronized public byte[] getSketchDiff() {

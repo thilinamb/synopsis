@@ -109,7 +109,7 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
                 previousThroughput = currentCount;
 
                 double backlog = getBacklogLength();
-                double memUsage = getMemoryConsumptionForAllPrefixes();
+                double memUsage = getLeafCount();
                 double locallyProcessedPrefCount = scalingContext.getLocallyProcessedPrefixCount();
                 double prefixLength = scalingContext.getPrefixLength();
                 /*try {
@@ -278,6 +278,11 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
      *
      * @return estimated memory consumption
      */
+    public double getLeafCount() {
+        throw new UnsupportedOperationException("getMemoryConsumptionForAllPrefixes is not implemented in " +
+                "AbstractGeoSpatialStreamProcessor class.");
+    }
+
     public double getMemoryConsumptionForAllPrefixes() {
         throw new UnsupportedOperationException("getMemoryConsumptionForAllPrefixes is not implemented in " +
                 "AbstractGeoSpatialStreamProcessor class.");
