@@ -27,12 +27,14 @@ public class Client {
     private final Logger logger = Logger.getLogger(Client.class);
     private final ZooKeeper zk;
     private List<SynopsisEndpoint> endpoints;
+    private final int clientPort;
 
-    public Client(Properties properties) throws ClientException {
+    public Client(Properties properties, int clientPort) throws ClientException {
         try {
+            NeptuneRuntime.initialize(properties);
             this.endpoints = new ArrayList<>();
             this.zk = ZooKeeperAgent.getInstance().getZooKeeperInstance();
-            NeptuneRuntime.initialize(properties);
+            this.clientPort = clientPort;
             init();
             logger.info("Client initialization is complete.");
         } catch (GranulesConfigurationException | CommunicationsException e) {
@@ -50,7 +52,7 @@ public class Client {
             logger.info("Message dispatcher started!");
             // start the transport
             CountDownLatch transportLatch = new CountDownLatch(1);
-            Transport transport = new Transport(0, transportLatch);
+            Transport transport = new Transport(this.clientPort, transportLatch);
             new Thread(transport).start();
             transportLatch.await();
             logger.info("Transport module is started!");
