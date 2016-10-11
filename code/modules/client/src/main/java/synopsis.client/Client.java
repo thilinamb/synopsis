@@ -8,11 +8,14 @@ import ds.granules.util.ZooKeeperUtils;
 import org.apache.log4j.Logger;
 import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.ZooKeeper;
+import synopsis.client.messaging.ClientMessageDispatcher;
+import synopsis.client.messaging.Transport;
 
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Properties;
+import java.util.concurrent.CountDownLatch;
 
 /**
  * Synopsis Client implementation
@@ -38,7 +41,27 @@ public class Client {
     }
 
     private void init() throws ClientException {
+        try {
+            // start the Client message dispatcher
+            CountDownLatch dispatcherLatch = new CountDownLatch(1);
+            ClientMessageDispatcher messageDispatcher = new ClientMessageDispatcher(dispatcherLatch);
+            new Thread(messageDispatcher).start();
+            dispatcherLatch.await();
+            logger.info("Message dispatcher started!");
+            // start the transport
+            CountDownLatch transportLatch = new CountDownLatch(1);
+            Transport transport = new Transport(0, transportLatch);
+            new Thread(transport).start();
+            transportLatch.await();
+            logger.info("Transport module is started!");
+        } catch (InterruptedException e) {
+            throw new ClientException("Error in initialization.", e);
+        }
         // discover resources
+        discoverSynopsisNodes();
+    }
+
+    private void discoverSynopsisNodes() throws ClientException {
         try {
             List childDirs = ZooKeeperUtils.getChildDirectories(zk, "/granules-cluster");
             Iterator iterator = childDirs.iterator();
