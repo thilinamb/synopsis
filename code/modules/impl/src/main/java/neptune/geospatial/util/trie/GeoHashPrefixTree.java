@@ -20,12 +20,20 @@ public class GeoHashPrefixTree implements EntryAddedListener<String, SketchLocat
         EntryUpdatedListener<String, SketchLocation> {
 
     public static final String PREFIX_MAP = "prefix-map";
-
+    private static final GeoHashPrefixTree instance = new GeoHashPrefixTree();
     /**
      * root node is a synthetic node which doesn't exist
      * in the real distributed setup.
      */
-    private Node root = new Node();
+    private Node root;
+
+    private GeoHashPrefixTree() {
+        this.root = new Node();
+    }
+
+    public static GeoHashPrefixTree getInstance(){
+        return instance;
+    }
 
     /**
      * Register a new prefix. Does not perform and expansion or shrink of the prefix tree.
@@ -126,8 +134,12 @@ public class GeoHashPrefixTree implements EntryAddedListener<String, SketchLocat
         printNodeList(prefixTree.query("9X1"));
         System.out.println("");
         printNodeList(prefixTree.query("9X"));
+        // empty results
         System.out.println("");
         printNodeList(prefixTree.query("A1"));
+        // unseen child prefix
+        System.out.println("");
+        printNodeList(prefixTree.query("9XB"));
     }
 
     private static void printNodeList(Map<String, String> locs) {
