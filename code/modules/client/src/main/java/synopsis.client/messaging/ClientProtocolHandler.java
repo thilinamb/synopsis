@@ -9,12 +9,12 @@ import java.util.concurrent.CountDownLatch;
 /**
  * @author Thilina Buddhika
  */
-public class ClientMessageDispatcher extends AbstractProtocolHandler {
+public class ClientProtocolHandler extends AbstractProtocolHandler {
 
-    private final Logger logger = Logger.getLogger(ClientMessageDispatcher.class);
+    private final Logger logger = Logger.getLogger(ClientProtocolHandler.class);
     private final CountDownLatch startedFlag;
 
-    public ClientMessageDispatcher(CountDownLatch startedFlag) {
+    public ClientProtocolHandler(CountDownLatch startedFlag) {
         this.startedFlag = startedFlag;
     }
 

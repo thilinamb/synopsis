@@ -8,7 +8,7 @@ import ds.granules.util.ZooKeeperUtils;
 import org.apache.log4j.Logger;
 import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.ZooKeeper;
-import synopsis.client.messaging.ClientMessageDispatcher;
+import synopsis.client.messaging.ClientProtocolHandler;
 import synopsis.client.messaging.Transport;
 
 import java.util.ArrayList;
@@ -46,7 +46,7 @@ public class Client {
         try {
             // start the Client message dispatcher
             CountDownLatch dispatcherLatch = new CountDownLatch(1);
-            ClientMessageDispatcher messageDispatcher = new ClientMessageDispatcher(dispatcherLatch);
+            ClientProtocolHandler messageDispatcher = new ClientProtocolHandler(dispatcherLatch);
             new Thread(messageDispatcher).start();
             dispatcherLatch.await();
             logger.info("Message dispatcher started!");
