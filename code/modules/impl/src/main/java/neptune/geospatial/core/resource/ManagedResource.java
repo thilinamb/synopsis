@@ -14,6 +14,7 @@ import ds.granules.util.Constants;
 import ds.granules.util.NeptuneRuntime;
 import ds.granules.util.ParamsReader;
 import neptune.geospatial.core.protocol.msg.client.ClientQueryRequest;
+import neptune.geospatial.core.protocol.msg.client.ClientQueryResponse;
 import neptune.geospatial.core.protocol.msg.client.TargetedQueryRequest;
 import neptune.geospatial.core.computations.AbstractGeoSpatialStreamProcessor;
 import neptune.geospatial.core.protocol.AbstractProtocolHandler;
@@ -598,6 +599,7 @@ public class ManagedResource {
     void handleQueryRequest(ClientQueryRequest clientQueryRequest) {
         List<String> prefixes = clientQueryRequest.getGeoHashes();
         Map<String, List<String>> targets = new HashMap<>();
+        int totalComputationCount = 0;
         for (String prefix : prefixes) {
             Map<String, String> locations = GeoHashPrefixTree.getInstance().query(prefix);
             for (String compId : locations.keySet()) {
@@ -609,6 +611,7 @@ public class ManagedResource {
                     comps.add(compId);
                     targets.put(endpoint, comps);
                 }
+                totalComputationCount++;
             }
         }
         for (String endpoint : targets.keySet()) {
@@ -620,6 +623,15 @@ public class ManagedResource {
             } catch (CommunicationsException | IOException e) {
                 logger.error("Error sending targeted query req. to " + endpoint, e);
             }
+        }
+        ClientQueryResponse clientQueryResponse = new ClientQueryResponse(clientQueryRequest.getQueryId(),
+                totalComputationCount);
+        logger.info("Sent back the query response back to client. Total number of target computations: " +
+                totalComputationCount);
+        try {
+            SendUtility.sendControlMessage(clientQueryRequest.getOriginEndpoint(), clientQueryResponse);
+        } catch (CommunicationsException | IOException e) {
+            logger.error("Error sending back the query response back to the client.", e);
         }
     }
 }
