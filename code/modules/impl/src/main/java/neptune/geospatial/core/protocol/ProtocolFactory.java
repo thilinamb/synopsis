@@ -2,6 +2,7 @@ package neptune.geospatial.core.protocol;
 
 import ds.funnel.topic.TopicDataEvent;
 import ds.granules.communication.direct.control.ControlMessage;
+import neptune.geospatial.client.protocol.QueryRequest;
 import neptune.geospatial.core.protocol.msg.*;
 import neptune.geospatial.core.protocol.msg.scalein.*;
 import neptune.geospatial.core.protocol.msg.scaleout.*;
@@ -102,6 +103,9 @@ public class ProtocolFactory {
                     break;
                 case ProtocolTypes.ENABLE_SHORT_CIRCUITING:
                     message = new EnableShortCircuiting();
+                    break;
+                case ProtocolTypes.CLIENT_QUERY_REQ:
+                    message = new QueryRequest();
                     break;
                 default:
                     String errorMsg = "Unsupported message type: " + messageType;

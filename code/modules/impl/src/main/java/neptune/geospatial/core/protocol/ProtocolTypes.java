@@ -26,4 +26,6 @@ public final class ProtocolTypes {
     // fault tolerance related protocol codes
     public static final int STATE_REPL_LEVEL_INCREASE = 12400;
     public static final int CHECKPOINT_ACK = 12401;
+    // Synopsis client related messages
+    public static final int CLIENT_QUERY_REQ = 12501;
 }
