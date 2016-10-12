@@ -14,6 +14,7 @@ import ds.granules.util.Constants;
 import ds.granules.util.NeptuneRuntime;
 import ds.granules.util.ParamsReader;
 import neptune.geospatial.client.protocol.ClientQueryRequest;
+import neptune.geospatial.client.protocol.TargetedQueryQuest;
 import neptune.geospatial.core.computations.AbstractGeoSpatialStreamProcessor;
 import neptune.geospatial.core.protocol.AbstractProtocolHandler;
 import neptune.geospatial.core.protocol.msg.EnableShortCircuiting;
@@ -594,20 +595,30 @@ public class ManagedResource {
         return (++seqNoStart < seqNoEnd) ? seqNoStart : -1;
     }
 
-    public void handleQueryRequest(ClientQueryRequest clientQueryRequest){
+    void handleQueryRequest(ClientQueryRequest clientQueryRequest) {
         List<String> prefixes = clientQueryRequest.getGeoHashes();
         Map<String, List<String>> targets = new HashMap<>();
-        for (String prefix : prefixes){
+        for (String prefix : prefixes) {
             Map<String, String> locations = GeoHashPrefixTree.getInstance().query(prefix);
-            for(String compId : locations.keySet()){
+            for (String compId : locations.keySet()) {
                 String endpoint = locations.get(compId);
-                if(targets.containsKey(endpoint)){
+                if (targets.containsKey(endpoint)) {
                     targets.get(endpoint).add(compId);
                 } else {
                     List<String> comps = new ArrayList<>();
                     comps.add(compId);
                     targets.put(endpoint, comps);
                 }
+            }
+        }
+        for (String endpoint : targets.keySet()) {
+            TargetedQueryQuest targetedQueryQuest = new TargetedQueryQuest(clientQueryRequest.getQueryId(),
+                    clientQueryRequest.getQuery(), targets.get(endpoint), clientQueryRequest.getClientUrl());
+            try {
+                SendUtility.sendControlMessage(endpoint, targetedQueryQuest);
+                logger.info("Sent a target query request to " + endpoint);
+            } catch (CommunicationsException | IOException e) {
+                logger.error("Error sending targeted query req. to " + endpoint, e);
             }
         }
     }
