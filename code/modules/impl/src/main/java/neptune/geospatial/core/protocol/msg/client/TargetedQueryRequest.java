@@ -1,4 +1,4 @@
-package neptune.geospatial.client.protocol;
+package neptune.geospatial.core.protocol.msg.client;
 
 import ds.granules.communication.direct.control.ControlMessage;
 import neptune.geospatial.core.protocol.ProtocolTypes;
@@ -12,18 +12,18 @@ import java.util.List;
 /**
  * @author Thilina Buddhika
  */
-public class TargetedQueryQuest extends ControlMessage {
+public class TargetedQueryRequest extends ControlMessage {
 
     private int queryId;
     private byte[] query;
     private List<String> targetComputationIds;
     private String clientAddr;
 
-    public TargetedQueryQuest() {
+    public TargetedQueryRequest() {
         super(ProtocolTypes.PROPAGATED_QUERY_REQ);
     }
 
-    public TargetedQueryQuest(int queryId, byte[] query, List<String> targetComputationIds, String clientAddr) {
+    public TargetedQueryRequest(int queryId, byte[] query, List<String> targetComputationIds, String clientAddr) {
         super(ProtocolTypes.PROPAGATED_QUERY_REQ);
         this.queryId = queryId;
         this.query = query;

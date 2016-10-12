@@ -1,4 +1,4 @@
-package neptune.geospatial.client.protocol;
+package neptune.geospatial.core.protocol.msg.client;
 
 import ds.granules.communication.direct.control.ControlMessage;
 import neptune.geospatial.core.protocol.ProtocolTypes;
