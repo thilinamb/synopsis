@@ -13,6 +13,7 @@ import ds.granules.scheduler.Resource;
 import ds.granules.util.Constants;
 import ds.granules.util.NeptuneRuntime;
 import ds.granules.util.ParamsReader;
+import neptune.geospatial.client.protocol.QueryRequest;
 import neptune.geospatial.core.computations.AbstractGeoSpatialStreamProcessor;
 import neptune.geospatial.core.protocol.AbstractProtocolHandler;
 import neptune.geospatial.core.protocol.msg.EnableShortCircuiting;
@@ -378,7 +379,7 @@ public class ManagedResource {
         try {
             IMap map = HazelcastClientInstanceHolder.getInstance().getHazelcastClientInstance().getMap(
                     GeoHashPrefixTree.PREFIX_MAP);
-            map.addEntryListener(new GeoHashPrefixTree(), true);
+            map.addEntryListener(GeoHashPrefixTree.getInstance(), true);
             memoryUsageMap = HazelcastClientInstanceHolder.getInstance().getHazelcastClientInstance().getMap(
                     neptune.geospatial.graph.Constants.MEMORY_USAGE_MAP);
         } catch (neptune.geospatial.hazelcast.HazelcastException e) {
@@ -591,5 +592,23 @@ public class ManagedResource {
 
     public synchronized int getNextSeqNo() {
         return (++seqNoStart < seqNoEnd) ? seqNoStart : -1;
+    }
+
+    public void handleQueryRequest(QueryRequest queryRequest){
+        List<String> prefixes = queryRequest.getGeoHashes();
+        Map<String, List<String>> targets = new HashMap<>();
+        for (String prefix : prefixes){
+            Map<String, String> locations = GeoHashPrefixTree.getInstance().query(prefix);
+            for(String compId : locations.keySet()){
+                String endpoint = locations.get(compId);
+                if(targets.containsKey(endpoint)){
+                    targets.get(endpoint).add(compId);
+                } else {
+                    List<String> comps = new ArrayList<>();
+                    comps.add(compId);
+                    targets.put(endpoint, comps);
+                }
+            }
+        }
     }
 }

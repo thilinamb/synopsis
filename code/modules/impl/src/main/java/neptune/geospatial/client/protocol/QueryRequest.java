@@ -11,7 +11,7 @@ import java.util.List;
 
 /**
  * Sent from client to an arbitrary Synopsis node
- * 
+ *
  * @author Thilina Buddhika
  */
 public class QueryRequest extends ControlMessage {
