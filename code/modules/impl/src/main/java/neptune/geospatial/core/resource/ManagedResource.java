@@ -13,7 +13,7 @@ import ds.granules.scheduler.Resource;
 import ds.granules.util.Constants;
 import ds.granules.util.NeptuneRuntime;
 import ds.granules.util.ParamsReader;
-import neptune.geospatial.client.protocol.QueryRequest;
+import neptune.geospatial.client.protocol.ClientQueryRequest;
 import neptune.geospatial.core.computations.AbstractGeoSpatialStreamProcessor;
 import neptune.geospatial.core.protocol.AbstractProtocolHandler;
 import neptune.geospatial.core.protocol.msg.EnableShortCircuiting;
@@ -594,8 +594,8 @@ public class ManagedResource {
         return (++seqNoStart < seqNoEnd) ? seqNoStart : -1;
     }
 
-    public void handleQueryRequest(QueryRequest queryRequest){
-        List<String> prefixes = queryRequest.getGeoHashes();
+    public void handleQueryRequest(ClientQueryRequest clientQueryRequest){
+        List<String> prefixes = clientQueryRequest.getGeoHashes();
         Map<String, List<String>> targets = new HashMap<>();
         for (String prefix : prefixes){
             Map<String, String> locations = GeoHashPrefixTree.getInstance().query(prefix);

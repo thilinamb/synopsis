@@ -1,7 +1,7 @@
 package neptune.geospatial.core.resource;
 
 import ds.granules.communication.direct.control.ControlMessage;
-import neptune.geospatial.client.protocol.QueryRequest;
+import neptune.geospatial.client.protocol.ClientQueryRequest;
 import neptune.geospatial.core.protocol.AbstractProtocolHandler;
 import neptune.geospatial.core.protocol.ProtocolTypes;
 import neptune.geospatial.core.protocol.msg.*;
@@ -146,11 +146,11 @@ public class ResourceProtocolHandler extends AbstractProtocolHandler {
                 managedResource.dispatchEnableShortCircuitingMessage(shortCircuitingMsg);
                 break;
             case ProtocolTypes.CLIENT_QUERY_REQ:
-                QueryRequest queryRequest = (QueryRequest) ctrlMsg;
+                ClientQueryRequest clientQueryRequest = (ClientQueryRequest) ctrlMsg;
                 if(logger.isDebugEnabled()){
                     logger.debug("Received a query request.");
                 }
-                managedResource.handleQueryRequest(queryRequest);
+                managedResource.handleQueryRequest(clientQueryRequest);
                 break;
             default:
                 logger.warn("Unsupported message type: " + type);

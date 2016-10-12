@@ -14,18 +14,18 @@ import java.util.List;
  *
  * @author Thilina Buddhika
  */
-public class QueryRequest extends ControlMessage {
+public class ClientQueryRequest extends ControlMessage {
 
     private int queryId;
     private String clientUrl;
     private byte[] query;
     private List<String> geoHashes;
 
-    public QueryRequest() {
+    public ClientQueryRequest() {
         super(ProtocolTypes.CLIENT_QUERY_REQ);
     }
 
-    public QueryRequest(int queryId, String clientUrl, byte[] query, List<String> geoHashes) {
+    public ClientQueryRequest(int queryId, String clientUrl, byte[] query, List<String> geoHashes) {
         super(ProtocolTypes.CLIENT_QUERY_REQ);
         this.queryId = queryId;
         this.clientUrl = clientUrl;
