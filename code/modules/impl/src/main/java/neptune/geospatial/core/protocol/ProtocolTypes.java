@@ -28,5 +28,5 @@ public final class ProtocolTypes {
     public static final int CHECKPOINT_ACK = 12401;
     // Synopsis client related messages
     public static final int CLIENT_QUERY_REQ = 12501;
-    public static final int PROPAGATED_QUERY_REQ = 12502;
+    public static final int TARGET_QUERY_REQ = 12502;
 }

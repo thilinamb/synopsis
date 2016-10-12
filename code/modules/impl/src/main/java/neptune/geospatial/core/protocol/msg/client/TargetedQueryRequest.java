@@ -20,11 +20,11 @@ public class TargetedQueryRequest extends ControlMessage {
     private String clientAddr;
 
     public TargetedQueryRequest() {
-        super(ProtocolTypes.PROPAGATED_QUERY_REQ);
+        super(ProtocolTypes.TARGET_QUERY_REQ);
     }
 
     public TargetedQueryRequest(int queryId, byte[] query, List<String> targetComputationIds, String clientAddr) {
-        super(ProtocolTypes.PROPAGATED_QUERY_REQ);
+        super(ProtocolTypes.TARGET_QUERY_REQ);
         this.queryId = queryId;
         this.query = query;
         this.targetComputationIds = targetComputationIds;

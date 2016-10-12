@@ -13,8 +13,8 @@ import ds.granules.scheduler.Resource;
 import ds.granules.util.Constants;
 import ds.granules.util.NeptuneRuntime;
 import ds.granules.util.ParamsReader;
-import neptune.geospatial.client.protocol.ClientQueryRequest;
-import neptune.geospatial.client.protocol.TargetedQueryQuest;
+import neptune.geospatial.core.protocol.msg.client.ClientQueryRequest;
+import neptune.geospatial.core.protocol.msg.client.TargetedQueryRequest;
 import neptune.geospatial.core.computations.AbstractGeoSpatialStreamProcessor;
 import neptune.geospatial.core.protocol.AbstractProtocolHandler;
 import neptune.geospatial.core.protocol.msg.EnableShortCircuiting;
@@ -612,10 +612,10 @@ public class ManagedResource {
             }
         }
         for (String endpoint : targets.keySet()) {
-            TargetedQueryQuest targetedQueryQuest = new TargetedQueryQuest(clientQueryRequest.getQueryId(),
+            TargetedQueryRequest targetedQueryRequest = new TargetedQueryRequest(clientQueryRequest.getQueryId(),
                     clientQueryRequest.getQuery(), targets.get(endpoint), clientQueryRequest.getClientUrl());
             try {
-                SendUtility.sendControlMessage(endpoint, targetedQueryQuest);
+                SendUtility.sendControlMessage(endpoint, targetedQueryRequest);
                 logger.info("Sent a target query request to " + endpoint);
             } catch (CommunicationsException | IOException e) {
                 logger.error("Error sending targeted query req. to " + endpoint, e);

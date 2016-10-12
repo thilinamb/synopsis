@@ -1,10 +1,12 @@
 package neptune.geospatial.core.resource;
 
 import ds.granules.communication.direct.control.ControlMessage;
-import neptune.geospatial.client.protocol.ClientQueryRequest;
 import neptune.geospatial.core.protocol.AbstractProtocolHandler;
 import neptune.geospatial.core.protocol.ProtocolTypes;
-import neptune.geospatial.core.protocol.msg.*;
+import neptune.geospatial.core.protocol.msg.EnableShortCircuiting;
+import neptune.geospatial.core.protocol.msg.StateTransferMsg;
+import neptune.geospatial.core.protocol.msg.client.ClientQueryRequest;
+import neptune.geospatial.core.protocol.msg.client.TargetedQueryRequest;
 import neptune.geospatial.core.protocol.msg.scalein.*;
 import neptune.geospatial.core.protocol.msg.scaleout.*;
 import neptune.geospatial.ft.protocol.CheckpointAck;
@@ -125,32 +127,37 @@ public class ResourceProtocolHandler extends AbstractProtocolHandler {
                 break;
             case ProtocolTypes.CHECKPOINT_ACK:
                 CheckpointAck checkpointAck = (CheckpointAck) ctrlMsg;
-                if(logger.isDebugEnabled()){
+                if (logger.isDebugEnabled()) {
                     logger.debug("Received a State persistence ack for " + checkpointAck.getTargetComputation());
                 }
                 managedResource.dispatchControlMessage(checkpointAck.getTargetComputation(), checkpointAck);
                 break;
             case ProtocolTypes.PREFIX_ONLY_SCALE_OUT_COMPLETE:
                 PrefixOnlyScaleOutCompleteAck prefixOnlyScaleOutCompleteAck = (PrefixOnlyScaleOutCompleteAck) ctrlMsg;
-                if(logger.isDebugEnabled()){
+                if (logger.isDebugEnabled()) {
                     logger.debug("Received a PrefixOnlyScaleOutCompleteAck from " +
                             prefixOnlyScaleOutCompleteAck.getOriginEndpoint());
                 }
                 managedResource.dispatchPrefixOnlyScaleOutAck(prefixOnlyScaleOutCompleteAck);
                 break;
             case ProtocolTypes.ENABLE_SHORT_CIRCUITING:
-                EnableShortCircuiting shortCircuitingMsg = (EnableShortCircuiting)ctrlMsg;
-                if(logger.isDebugEnabled()){
+                EnableShortCircuiting shortCircuitingMsg = (EnableShortCircuiting) ctrlMsg;
+                if (logger.isDebugEnabled()) {
                     logger.debug("Received a EnableShortCircuiting from the deployer.");
                 }
                 managedResource.dispatchEnableShortCircuitingMessage(shortCircuitingMsg);
                 break;
             case ProtocolTypes.CLIENT_QUERY_REQ:
                 ClientQueryRequest clientQueryRequest = (ClientQueryRequest) ctrlMsg;
-                if(logger.isDebugEnabled()){
-                    logger.debug("Received a query request.");
-                }
+                logger.info("Received a query request.");
                 managedResource.handleQueryRequest(clientQueryRequest);
+                break;
+            case ProtocolTypes.TARGET_QUERY_REQ:
+                TargetedQueryRequest queryRequest = (TargetedQueryRequest) ctrlMsg;
+                logger.info("Received a target query request.");
+                for (String compId : queryRequest.getCompId()) {
+                    managedResource.dispatchControlMessage(compId, queryRequest);
+                }
                 break;
             default:
                 logger.warn("Unsupported message type: " + type);
