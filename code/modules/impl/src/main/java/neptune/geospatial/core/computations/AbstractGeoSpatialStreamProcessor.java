@@ -226,6 +226,13 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
     public abstract void merge(String prefix, byte[] serializedSketch);
 
     /**
+     * Query the sketch
+     * @param query - serialized query
+     * @return - results of the query in the serialized form
+     */
+    public abstract byte[] query(byte[] query);
+
+    /**
      * Invoked when Scale out protocol is initiated.
      * Can be used to track scaling out acitivity along with {@code onSuccessfulScaleOut}.
      * Overriding this method is optional.

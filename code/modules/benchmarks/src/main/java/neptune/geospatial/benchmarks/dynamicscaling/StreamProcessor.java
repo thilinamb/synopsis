@@ -41,4 +41,9 @@ public class StreamProcessor extends AbstractGeoSpatialStreamProcessor {
         IQueue<Integer> scaleMonitorQueue = getHzInstance().getQueue("scaling-monitor");
         scaleMonitorQueue.add(-1 * prefixes.size());
     }
+
+    @Override
+    public byte[] query(byte[] query) {
+        throw new UnsupportedOperationException("The method 'query' is not supported");
+    }
 }

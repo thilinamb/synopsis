@@ -32,4 +32,9 @@ public class RecordCounter extends AbstractGeoSpatialStreamProcessor {
     public void merge(String prefix, byte[] serializedSketch) {
 
     }
+
+    @Override
+    public byte[] query(byte[] query) {
+        throw new UnsupportedOperationException("The method 'query' is not supported");
+    }
 }
