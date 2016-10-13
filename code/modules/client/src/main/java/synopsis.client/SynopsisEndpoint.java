@@ -20,4 +20,9 @@ class SynopsisEndpoint {
     int getControlPort() {
         return controlPort;
     }
+
+    @Override
+    public String toString() {
+        return hostname + ":" + controlPort;
+    }
 }
