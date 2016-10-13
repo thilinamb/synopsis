@@ -5,16 +5,16 @@ import ds.granules.exception.CommunicationsException;
 import ds.granules.exception.GranulesConfigurationException;
 import ds.granules.util.NeptuneRuntime;
 import ds.granules.util.ZooKeeperUtils;
+import neptune.geospatial.util.RivuletUtil;
 import org.apache.log4j.Logger;
 import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.ZooKeeper;
 import synopsis.client.messaging.ClientProtocolHandler;
 import synopsis.client.messaging.Transport;
+import synopsis.client.query.QueryCallback;
+import synopsis.client.query.QueryManager;
 
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Properties;
+import java.util.*;
 import java.util.concurrent.CountDownLatch;
 
 /**
@@ -28,6 +28,9 @@ public class Client {
     private final ZooKeeper zk;
     private List<SynopsisEndpoint> endpoints;
     private final int clientPort;
+    private final String hostname;
+    private final QueryManager queryManager;
+    private final Random random = new Random();
 
     public Client(Properties properties, int clientPort) throws ClientException {
         try {
@@ -35,6 +38,8 @@ public class Client {
             this.endpoints = new ArrayList<>();
             this.zk = ZooKeeperAgent.getInstance().getZooKeeperInstance();
             this.clientPort = clientPort;
+            this.hostname = RivuletUtil.getHostInetAddress().getHostName();
+            queryManager = QueryManager.getInstance(this.hostname, this.clientPort);
             init();
             logger.info("Client initialization is complete.");
         } catch (GranulesConfigurationException | CommunicationsException e) {
@@ -81,4 +86,12 @@ public class Client {
         logger.info("Discovered " + this.endpoints.size() + " resources.");
     }
 
+    public long submitQuery(byte[] query, List<String> geoHashes, QueryCallback callback) throws ClientException {
+        return queryManager.submitQuery(query, geoHashes, callback, getRandomSynopsisNode());
+    }
+
+    private String getRandomSynopsisNode(){
+        SynopsisEndpoint endpoint = endpoints.get(random.nextInt(endpoints.size()));
+        return endpoint.toString();
+    }
 }
