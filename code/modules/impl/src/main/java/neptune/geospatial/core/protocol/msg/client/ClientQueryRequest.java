@@ -16,7 +16,7 @@ import java.util.List;
  */
 public class ClientQueryRequest extends ControlMessage {
 
-    private int queryId;
+    private long queryId;
     private String clientUrl;
     private byte[] query;
     private List<String> geoHashes;
@@ -25,7 +25,7 @@ public class ClientQueryRequest extends ControlMessage {
         super(ProtocolTypes.CLIENT_QUERY_REQ);
     }
 
-    public ClientQueryRequest(int queryId, String clientUrl, byte[] query, List<String> geoHashes) {
+    public ClientQueryRequest(long queryId, String clientUrl, byte[] query, List<String> geoHashes) {
         super(ProtocolTypes.CLIENT_QUERY_REQ);
         this.queryId = queryId;
         this.clientUrl = clientUrl;
@@ -35,7 +35,7 @@ public class ClientQueryRequest extends ControlMessage {
 
     @Override
     public void readValues(DataInputStream dataInputStream) throws IOException {
-        this.queryId = dataInputStream.readInt();
+        this.queryId = dataInputStream.readLong();
         this.clientUrl = dataInputStream.readUTF();
         int querySize = dataInputStream.readInt();
         this.query = new byte[querySize];
@@ -49,7 +49,7 @@ public class ClientQueryRequest extends ControlMessage {
 
     @Override
     public void writeValues(DataOutputStream dataOutputStream) throws IOException {
-        dataOutputStream.writeInt(this.queryId);
+        dataOutputStream.writeLong(this.queryId);
         dataOutputStream.writeUTF(this.clientUrl);
         dataOutputStream.writeInt(this.query.length);
         dataOutputStream.write(this.query);
@@ -59,7 +59,7 @@ public class ClientQueryRequest extends ControlMessage {
         }
     }
 
-    public int getQueryId() {
+    public long getQueryId() {
         return queryId;
     }
 

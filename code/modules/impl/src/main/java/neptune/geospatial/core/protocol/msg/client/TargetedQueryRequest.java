@@ -14,7 +14,7 @@ import java.util.List;
  */
 public class TargetedQueryRequest extends ControlMessage {
 
-    private int queryId;
+    private long queryId;
     private byte[] query;
     private List<String> targetComputationIds;
     private String clientAddr;
@@ -23,7 +23,7 @@ public class TargetedQueryRequest extends ControlMessage {
         super(ProtocolTypes.TARGET_QUERY_REQ);
     }
 
-    public TargetedQueryRequest(int queryId, byte[] query, List<String> targetComputationIds, String clientAddr) {
+    public TargetedQueryRequest(long queryId, byte[] query, List<String> targetComputationIds, String clientAddr) {
         super(ProtocolTypes.TARGET_QUERY_REQ);
         this.queryId = queryId;
         this.query = query;
@@ -33,7 +33,7 @@ public class TargetedQueryRequest extends ControlMessage {
 
     @Override
     public void readValues(DataInputStream dataInputStream) throws IOException {
-        this.queryId = dataInputStream.readInt();
+        this.queryId = dataInputStream.readLong();
         // deserialize query
         this.query = new byte[dataInputStream.readInt()];
         dataInputStream.readFully(this.query);
@@ -48,7 +48,7 @@ public class TargetedQueryRequest extends ControlMessage {
 
     @Override
     public void writeValues(DataOutputStream dataOutputStream) throws IOException {
-        dataOutputStream.writeInt(this.queryId);
+        dataOutputStream.writeLong(this.queryId);
         dataOutputStream.writeInt(this.query.length);
         dataOutputStream.write(this.query);
         dataOutputStream.writeInt(this.targetComputationIds.size());
@@ -58,7 +58,7 @@ public class TargetedQueryRequest extends ControlMessage {
         dataOutputStream.writeUTF(this.clientAddr);
     }
 
-    public int getQueryId() {
+    public long getQueryId() {
         return queryId;
     }
 

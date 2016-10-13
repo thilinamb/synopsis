@@ -12,14 +12,14 @@ import java.io.IOException;
  */
 public class ClientQueryResponse extends ControlMessage {
 
-    private int queryId;
+    private long queryId;
     private int targetCompCount;
 
     public ClientQueryResponse() {
         super(ProtocolTypes.CLIENT_QUERY_RESP);
     }
 
-    public ClientQueryResponse(int queryId, int targetCompCount) {
+    public ClientQueryResponse(long queryId, int targetCompCount) {
         super(ProtocolTypes.CLIENT_QUERY_RESP);
         this.queryId = queryId;
         this.targetCompCount = targetCompCount;
@@ -27,17 +27,17 @@ public class ClientQueryResponse extends ControlMessage {
 
     @Override
     public void readValues(DataInputStream dataInputStream) throws IOException {
-        this.queryId = dataInputStream.readInt();
+        this.queryId = dataInputStream.readLong();
         this.targetCompCount = dataInputStream.readInt();
     }
 
     @Override
     public void writeValues(DataOutputStream dataOutputStream) throws IOException {
-        dataOutputStream.writeInt(this.queryId);
+        dataOutputStream.writeLong(this.queryId);
         dataOutputStream.writeInt(this.targetCompCount);
     }
 
-    public int getQueryId() {
+    public long getQueryId() {
         return queryId;
     }
 

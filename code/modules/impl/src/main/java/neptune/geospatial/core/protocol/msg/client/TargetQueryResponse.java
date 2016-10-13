@@ -12,7 +12,7 @@ import java.io.IOException;
  */
 public class TargetQueryResponse extends ControlMessage {
 
-    private int queryId;
+    private long queryId;
     private String compId;
     private byte[] response;
     private long queryEvalTime;
@@ -21,7 +21,7 @@ public class TargetQueryResponse extends ControlMessage {
         super(ProtocolTypes.TARGET_QUERY_RESP);
     }
 
-    public TargetQueryResponse(int queryId, String compId, byte[] response, long queryEvalTime) {
+    public TargetQueryResponse(long queryId, String compId, byte[] response, long queryEvalTime) {
         super(ProtocolTypes.TARGET_QUERY_RESP);
         this.queryId = queryId;
         this.compId = compId;
@@ -31,7 +31,7 @@ public class TargetQueryResponse extends ControlMessage {
 
     @Override
     public void readValues(DataInputStream dataInputStream) throws IOException {
-        this.queryId = dataInputStream.readInt();
+        this.queryId = dataInputStream.readLong();
         this.compId = dataInputStream.readUTF();
         this.response = new byte[dataInputStream.readInt()];
         dataInputStream.readFully(this.response);
@@ -40,14 +40,14 @@ public class TargetQueryResponse extends ControlMessage {
 
     @Override
     public void writeValues(DataOutputStream dataOutputStream) throws IOException {
-        dataOutputStream.writeInt(this.queryId);
+        dataOutputStream.writeLong(this.queryId);
         dataOutputStream.writeUTF(this.compId);
         dataOutputStream.writeInt(this.response.length);
         dataOutputStream.write(this.response);
         dataOutputStream.writeLong(this.queryEvalTime);
     }
 
-    public int getQueryId() {
+    public long getQueryId() {
         return queryId;
     }
 
