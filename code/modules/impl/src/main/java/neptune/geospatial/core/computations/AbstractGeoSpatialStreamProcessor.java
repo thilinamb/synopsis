@@ -234,6 +234,18 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
     public abstract byte[] query(byte[] query);
 
     /**
+     * Serialize the sketch
+     * @return byte[]
+     */
+    public abstract byte[] serialize();
+
+    /**
+     * Populate the sketch from the deserialized data
+     * @param bytes serialized data
+     */
+    public abstract void deserialize(byte[] bytes);
+
+    /**
      * Invoked when Scale out protocol is initiated.
      * Can be used to track scaling out acitivity along with {@code onSuccessfulScaleOut}.
      * Overriding this method is optional.

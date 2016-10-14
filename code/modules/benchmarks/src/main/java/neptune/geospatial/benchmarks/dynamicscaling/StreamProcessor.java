@@ -46,4 +46,14 @@ public class StreamProcessor extends AbstractGeoSpatialStreamProcessor {
     public byte[] query(byte[] query) {
         throw new UnsupportedOperationException("The method 'query' is not supported");
     }
+
+    @Override
+    public byte[] serialize() {
+        throw new UnsupportedOperationException("The method 'serialize' is not supported");
+    }
+
+    @Override
+    public void deserialize(byte[] bytes) {
+        throw new UnsupportedOperationException("The method 'deserialize' is not supported");
+    }
 }

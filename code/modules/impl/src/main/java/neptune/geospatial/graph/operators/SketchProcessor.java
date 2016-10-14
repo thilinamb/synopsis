@@ -137,6 +137,16 @@ public class SketchProcessor extends AbstractGeoSpatialStreamProcessor {
         return new byte[0];
     }
 
+    @Override
+    public byte[] serialize() {
+        return new byte[0];
+    }
+
+    @Override
+    public void deserialize(byte[] bytes) {
+
+    }
+
     public double getMemoryConsumptionForPrefix(String prefix) {
         CountContainer cc = this.sketch.geoTrie.query(prefix);
         long vertices = cc.a;
