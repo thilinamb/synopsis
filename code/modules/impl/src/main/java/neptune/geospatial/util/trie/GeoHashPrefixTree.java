@@ -5,6 +5,7 @@ import com.hazelcast.map.listener.EntryAddedListener;
 import com.hazelcast.map.listener.EntryUpdatedListener;
 import neptune.geospatial.hazelcast.type.SketchLocation;
 
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -106,6 +107,14 @@ public class GeoHashPrefixTree implements EntryAddedListener<String, SketchLocat
         }
     }
 
+    public byte[] serialize() throws IOException {
+        return root.serialize();
+    }
+
+    public void deserialize(byte[] bytes) throws IOException{
+        root.deserialize(bytes);
+    }
+
     private String printTree() {
         return root.printTraverseResults(root.traverse());
     }
@@ -115,18 +124,19 @@ public class GeoHashPrefixTree implements EntryAddedListener<String, SketchLocat
         String[] computations = {"comp-1", "comp-2", "comp-3"};
         String[] endpoints = {"endpoint-1", "endpoint-2", "endpoint-3"};
         prefixTree.registerPrefix("8GF", computations[0], endpoints[0]);
-        System.out.println(prefixTree.printTree());
+        //System.out.println(prefixTree.printTree());
         prefixTree.registerPrefix("9X1", computations[1], endpoints[1]);
-        System.out.println(prefixTree.printTree());
+        //System.out.println(prefixTree.printTree());
         prefixTree.registerPrefix("9X2", computations[1], endpoints[1]);
-        System.out.println(prefixTree.printTree());
+        //System.out.println(prefixTree.printTree());
         prefixTree.registerPrefix("9X1A", computations[2], endpoints[2]);
-        System.out.println(prefixTree.printTree());
+        //System.out.println(prefixTree.printTree());
         prefixTree.recordScaleOut("9X1", computations[2], endpoints[2]);
-        System.out.println(prefixTree.printTree());
+        //System.out.println(prefixTree.printTree());
         prefixTree.recordScaleOut("9X1A", computations[1], endpoints[1]);
         System.out.println(prefixTree.printTree());
 
+        /*
         System.out.println("------------ Querying -------------------");
         // querying
         printNodeList(prefixTree.query("9X1A"));
@@ -140,6 +150,18 @@ public class GeoHashPrefixTree implements EntryAddedListener<String, SketchLocat
         // unseen child prefix
         System.out.println("");
         printNodeList(prefixTree.query("9XB"));
+        */
+
+        // serialization test
+        try {
+            byte[] serializedData = prefixTree.serialize();
+            GeoHashPrefixTree prefTree2 = new GeoHashPrefixTree();
+            System.out.println("empty tree: " + prefTree2.printTree());
+            prefTree2.deserialize(serializedData);
+            System.out.println("After populating: " + prefTree2.printTree());
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     private static void printNodeList(Map<String, String> locs) {

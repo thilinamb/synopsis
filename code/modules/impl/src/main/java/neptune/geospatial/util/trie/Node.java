@@ -5,6 +5,7 @@ import ds.granules.exception.GranulesConfigurationException;
 import neptune.geospatial.util.RivuletUtil;
 import org.apache.log4j.Logger;
 
+import java.io.*;
 import java.util.*;
 
 /**
@@ -195,6 +196,7 @@ class Node {
 
     /**
      * Query the subtree where the current node is the root for the given prefix
+     *
      * @param prefix Given prefix for querying
      * @return List of nodes corresponding to the prefix (comprised of child nodes and current node)
      */
@@ -207,7 +209,7 @@ class Node {
             return longestMatchingChild.query(prefix);
         } else {
             List<Node> nodes = new ArrayList<>();
-            if(!this.isRoot()) {
+            if (!this.isRoot()) {
                 nodes.add(this);
             }
             return nodes;
@@ -216,18 +218,74 @@ class Node {
 
     /**
      * A list of all children traversing the trie in depth first
+     *
      * @return A flat list of child nodes - no duplicate elimination
      */
-    private List<Node> getChildrenAsFlatList(){
+    private List<Node> getChildrenAsFlatList() {
         List<Node> flatList = new ArrayList<>();
-        for(Node child: childNodes.values()){
+        for (Node child : childNodes.values()) {
             flatList.addAll(child.getChildrenAsFlatList());
         }
         flatList.add(this);
         return flatList;
     }
 
+    public byte[] serialize() throws IOException {
+        ByteArrayOutputStream baos = null;
+        DataOutputStream dos = null;
+        try {
+            baos = new ByteArrayOutputStream();
+            dos = new DataOutputStream(baos);
+            dos.writeUTF(this.prefix);
+            dos.writeUTF(this.computationId);
+            dos.writeUTF(this.ctrlEndpoint);
+            dos.writeInt(this.childNodes.size());
+            for (String childPref : this.childNodes.keySet()) {
+                dos.writeUTF(childPref);
+                byte[] serializedChildNode = this.childNodes.get(childPref).serialize();
+                dos.writeInt(serializedChildNode.length);
+                dos.write(this.childNodes.get(childPref).serialize());
+            }
+            dos.flush();
+            return baos.toByteArray();
+        } finally {
+            if (dos != null) {
+                dos.close();
+            }
+            if (baos != null) {
+                baos.close();
+            }
+        }
+    }
 
+    public void deserialize(byte[] bytes) throws IOException {
+        ByteArrayInputStream bais = null;
+        DataInputStream dis = null;
+        try {
+            bais = new ByteArrayInputStream(bytes);
+            dis = new DataInputStream(bais);
+            this.prefix = dis.readUTF();
+            this.computationId = dis.readUTF();
+            this.ctrlEndpoint = dis.readUTF();
+            int childNodeCount = dis.readInt();
+            for (int i = 0; i < childNodeCount; i++) {
+                String childPrefix = dis.readUTF();
+                int serializedDataLength = dis.readInt();
+                byte[] serializedData = new byte[serializedDataLength];
+                dis.readFully(serializedData);
+                Node childNode = new Node();
+                childNode.deserialize(serializedData);
+                this.childNodes.put(childPrefix, childNode);
+            }
+        } finally {
+            if (dis != null) {
+                dis.close();
+            }
+            if (bais != null) {
+                bais.close();
+            }
+        }
+    }
 
     @Override
     public String toString() {
