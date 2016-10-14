@@ -32,6 +32,7 @@ public class QueryResponse {
         this.expectedQueryResponseCount = expectedQueryResponseCount;
         if(this.expectedQueryResponseCount == this.queryResponse.size()){
             fireCallback = true;
+            setElapsedTime();
         }
         return fireCallback;
     }
@@ -42,6 +43,7 @@ public class QueryResponse {
         elapsedTimesInSketchlets.add(elapsedTime);
         if(this.queryResponse.size() == this.expectedQueryResponseCount) {
             fireCallback = true;
+            setElapsedTime();
         }
         return fireCallback;
     }
