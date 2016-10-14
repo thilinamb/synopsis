@@ -27,13 +27,17 @@ public class OutstandingQueryRegistry {
     public void addOutstandingQuery(long queryId, QueryResponse queryResponse, QueryCallback queryCallback) {
         outstandingQueries.put(queryId, queryResponse);
         callbacks.put(queryId, queryCallback);
-        logger.info("Outstanding query was added.  Query Id: " + queryId + ", Size: " + outstandingQueries.size());
+        if(logger.isDebugEnabled()) {
+            logger.debug("Outstanding query was added.  Query Id: " + queryId + ", Size: " + outstandingQueries.size());
+        }
     }
 
     public void removeOutstandingQuery(long queryId) {
         outstandingQueries.remove(queryId);
         callbacks.remove(queryId);
-        logger.info("Outstanding query was removed. Query Id: " + queryId + ", Size: " + outstandingQueries.size());
+        if(logger.isDebugEnabled()) {
+            logger.debug("Outstanding query was removed. Query Id: " + queryId + ", Size: " + outstandingQueries.size());
+        }
     }
 
     public QueryResponse getOutstandingQueryResponse(long queryId) {

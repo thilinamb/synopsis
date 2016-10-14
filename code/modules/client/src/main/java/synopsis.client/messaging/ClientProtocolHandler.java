@@ -27,6 +27,9 @@ public class ClientProtocolHandler extends AbstractProtocolHandler {
     @Override
     public void handle(ControlMessage ctrlMsg) {
         int type = ctrlMsg.getMessageType();
+        if(logger.isDebugEnabled()) {
+            logger.debug("Dispatching ctrl message. Type: " + type);
+        }
         switch (type){
             case ProtocolTypes.CLIENT_QUERY_RESP:
                 queryManager.handleClientQueryResponse((ClientQueryResponse) ctrlMsg);

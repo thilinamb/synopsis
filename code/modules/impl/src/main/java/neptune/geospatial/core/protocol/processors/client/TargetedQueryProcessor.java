@@ -26,8 +26,10 @@ public class TargetedQueryProcessor implements ProtocolProcessor {
         long startTime = System.nanoTime();
         byte[] response = streamProcessor.query(queryReq.getQuery());
         long endTime = System.nanoTime();
-        logger.info(String.format("[%s] Query evaluated. Query id: %d, Eval. time: %d",
-                streamProcessor.getInstanceIdentifier(), queryReq.getQueryId(), (endTime - startTime)));
+        if(logger.isDebugEnabled()) {
+            logger.debug(String.format("[%s] Query evaluated. Query id: %d, Eval. time: %d",
+                    streamProcessor.getInstanceIdentifier(), queryReq.getQueryId(), (endTime - startTime)));
+        }
         TargetQueryResponse queryResponse = new TargetQueryResponse(queryReq.getQueryId(),
                 streamProcessor.getInstanceIdentifier(), response, (endTime - startTime));
         try {

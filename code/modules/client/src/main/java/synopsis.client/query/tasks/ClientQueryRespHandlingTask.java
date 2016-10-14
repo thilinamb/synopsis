@@ -27,7 +27,9 @@ public class ClientQueryRespHandlingTask implements Runnable {
         if (queryResponse != null) {
             boolean fireCallback = queryResponse.setExpectedQueryResponseCount(clientQueryResponse.getTargetCompCount());
             if (fireCallback) {
-                logger.info("Ready to fire the callback. All responses are received.");
+                if(logger.isDebugEnabled()) {
+                    logger.debug("Ready to fire the callback. All responses are received.");
+                }
                 QueryCallback callback = OutstandingQueryRegistry.getInstance().getQueryCallback(queryId);
                 if (callback != null) {
                     callback.processQueryResponse(queryResponse);

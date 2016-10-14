@@ -619,15 +619,19 @@ public class ManagedResource {
                     clientQueryRequest.getQuery(), targets.get(endpoint), clientQueryRequest.getClientUrl());
             try {
                 SendUtility.sendControlMessage(endpoint, targetedQueryRequest);
-                logger.info("Sent a target query request to " + endpoint);
+                if(logger.isDebugEnabled()){
+                    logger.debug("Sent a target query request to " + endpoint);
+                }
             } catch (CommunicationsException | IOException e) {
                 logger.error("Error sending targeted query req. to " + endpoint, e);
             }
         }
         ClientQueryResponse clientQueryResponse = new ClientQueryResponse(clientQueryRequest.getQueryId(),
                 totalComputationCount);
-        logger.info("Sent back the query response back to client. Total number of target computations: " +
-                totalComputationCount);
+        if(logger.isDebugEnabled()) {
+            logger.debug("Sent back the query response back to client. Total number of target computations: " +
+                    totalComputationCount);
+        }
         try {
             SendUtility.sendControlMessage(clientQueryRequest.getClientUrl(), clientQueryResponse);
         } catch (CommunicationsException | IOException e) {

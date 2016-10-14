@@ -149,12 +149,16 @@ public class ResourceProtocolHandler extends AbstractProtocolHandler {
                 break;
             case ProtocolTypes.CLIENT_QUERY_REQ:
                 ClientQueryRequest clientQueryRequest = (ClientQueryRequest) ctrlMsg;
-                logger.info("Received a query request.");
+                if(logger.isDebugEnabled()) {
+                    logger.debug("Received a query request.");
+                }
                 managedResource.handleQueryRequest(clientQueryRequest);
                 break;
             case ProtocolTypes.TARGET_QUERY_REQ:
                 TargetedQueryRequest queryRequest = (TargetedQueryRequest) ctrlMsg;
-                logger.info("Received a target query request.");
+                if(logger.isDebugEnabled()) {
+                    logger.debug("Received a target query request.");
+                }
                 for (String compId : queryRequest.getCompId()) {
                     managedResource.dispatchControlMessage(compId, queryRequest);
                 }
