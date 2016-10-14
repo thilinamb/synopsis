@@ -3,6 +3,8 @@ package neptune.geospatial.core.protocol;
 import ds.funnel.topic.TopicDataEvent;
 import ds.granules.communication.direct.control.ControlMessage;
 import neptune.geospatial.core.protocol.msg.client.ClientQueryRequest;
+import neptune.geospatial.core.protocol.msg.client.ClientQueryResponse;
+import neptune.geospatial.core.protocol.msg.client.TargetQueryResponse;
 import neptune.geospatial.core.protocol.msg.client.TargetedQueryRequest;
 import neptune.geospatial.core.protocol.msg.*;
 import neptune.geospatial.core.protocol.msg.scalein.*;
@@ -29,11 +31,11 @@ public class ProtocolFactory {
 
     private static ProtocolFactory instance = new ProtocolFactory();
 
-    private ProtocolFactory(){
+    private ProtocolFactory() {
         // singleton, hence a private constructor
     }
 
-    public static ProtocolFactory getInstance(){
+    public static ProtocolFactory getInstance() {
         return instance;
     }
 
@@ -108,8 +110,14 @@ public class ProtocolFactory {
                 case ProtocolTypes.CLIENT_QUERY_REQ:
                     message = new ClientQueryRequest();
                     break;
+                case ProtocolTypes.CLIENT_QUERY_RESP:
+                    message = new ClientQueryResponse();
+                    break;
                 case ProtocolTypes.TARGET_QUERY_REQ:
                     message = new TargetedQueryRequest();
+                    break;
+                case ProtocolTypes.TARGET_QUERY_RESP:
+                    message = new TargetQueryResponse();
                     break;
                 default:
                     String errorMsg = "Unsupported message type: " + messageType;

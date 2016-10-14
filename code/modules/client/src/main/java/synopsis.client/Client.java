@@ -1,8 +1,10 @@
 package synopsis.client;
 
 import ds.granules.communication.direct.ZooKeeperAgent;
+import ds.granules.communication.direct.dispatch.ControlMessageDispatcher;
 import ds.granules.exception.CommunicationsException;
 import ds.granules.exception.GranulesConfigurationException;
+import ds.granules.util.Constants;
 import ds.granules.util.NeptuneRuntime;
 import ds.granules.util.ZooKeeperUtils;
 import neptune.geospatial.util.RivuletUtil;
@@ -52,6 +54,7 @@ public class Client {
             ClientProtocolHandler messageDispatcher = new ClientProtocolHandler(dispatcherLatch, this.queryManager);
             new Thread(messageDispatcher).start();
             dispatcherLatch.await();
+            ControlMessageDispatcher.getInstance().registerCallback(Constants.WILD_CARD_CALLBACK, messageDispatcher);
             logger.info("Message dispatcher started!");
             // start the transport
             CountDownLatch transportLatch = new CountDownLatch(1);
