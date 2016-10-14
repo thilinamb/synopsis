@@ -4,6 +4,9 @@ import neptune.geospatial.core.computations.AbstractGeoSpatialStreamProcessor;
 import neptune.geospatial.graph.messages.GeoHashIndexedRecord;
 import org.apache.log4j.Logger;
 
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
+
 /**
  * This is a temporary operator used to count
  * the number of records in order to make sure
@@ -39,12 +42,12 @@ public class RecordCounter extends AbstractGeoSpatialStreamProcessor {
     }
 
     @Override
-    public byte[] serialize() {
+    public void serialize(DataOutputStream dataOutputStream) {
         throw new UnsupportedOperationException("The method 'serialize' is not supported");
     }
 
     @Override
-    public void deserialize(byte[] bytes) {
+    public void deserialize(DataInputStream dataInputStream) {
         throw new UnsupportedOperationException("The method 'deserialize' is not supported");
     }
 }

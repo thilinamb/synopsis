@@ -138,12 +138,12 @@ public class SketchProcessor extends AbstractGeoSpatialStreamProcessor {
     }
 
     @Override
-    public byte[] serialize() {
-        return new byte[0];
+    public void serialize(DataOutputStream dataOutputStream) {
+
     }
 
     @Override
-    public void deserialize(byte[] bytes) {
+    public void deserialize(DataInputStream dataInputStream) {
 
     }
 

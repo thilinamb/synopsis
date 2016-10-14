@@ -4,9 +4,7 @@ import com.hazelcast.core.IQueue;
 import neptune.geospatial.core.computations.AbstractGeoSpatialStreamProcessor;
 import neptune.geospatial.graph.messages.GeoHashIndexedRecord;
 
-import java.io.BufferedWriter;
-import java.io.FileWriter;
-import java.io.IOException;
+import java.io.*;
 import java.util.List;
 
 /**
@@ -117,12 +115,12 @@ public class StreamProcessor extends AbstractGeoSpatialStreamProcessor {
     }
 
     @Override
-    public byte[] serialize() {
+    public void serialize(DataOutputStream dataOutputStream) {
         throw new UnsupportedOperationException("The method 'serialize' is not supported");
     }
 
     @Override
-    public void deserialize(byte[] bytes) {
+    public void deserialize(DataInputStream dataInputStream) {
         throw new UnsupportedOperationException("The method 'deserialize' is not supported");
     }
 }

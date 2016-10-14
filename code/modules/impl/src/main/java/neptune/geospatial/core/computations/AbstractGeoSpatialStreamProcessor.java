@@ -50,9 +50,7 @@ import neptune.geospatial.util.RivuletUtil;
 import org.apache.log4j.Logger;
 import org.apache.zookeeper.KeeperException;
 
-import java.io.BufferedWriter;
-import java.io.FileWriter;
-import java.io.IOException;
+import java.io.*;
 import java.util.*;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -234,16 +232,16 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
     public abstract byte[] query(byte[] query);
 
     /**
-     * Serialize the sketch
-     * @return byte[]
+     * Serialize the sketch to the provided output stream
+     * @param dataOutputStream Outputstream to which the serialized data is written
      */
-    public abstract byte[] serialize();
+    public abstract void serialize(DataOutputStream dataOutputStream);
 
     /**
      * Populate the sketch from the deserialized data
-     * @param bytes serialized data
+     * @param dataInputStream Input stream of serialized data
      */
-    public abstract void deserialize(byte[] bytes);
+    public abstract void deserialize(DataInputStream dataInputStream);
 
     /**
      * Invoked when Scale out protocol is initiated.
