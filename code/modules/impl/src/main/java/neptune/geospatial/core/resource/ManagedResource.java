@@ -629,7 +629,7 @@ public class ManagedResource {
         logger.info("Sent back the query response back to client. Total number of target computations: " +
                 totalComputationCount);
         try {
-            SendUtility.sendControlMessage(clientQueryRequest.getOriginEndpoint(), clientQueryResponse);
+            SendUtility.sendControlMessage(clientQueryRequest.getClientUrl(), clientQueryResponse);
         } catch (CommunicationsException | IOException e) {
             logger.error("Error sending back the query response back to the client.", e);
         }
