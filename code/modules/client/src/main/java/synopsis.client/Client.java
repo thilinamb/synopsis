@@ -40,18 +40,16 @@ public class Client {
             this.clientPort = clientPort;
             this.hostname = RivuletUtil.getHostInetAddress().getHostName();
             queryManager = QueryManager.getInstance(this.hostname, this.clientPort);
-            init();
-            logger.info("Client initialization is complete.");
         } catch (GranulesConfigurationException | CommunicationsException e) {
             throw new ClientException("Error in initializing. ", e);
         }
     }
 
-    private void init() throws ClientException {
+    public void init() throws ClientException {
         try {
             // start the Client message dispatcher
             CountDownLatch dispatcherLatch = new CountDownLatch(1);
-            ClientProtocolHandler messageDispatcher = new ClientProtocolHandler(dispatcherLatch);
+            ClientProtocolHandler messageDispatcher = new ClientProtocolHandler(dispatcherLatch, this.queryManager);
             new Thread(messageDispatcher).start();
             dispatcherLatch.await();
             logger.info("Message dispatcher started!");
@@ -66,6 +64,7 @@ public class Client {
         }
         // discover resources
         discoverSynopsisNodes();
+        logger.info("Client initialization is complete.");
     }
 
     private void discoverSynopsisNodes() throws ClientException {
