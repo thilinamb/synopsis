@@ -7,6 +7,8 @@ import java.util.Set;
 import io.sigpipe.sing.dataset.feature.FeatureType;
 import io.sigpipe.sing.graph.DataContainer;
 import io.sigpipe.sing.graph.Vertex;
+import io.sigpipe.sing.serialization.SerializationException;
+import io.sigpipe.sing.serialization.SerializationInputStream;
 
 public class MetaQuery extends Query {
 
@@ -14,6 +16,11 @@ public class MetaQuery extends Query {
 
     public MetaQuery() {
 
+    }
+
+    public MetaQuery(SerializationInputStream in)
+    throws IOException, SerializationException {
+        super(in);
     }
 
     public DataContainer result() {
