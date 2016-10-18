@@ -6,8 +6,11 @@ import io.sigpipe.sing.dataset.feature.Feature;
 import io.sigpipe.sing.dataset.feature.FeatureType;
 import io.sigpipe.sing.graph.*;
 import io.sigpipe.sing.query.Expression;
+import io.sigpipe.sing.query.Query;
 import io.sigpipe.sing.query.Operator;
+import io.sigpipe.sing.query.MetaQuery;
 import io.sigpipe.sing.query.PartitionQuery;
+import io.sigpipe.sing.query.RelationalQuery;
 import io.sigpipe.sing.serialization.SerializationInputStream;
 import io.sigpipe.sing.serialization.SerializationOutputStream;
 import io.sigpipe.sing.serialization.Serializer;
@@ -144,7 +147,15 @@ public class SketchProcessor extends AbstractGeoSpatialStreamProcessor {
 
     @Override
     public void deserialize(DataInputStream dataInputStream) {
-
+        try {
+            SerializationInputStream in
+                = new SerializationInputStream(
+                        new GZIPInputStream(dataInputStream));
+            this.sketch.merge(in);
+        } catch (Exception e) {
+            System.out.println("Failed to deserialize sketch");
+            e.printStackTrace();
+        }
     }
 
     public double getMemoryConsumptionForPrefix(String prefix) {
@@ -170,10 +181,8 @@ public class SketchProcessor extends AbstractGeoSpatialStreamProcessor {
 
         int numFeatures = sketch.getFeatureHierarchy().size();
         int bytesPerLeaf = 8 + (8 * numFeatures * 4)
-            + (8 * ((numFeatures + 1) * numFeatures) / 2);
+            + (8 * ((numFeatures * (numFeatures - 1)) / 2));
 
-        // for now, let's just measure the number of leaves:
-        //return leaves;
         return (bytesPerVertex * vertices) + (bytesPerLeaf * leaves);
     }
 
