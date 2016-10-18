@@ -142,7 +142,18 @@ public class SketchProcessor extends AbstractGeoSpatialStreamProcessor {
 
     @Override
     public void serialize(DataOutputStream dataOutputStream) {
+        try {
+            SerializationOutputStream out
+                = new SerializationOutputStream(
+                        new GZIPOutputStream(dataOutputStream));
 
+            PartitionQuery pq = new PartitionQuery(this.sketch.getMetrics());
+            pq.execute(sketch.getRoot());
+            pq.serializeResults(sketch.getRoot(), out);
+        } catch (Exception e) {
+            System.out.println("Failed to serialize sketch");
+            e.printStackTrace();
+        }
     }
 
     @Override
