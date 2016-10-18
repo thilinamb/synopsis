@@ -236,13 +236,13 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
      * Serialize the sketch to the provided output stream
      * @param dataOutputStream Outputstream to which the serialized data is written
      */
-    public abstract void serialize(DataOutputStream dataOutputStream);
+    public abstract void serialize(DataOutputStream dataOutputStream) throws IOException;
 
     /**
      * Populate the sketch from the deserialized data
      * @param dataInputStream Input stream of serialized data
      */
-    public abstract void deserialize(DataInputStream dataInputStream);
+    public abstract void deserialize(DataInputStream dataInputStream) throws IOException;
 
     /**
      * Invoked when Scale out protocol is initiated.
