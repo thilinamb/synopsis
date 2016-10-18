@@ -175,7 +175,7 @@ public class ResourceProtocolHandler extends AbstractProtocolHandler {
                     logger.debug("Received a persist state request.");
                 }
                 int processorCount = managedResource.dispatchToAll(persistStateRequest);
-                PersistStateAck persistenceAck = new PersistStateAck(processorCount);
+                PersistStateAck persistenceAck = new PersistStateAck(processorCount, persistStateRequest.getCheckpointId());
                 try {
                     SendUtility.sendControlMessage(persistStateRequest.getClientAddr(), persistenceAck);
                 } catch (CommunicationsException | IOException e) {
