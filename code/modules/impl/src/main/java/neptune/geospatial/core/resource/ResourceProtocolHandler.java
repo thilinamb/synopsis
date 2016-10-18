@@ -1,17 +1,23 @@
 package neptune.geospatial.core.resource;
 
 import ds.granules.communication.direct.control.ControlMessage;
+import ds.granules.communication.direct.control.SendUtility;
+import ds.granules.exception.CommunicationsException;
 import neptune.geospatial.core.protocol.AbstractProtocolHandler;
 import neptune.geospatial.core.protocol.ProtocolTypes;
 import neptune.geospatial.core.protocol.msg.EnableShortCircuiting;
 import neptune.geospatial.core.protocol.msg.StateTransferMsg;
 import neptune.geospatial.core.protocol.msg.client.ClientQueryRequest;
+import neptune.geospatial.core.protocol.msg.client.PersistStateRequest;
+import neptune.geospatial.core.protocol.msg.client.PersistStateAck;
 import neptune.geospatial.core.protocol.msg.client.TargetedQueryRequest;
 import neptune.geospatial.core.protocol.msg.scalein.*;
 import neptune.geospatial.core.protocol.msg.scaleout.*;
 import neptune.geospatial.ft.protocol.CheckpointAck;
 import neptune.geospatial.ft.protocol.StateReplicationLevelIncreaseMsg;
 import org.apache.log4j.Logger;
+
+import java.io.IOException;
 
 /**
  * Implements the control message handling at the Resource's
@@ -149,20 +155,32 @@ public class ResourceProtocolHandler extends AbstractProtocolHandler {
                 break;
             case ProtocolTypes.CLIENT_QUERY_REQ:
                 ClientQueryRequest clientQueryRequest = (ClientQueryRequest) ctrlMsg;
-                if(logger.isDebugEnabled()) {
+                if (logger.isDebugEnabled()) {
                     logger.debug("Received a query request.");
                 }
                 managedResource.handleQueryRequest(clientQueryRequest);
                 break;
             case ProtocolTypes.TARGET_QUERY_REQ:
                 TargetedQueryRequest queryRequest = (TargetedQueryRequest) ctrlMsg;
-                if(logger.isDebugEnabled()) {
+                if (logger.isDebugEnabled()) {
                     logger.debug("Received a target query request.");
                 }
                 for (String compId : queryRequest.getCompId()) {
                     managedResource.dispatchControlMessage(compId, queryRequest);
                 }
                 break;
+            case ProtocolTypes.PERSIST_STATE_REQ:
+                PersistStateRequest persistStateRequest = (PersistStateRequest) ctrlMsg;
+                if (logger.isDebugEnabled()) {
+                    logger.debug("Received a persist state request.");
+                }
+                int processorCount = managedResource.dispatchToAll(persistStateRequest);
+                PersistStateAck persistenceAck = new PersistStateAck(processorCount);
+                try {
+                    SendUtility.sendControlMessage(persistStateRequest.getClientAddr(), persistenceAck);
+                } catch (CommunicationsException | IOException e) {
+                    logger.error("Error sending Persistence Ack back to the client.", e);
+                }
             default:
                 logger.warn("Unsupported message type: " + type);
         }
