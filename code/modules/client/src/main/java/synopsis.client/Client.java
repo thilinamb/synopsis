@@ -15,6 +15,8 @@ import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.ZooKeeper;
 import synopsis.client.messaging.ClientProtocolHandler;
 import synopsis.client.messaging.Transport;
+import synopsis.client.persistence.PersistenceCompletionCallback;
+import synopsis.client.persistence.PersistenceManager;
 import synopsis.client.query.QueryCallback;
 import synopsis.client.query.QueryManager;
 
@@ -95,7 +97,7 @@ public class Client {
         return queryManager.submitQuery(query, geoHashes, callback, getRandomSynopsisNode());
     }
 
-    public long serializeState() throws ClientException {
+    public void serializeState(PersistenceCompletionCallback cb) throws ClientException {
         long checkpointId = System.currentTimeMillis();
         String randomNode = getRandomSynopsisNode();
         for (SynopsisEndpoint endpoint : endpoints) {
@@ -110,7 +112,7 @@ public class Client {
                 throw new ClientException(eMsg, e);
             }
         }
-        return checkpointId;
+        PersistenceManager.getInstance().submitPersistenceTask(checkpointId, endpoints.size(), cb);
     }
 
     private String getRandomSynopsisNode(){
