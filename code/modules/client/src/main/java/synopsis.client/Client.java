@@ -1,12 +1,14 @@
 package synopsis.client;
 
 import ds.granules.communication.direct.ZooKeeperAgent;
+import ds.granules.communication.direct.control.SendUtility;
 import ds.granules.communication.direct.dispatch.ControlMessageDispatcher;
 import ds.granules.exception.CommunicationsException;
 import ds.granules.exception.GranulesConfigurationException;
 import ds.granules.util.Constants;
 import ds.granules.util.NeptuneRuntime;
 import ds.granules.util.ZooKeeperUtils;
+import neptune.geospatial.core.protocol.msg.client.PersistStateRequest;
 import neptune.geospatial.util.RivuletUtil;
 import org.apache.log4j.Logger;
 import org.apache.zookeeper.KeeperException;
@@ -16,6 +18,7 @@ import synopsis.client.messaging.Transport;
 import synopsis.client.query.QueryCallback;
 import synopsis.client.query.QueryManager;
 
+import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.CountDownLatch;
 
@@ -92,8 +95,30 @@ public class Client {
         return queryManager.submitQuery(query, geoHashes, callback, getRandomSynopsisNode());
     }
 
+    public long serializeState() throws ClientException {
+        long checkpointId = System.currentTimeMillis();
+        String randomNode = getRandomSynopsisNode();
+        for (SynopsisEndpoint endpoint : endpoints) {
+            String synopsisEp = endpoint.toString();
+            boolean sendPrefixAddr = synopsisEp.equals(randomNode);
+            PersistStateRequest persistStateReq = new PersistStateRequest(checkpointId, getAddr(), sendPrefixAddr);
+            try {
+                SendUtility.sendControlMessage(synopsisEp, persistStateReq);
+            } catch (CommunicationsException | IOException e) {
+                String eMsg = "Error sending the serialization request to the endpoint: " + synopsisEp;
+                logger.error(eMsg, e);
+                throw new ClientException(eMsg, e);
+            }
+        }
+        return checkpointId;
+    }
+
     private String getRandomSynopsisNode(){
         SynopsisEndpoint endpoint = endpoints.get(random.nextInt(endpoints.size()));
         return endpoint.toString();
+    }
+
+    private String getAddr(){
+        return this.hostname + ":" + this.clientPort;
     }
 }
