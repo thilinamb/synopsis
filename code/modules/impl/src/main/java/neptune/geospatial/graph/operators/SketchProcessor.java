@@ -138,13 +138,15 @@ public class SketchProcessor extends AbstractGeoSpatialStreamProcessor {
     }
 
     @Override
-    public void serialize(DataOutputStream dataOutputStream) {
-
+    public void serialize(DataOutputStream dataOutputStream) throws IOException {
+        // temporary dummy method impl for testing
+        dataOutputStream.write(new byte[1000]);
     }
 
     @Override
-    public void deserialize(DataInputStream dataInputStream) {
-
+    public void deserialize(DataInputStream dataInputStream) throws IOException {
+        // temporary dummy method impl for testing
+        dataInputStream.readFully(new byte[1000]);
     }
 
     public double getMemoryConsumptionForPrefix(String prefix) {
