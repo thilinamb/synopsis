@@ -26,6 +26,7 @@ import neptune.geospatial.core.protocol.msg.scaleout.PrefixOnlyScaleOutCompleteA
 import neptune.geospatial.core.protocol.msg.scaleout.ScaleOutRequest;
 import neptune.geospatial.core.protocol.processors.ProtocolProcessor;
 import neptune.geospatial.core.protocol.processors.StateTransferMsgProcessor;
+import neptune.geospatial.core.protocol.processors.client.PersistStateReqProcessor;
 import neptune.geospatial.core.protocol.processors.client.TargetedQueryProcessor;
 import neptune.geospatial.core.protocol.processors.scalein.*;
 import neptune.geospatial.core.protocol.processors.scalout.*;
@@ -788,6 +789,7 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
         protocolProcessors.put(ProtocolTypes.STATE_REPL_LEVEL_INCREASE, new StateReplLvlIncreaseMsgProcessor());
         protocolProcessors.put(ProtocolTypes.CHECKPOINT_ACK, new CheckpointAckProcessor());
         protocolProcessors.put(ProtocolTypes.TARGET_QUERY_REQ, new TargetedQueryProcessor());
+        protocolProcessors.put(ProtocolTypes.PERSIST_STATE_REQ, new PersistStateReqProcessor());
     }
 
     /**
