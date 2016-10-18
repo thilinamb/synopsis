@@ -137,6 +137,34 @@ public class SketchProcessor extends AbstractGeoSpatialStreamProcessor {
 
     @Override
     public byte[] query(byte[] query) {
+        try {
+            SerializationInputStream sIn = new SerializationInputStream(
+                    new ByteArrayInputStream(query));
+            int type = sIn.readInt();
+            if (type == 0) {
+                /* Relational Query */
+                RelationalQuery q = new RelationalQuery(
+                        sIn, this.sketch.getMetrics());
+                q.execute(this.sketch.getRoot());
+                ByteArrayOutputStream byteOut = new ByteArrayOutputStream();
+                SerializationOutputStream sOut = new SerializationOutputStream(
+                        new BufferedOutputStream(byteOut));
+                q.serializeResults(this.sketch.getRoot(), sOut);
+                return byteOut.toByteArray();
+            } else if (type == 1) {
+                /* Meta Query */
+                MetaQuery q = new MetaQuery(sIn);
+                q.execute(this.sketch.getRoot());
+                DataContainer result = q.result();
+                byte[] serializedResult = Serializer.serialize(result);
+                return serializedResult;
+            }
+        } catch (Exception e) {
+            System.out.println("Failed to process query!");
+            e.printStackTrace();
+        }
+
+        /* Something went wrong: */
         return new byte[0];
     }
 
