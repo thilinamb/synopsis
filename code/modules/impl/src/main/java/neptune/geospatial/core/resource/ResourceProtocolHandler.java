@@ -175,12 +175,13 @@ public class ResourceProtocolHandler extends AbstractProtocolHandler {
                     logger.debug("Received a persist state request.");
                 }
                 int processorCount = managedResource.dispatchToAll(persistStateRequest);
-                PersistStateAck persistenceAck = new PersistStateAck(processorCount, persistStateRequest.getCheckpointId());
+                PersistStateAck persistenceAck = new  PersistStateAck(processorCount, persistStateRequest.getCheckpointId());
                 try {
                     SendUtility.sendControlMessage(persistStateRequest.getClientAddr(), persistenceAck);
                 } catch (CommunicationsException | IOException e) {
                     logger.error("Error sending Persistence Ack back to the client.", e);
                 }
+                break;
             default:
                 logger.warn("Unsupported message type: " + type);
         }

@@ -119,6 +119,12 @@ public class ProtocolFactory {
                 case ProtocolTypes.PERSIST_STATE_REQ:
                     message = new PersistStateRequest();
                     break;
+                case ProtocolTypes.PERSIST_STATE_ACK:
+                    message = new PersistStateAck();
+                    break;
+                case ProtocolTypes.PERSIST_STATE_RESP:
+                    message = new PersistStateResponse();
+                    break;
                 default:
                     String errorMsg = "Unsupported message type: " + messageType;
                     throw new ProtocolException(errorMsg);
