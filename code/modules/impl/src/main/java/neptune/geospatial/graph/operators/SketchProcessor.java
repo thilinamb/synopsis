@@ -6,7 +6,6 @@ import io.sigpipe.sing.dataset.feature.Feature;
 import io.sigpipe.sing.dataset.feature.FeatureType;
 import io.sigpipe.sing.graph.*;
 import io.sigpipe.sing.query.Expression;
-import io.sigpipe.sing.query.Query;
 import io.sigpipe.sing.query.Operator;
 import io.sigpipe.sing.query.MetaQuery;
 import io.sigpipe.sing.query.PartitionQuery;
@@ -159,6 +158,8 @@ public class SketchProcessor extends AbstractGeoSpatialStreamProcessor {
                 byte[] serializedResult = Serializer.serialize(result);
                 return serializedResult;
             }
+
+            sIn.close();
         } catch (Exception e) {
             System.out.println("Failed to process query!");
             e.printStackTrace();
