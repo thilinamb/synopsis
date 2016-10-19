@@ -100,6 +100,7 @@ public class Client {
     public void serializeState(PersistenceCompletionCallback cb) throws ClientException {
         long checkpointId = System.currentTimeMillis();
         String randomNode = getRandomSynopsisNode();
+        PersistenceManager.getInstance().submitPersistenceTask(checkpointId, endpoints.size(), cb);
         for (SynopsisEndpoint endpoint : endpoints) {
             String synopsisEp = endpoint.toString();
             boolean sendPrefixAddr = synopsisEp.equals(randomNode);
@@ -112,7 +113,6 @@ public class Client {
                 throw new ClientException(eMsg, e);
             }
         }
-        PersistenceManager.getInstance().submitPersistenceTask(checkpointId, endpoints.size(), cb);
     }
 
     private String getRandomSynopsisNode(){
