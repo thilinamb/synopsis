@@ -26,15 +26,20 @@ import io.sigpipe.sing.serialization.Serializer;
 import io.sigpipe.sing.util.Geohash;
 import io.sigpipe.sing.util.PerformanceTimer;
 import io.sigpipe.sing.util.ReducedTestConfiguration;
+import io.sigpipe.sing.util.TestConfiguration;
 
 public class ReadMetaBlob {
 
-    private static Set<String> activeFeatures = new HashSet<>();
+    public static Set<String> activeFeatures = new HashSet<>();
 
-    public static void main(String[] args) throws Exception {
-        for (String featureName : ReducedTestConfiguration.FEATURE_NAMES) {
+    public static void init() {
+        for (String featureName : TestConfiguration.FEATURE_NAMES) {
             activeFeatures.add(featureName);
         }
+    }
+
+    public static void main(String[] args) throws Exception {
+        init();
 
         Scanner scan=new Scanner(System.in);
         scan.nextInt();
