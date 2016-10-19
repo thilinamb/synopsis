@@ -150,6 +150,8 @@ public class SketchProcessor extends AbstractGeoSpatialStreamProcessor {
                 SerializationOutputStream sOut = new SerializationOutputStream(
                         new BufferedOutputStream(byteOut));
                 q.serializeResults(this.sketch.getRoot(), sOut);
+                sOut.close();
+                byteOut.close();
                 return byteOut.toByteArray();
             } else if (type == 1) {
                 /* Meta Query */
