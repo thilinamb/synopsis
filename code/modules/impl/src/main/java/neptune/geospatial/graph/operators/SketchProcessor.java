@@ -139,7 +139,8 @@ public class SketchProcessor extends AbstractGeoSpatialStreamProcessor {
         try {
             SerializationInputStream sIn = new SerializationInputStream(
                     new ByteArrayInputStream(query));
-            int type = sIn.readInt();
+            byte type = sIn.readByte();
+            System.out.println("Query type: " + type);
             if (type == 0) {
                 /* Relational Query */
                 RelationalQuery q = new RelationalQuery(
