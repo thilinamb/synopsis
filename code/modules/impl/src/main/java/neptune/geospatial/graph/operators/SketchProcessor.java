@@ -29,7 +29,7 @@ import java.util.zip.GZIPOutputStream;
 
 public class SketchProcessor extends AbstractGeoSpatialStreamProcessor {
 
-    private Sketch sketch;
+    protected Sketch sketch;
     private Sketch diff;
     private FeatureHierarchy hierarchy;
     private Set<String> activeFeatures = new HashSet<>();
