@@ -3,6 +3,7 @@ package synopsis.client.persistence;
 import neptune.geospatial.core.protocol.msg.client.PersistStateAck;
 import neptune.geospatial.core.protocol.msg.client.PersistStateResponse;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -20,6 +21,7 @@ public class OutstandingPersistenceTask {
     OutstandingPersistenceTask(long persistenceTaskId, int nodeCount) {
         this.persistenceTaskId = persistenceTaskId;
         this.nodeCount = nodeCount;
+        this.responses = new ArrayList<>();
     }
 
     synchronized boolean handlePersistStateAck(PersistStateAck ack) {
