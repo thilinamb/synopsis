@@ -27,8 +27,14 @@ public final class ProtocolTypes {
     public static final int STATE_REPL_LEVEL_INCREASE = 12400;
     public static final int CHECKPOINT_ACK = 12401;
     // Synopsis client related messages
+    // queries
     public static final int CLIENT_QUERY_REQ = 12501;
     public static final int CLIENT_QUERY_RESP = 12502;
     public static final int TARGET_QUERY_REQ = 12503;
     public static final int TARGET_QUERY_RESP = 12504;
+    // persist state/load state from disk
+    public static final int PERSIST_STATE_REQ = 12505;
+    public static final int PERSIST_STATE_ACK = 12506;
+    public static final int PERSIST_STATE_RESP = 12507;
+    public static final int LOAD_STATE_FROM_DISK = 12508;
 }

@@ -619,7 +619,7 @@ public class ManagedResource {
                     clientQueryRequest.getQuery(), targets.get(endpoint), clientQueryRequest.getClientUrl());
             try {
                 SendUtility.sendControlMessage(endpoint, targetedQueryRequest);
-                if(logger.isDebugEnabled()){
+                if (logger.isDebugEnabled()) {
                     logger.debug("Sent a target query request to " + endpoint);
                 }
             } catch (CommunicationsException | IOException e) {
@@ -628,7 +628,7 @@ public class ManagedResource {
         }
         ClientQueryResponse clientQueryResponse = new ClientQueryResponse(clientQueryRequest.getQueryId(),
                 totalComputationCount);
-        if(logger.isDebugEnabled()) {
+        if (logger.isDebugEnabled()) {
             logger.debug("Sent back the query response back to client. Total number of target computations: " +
                     totalComputationCount);
         }
@@ -637,5 +637,12 @@ public class ManagedResource {
         } catch (CommunicationsException | IOException e) {
             logger.error("Error sending back the query response back to the client.", e);
         }
+    }
+
+    int dispatchToAll(ControlMessage ctrlMsg) {
+        for (MonitoredComputationState monitoredComputationState : monitoredProcessors.values()) {
+            monitoredComputationState.computation.processCtrlMessage(ctrlMsg);
+        }
+        return monitoredProcessors.size();
     }
 }
