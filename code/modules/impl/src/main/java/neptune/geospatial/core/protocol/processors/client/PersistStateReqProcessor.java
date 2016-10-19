@@ -13,6 +13,7 @@ import neptune.geospatial.util.trie.GeoHashPrefixTree;
 import org.apache.log4j.Logger;
 
 import java.io.DataOutputStream;
+import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 
@@ -33,7 +34,7 @@ public class PersistStateReqProcessor implements ProtocolProcessor {
         FileOutputStream fos = null;
         boolean success = false;
         try {
-            fos = new FileOutputStream(fileName);
+            fos = new FileOutputStream(new File(fileName));
             dataOutputStream = new DataOutputStream(fos);
             streamProcessor.serialize(dataOutputStream);
             dataOutputStream.flush();
@@ -71,6 +72,8 @@ public class PersistStateReqProcessor implements ProtocolProcessor {
         if (resp != null) {
             try {
                 SendUtility.sendControlMessage(persistStateRequest.getClientAddr(), resp);
+                logger.info(String.format("[%s] Persisting state is complete. Status: %b",
+                        streamProcessor.getInstanceIdentifier(), success));
             } catch (CommunicationsException | IOException e) {
                 logger.error("Error sending persist state response back to the client.", e);
             }
@@ -78,6 +81,6 @@ public class PersistStateReqProcessor implements ProtocolProcessor {
     }
 
     private String getSerializationLocation() {
-        return "/s/" + RivuletUtil.getHostInetAddress().getHostName() + "/a/nobackup/thilinab/dumps";
+        return "/s/" + RivuletUtil.getHostInetAddress().getHostName() + "/a/nobackup/granules/thilinab/dumps";
     }
 }
