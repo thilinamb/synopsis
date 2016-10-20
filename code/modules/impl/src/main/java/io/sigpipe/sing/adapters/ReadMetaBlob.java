@@ -33,7 +33,7 @@ public class ReadMetaBlob {
     public static Set<String> activeFeatures = new HashSet<>();
 
     public static void init() {
-        for (String featureName : TestConfiguration.FEATURE_NAMES) {
+        for (String featureName : ReducedTestConfiguration.FEATURE_NAMES) {
             activeFeatures.add(featureName);
         }
     }
