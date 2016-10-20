@@ -175,8 +175,7 @@ public class SketchProcessor extends AbstractGeoSpatialStreamProcessor {
     public void serialize(DataOutputStream dataOutputStream) {
         try {
             SerializationOutputStream out
-                = new SerializationOutputStream(
-                        new GZIPOutputStream(dataOutputStream));
+                = new SerializationOutputStream(dataOutputStream);
 
             PartitionQuery pq = new PartitionQuery(this.sketch.getMetrics());
             pq.execute(sketch.getRoot());
@@ -191,8 +190,7 @@ public class SketchProcessor extends AbstractGeoSpatialStreamProcessor {
     public void deserialize(DataInputStream dataInputStream) {
         try {
             SerializationInputStream in
-                = new SerializationInputStream(
-                        new GZIPInputStream(dataInputStream));
+                = new SerializationInputStream(dataInputStream);
             this.sketch.merge(in);
         } catch (Exception e) {
             System.out.println("Failed to deserialize sketch");
