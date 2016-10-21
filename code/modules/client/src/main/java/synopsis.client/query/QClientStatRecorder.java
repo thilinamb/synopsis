@@ -30,6 +30,12 @@ public class QClientStatRecorder {
             this.sumOfSquares += (val * val);
             this.count++;
         }
+
+        private void merge(QueryPerf other) {
+            this.sum += other.sum;
+            this.sumOfSquares += other.sumOfSquares;
+            this.count += other.count;
+        }
     }
 
     /**
@@ -44,6 +50,12 @@ public class QClientStatRecorder {
             this.sum += val;
             this.sumOfSquares += (val * val);
             this.count++;
+        }
+
+        private void merge(ResponseSizeRecorder other) {
+            this.count += other.count;
+            this.sum += other.sum;
+            this.sumOfSquares += other.sumOfSquares;
         }
     }
 
@@ -67,13 +79,13 @@ public class QClientStatRecorder {
         responseSizeRecorder.update(payloadSizeInMB);
     }
 
-    void writeToFile(String fileName){
+    void writeToFile(String fileName) {
         FileOutputStream fos = null;
         DataOutputStream dos = null;
         try {
             fos = new FileOutputStream(fileName);
             dos = new DataOutputStream(fos);
-            for(QueryCreator.QueryType queryType : performanceMap.keySet()){
+            for (QueryCreator.QueryType queryType : performanceMap.keySet()) {
                 StringBuilder stringBuilder = new StringBuilder();
                 stringBuilder.append(queryType).append(",");
                 // write query perf. metrics
@@ -93,14 +105,31 @@ public class QClientStatRecorder {
             logger.error("Error writing metrics to a file. ", e);
         } finally {
             try {
-                if(fos != null){
+                if (fos != null) {
                     fos.close();
                 }
-                if (dos != null){
+                if (dos != null) {
                     dos.close();
                 }
             } catch (IOException e) {
                 logger.error("Error closing file streams.", e);
+            }
+        }
+    }
+
+    void merge(QClientStatRecorder recorder) {
+        for (QueryCreator.QueryType queryType : recorder.performanceMap.keySet()) {
+            if (this.performanceMap.containsKey(queryType)) {
+                QueryPerf perf = this.performanceMap.get(queryType);
+                QueryPerf otherPerf = recorder.performanceMap.get(queryType);
+                perf.merge(otherPerf);
+                // merge response sizes
+                ResponseSizeRecorder respSizeRec = this.respSizeRecMap.get(queryType);
+                ResponseSizeRecorder otherRespSizeRec = recorder.respSizeRecMap.get(queryType);
+                respSizeRec.merge(otherRespSizeRec);
+            } else {
+                this.performanceMap.put(queryType, recorder.performanceMap.get(queryType));
+                this.respSizeRecMap.put(queryType, recorder.respSizeRecMap.get(queryType));
             }
         }
     }
