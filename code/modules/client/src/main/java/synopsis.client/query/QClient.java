@@ -16,6 +16,7 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Random;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.LinkedBlockingDeque;
 
 /**
@@ -36,9 +37,11 @@ public class QClient implements Runnable {
     private final QueryManager queryManager;
     private final String clientUrl;
     private final QClientStatRecorder statRecorder;
+    private CountDownLatch latch;
 
-    public QClient(int queryCount, QueryWrapper[] queries, QueryCreator.QueryType[] queryTypes, double[] percentages, String clientUrl, QueryManager queryManager,
-                   List<SynopsisEndpoint> endpoints)
+    public QClient(int queryCount, QueryWrapper[] queries, QueryCreator.QueryType[] queryTypes, double[] percentages,
+                   String clientUrl, QueryManager queryManager,
+                   List<SynopsisEndpoint> endpoints, CountDownLatch latch)
             throws ClientException {
         if (queries.length != percentages.length) {
             throw new ClientException("Query count doesn't match the percentage distribution.");
@@ -52,6 +55,7 @@ public class QClient implements Runnable {
         this.endpoints = endpoints;
         this.clientUrl = clientUrl;
         this.statRecorder = new QClientStatRecorder();
+        this.latch = latch;
     }
 
     private double[] prepareCumulPercentages(double[] percentages) throws ClientException {
@@ -114,6 +118,7 @@ public class QClient implements Runnable {
             }
         }
         logger.info("[" + id + "] Completed running all queries.");
+        latch.countDown();
     }
 
     private int nextQueryIndex() {
@@ -134,7 +139,7 @@ public class QClient implements Runnable {
         queue.add(ctrlMsg);
     }
 
-    synchronized QClientStatRecorder getStatRecorder() {
+    public synchronized QClientStatRecorder getStatRecorder() {
         return statRecorder;
     }
 }

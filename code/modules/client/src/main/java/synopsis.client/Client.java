@@ -9,6 +9,7 @@ import ds.granules.util.Constants;
 import ds.granules.util.NeptuneRuntime;
 import ds.granules.util.ZooKeeperUtils;
 import neptune.geospatial.core.protocol.msg.client.PersistStateRequest;
+import neptune.geospatial.graph.operators.QueryCreator;
 import neptune.geospatial.graph.operators.QueryWrapper;
 import neptune.geospatial.util.RivuletUtil;
 import org.apache.log4j.Logger;
@@ -19,6 +20,7 @@ import synopsis.client.messaging.Transport;
 import synopsis.client.persistence.PersistenceCompletionCallback;
 import synopsis.client.persistence.PersistenceManager;
 import synopsis.client.query.QClient;
+import synopsis.client.query.QClientStatRecorder;
 import synopsis.client.query.QueryCallback;
 import synopsis.client.query.QueryManager;
 
@@ -100,15 +102,33 @@ public class Client {
         return queryManager.submitQuery(query, geoHashes, callback, getRandomSynopsisNode());
     }
 
-    void dispatchQClients(int qClientCount, int queryCount, QueryWrapper[] queries, double[] percentages){
-        for(int i = 0; i < qClientCount; i++){
+    void dispatchQClients(int qClientCount, int queryCount, QueryWrapper[] queries,
+                          QueryCreator.QueryType[] qTypes, double[] percentages) throws ClientException {
+        CountDownLatch countDownLatch = new CountDownLatch(qClientCount);
+        QClient[] qClients = new QClient[qClientCount];
+        for (int i = 0; i < qClientCount; i++) {
             try {
-                Thread clientThread = new Thread(new QClient(queryCount, queries, percentages, this.getAddr(),
-                        this.queryManager, this.endpoints));
+                QClient qClient = new QClient(queryCount, queries, qTypes, percentages, this.getAddr(),
+                        this.queryManager, this.endpoints, countDownLatch);
+                qClients[i] = qClient;
+                Thread clientThread = new Thread(qClient);
                 clientThread.start();
             } catch (ClientException e) {
                 logger.error("Error initializing the QClient.", e);
+                throw e;
             }
+        }
+        try {
+            countDownLatch.await();
+            logger.info("All the QClient threads have completed. Merging results.");
+            QClientStatRecorder statRecorder = new QClientStatRecorder();
+            for (QClient qClient : qClients) {
+                statRecorder.merge(qClient.getStatRecorder());
+            }
+            statRecorder.writeToFile("/tmp/" + hostname + "-" + clientPort + ".cstat");
+            logger.info("Written merged results to file.");
+        } catch (InterruptedException ignore) {
+
         }
     }
 
@@ -130,12 +150,12 @@ public class Client {
         }
     }
 
-    private String getRandomSynopsisNode(){
+    private String getRandomSynopsisNode() {
         SynopsisEndpoint endpoint = endpoints.get(random.nextInt(endpoints.size()));
         return endpoint.toString();
     }
 
-    private String getAddr(){
+    private String getAddr() {
         return this.hostname + ":" + this.clientPort;
     }
 }
