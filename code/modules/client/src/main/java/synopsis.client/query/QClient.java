@@ -6,6 +6,7 @@ import ds.granules.exception.CommunicationsException;
 import neptune.geospatial.core.protocol.msg.client.ClientQueryRequest;
 import neptune.geospatial.core.protocol.msg.client.ClientQueryResponse;
 import neptune.geospatial.core.protocol.msg.client.TargetQueryResponse;
+import neptune.geospatial.graph.operators.QueryCreator;
 import neptune.geospatial.graph.operators.QueryWrapper;
 import org.apache.log4j.Logger;
 import synopsis.client.ClientException;
@@ -28,13 +29,15 @@ public class QClient implements Runnable {
     private BlockingQueue<ControlMessage> queue = new LinkedBlockingDeque<>();
     private final int queryCount;
     private final QueryWrapper[] queries;
+    private final QueryCreator.QueryType[] queryTypes;
     private final double[] cumulativePercentages;
     private final Random random;
     private final List<SynopsisEndpoint> endpoints;
     private final QueryManager queryManager;
     private final String clientUrl;
+    private final QClientStatRecorder statRecorder;
 
-    public QClient(int queryCount, QueryWrapper[] queries, double[] percentages, String clientUrl, QueryManager queryManager,
+    public QClient(int queryCount, QueryWrapper[] queries, QueryCreator.QueryType[] queryTypes, double[] percentages, String clientUrl, QueryManager queryManager,
                    List<SynopsisEndpoint> endpoints)
             throws ClientException {
         if (queries.length != percentages.length) {
@@ -42,11 +45,13 @@ public class QClient implements Runnable {
         }
         this.queryCount = queryCount;
         this.queries = queries;
+        this.queryTypes = queryTypes;
         this.cumulativePercentages = prepareCumulPercentages(percentages);
         this.random = new Random();
         this.queryManager = queryManager;
         this.endpoints = endpoints;
         this.clientUrl = clientUrl;
+        this.statRecorder = new QClientStatRecorder();
     }
 
     private double[] prepareCumulPercentages(double[] percentages) throws ClientException {
@@ -65,8 +70,9 @@ public class QClient implements Runnable {
         int completedQueryCount = 0;
         while (completedQueryCount <= this.queryCount) {
             try {
-                QueryWrapper nextQ = nextQuery();
-                if (nextQ != null) {
+                int index = nextQueryIndex();
+                if (index != -1) {
+                    QueryWrapper nextQ = queries[index];
                     long queryId = queryManager.getNextQueryId();
                     ClientQueryRequest queryRequest = new ClientQueryRequest(queryId, clientUrl, nextQ.payload, nextQ.geohashes);
                     QueryResponse currentQueryResponse = new QueryResponse(queryId, nextQ.payload);
@@ -88,11 +94,13 @@ public class QClient implements Runnable {
                         }
                     }
                     completedQueryCount++;
+                    queryManager.removeClient(queryId);
                     if (logger.isDebugEnabled()) {
                         logger.debug("[" + id + "] Query " + queryId + " is complete!. Completed: " +
                                 completedQueryCount + "[" + queryCount + "]");
                     }
-                    queryManager.removeClient(queryId);
+                    statRecorder.record(queryTypes[index], currentQueryResponse.getElapsedTimeInMS(),
+                            currentQueryResponse.getQueryResponseSizeInMB());
                 } else {
                     logger.error("[" + id + "] Next query is null!, QClient is terminating!");
                     break;
@@ -108,14 +116,14 @@ public class QClient implements Runnable {
         logger.info("[" + id + "] Completed running all queries.");
     }
 
-    private QueryWrapper nextQuery() {
+    private int nextQueryIndex() {
         double rand = random.nextDouble();
         for (int i = 0; i < cumulativePercentages.length; i++) {
             if (cumulativePercentages[i] >= rand) {
-                return queries[i];
+                return i;
             }
         }
-        return null;
+        return -1;
     }
 
     private String nextEndpoint() {
