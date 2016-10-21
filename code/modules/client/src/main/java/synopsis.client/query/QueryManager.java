@@ -74,7 +74,7 @@ public class QueryManager {
         return Long.parseLong(fullQualifier) * QUERY_COUNT;
     }
 
-    long getNextQueryId() throws ClientException {
+    synchronized long getNextQueryId() throws ClientException {
         if (++queryId <= maximumQueryId) {
             return queryId;
         } else {
