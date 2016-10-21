@@ -3,7 +3,7 @@ package synopsis.client;
 /**
  * @author Thilina Buddhika
  */
-class SynopsisEndpoint {
+public class SynopsisEndpoint {
 
     private final String hostname;
     private final int controlPort;
@@ -13,11 +13,11 @@ class SynopsisEndpoint {
         this.controlPort = controlPort;
     }
 
-    String getHostname() {
+    public String getHostname() {
         return hostname;
     }
 
-    int getControlPort() {
+    public int getControlPort() {
         return controlPort;
     }
 
