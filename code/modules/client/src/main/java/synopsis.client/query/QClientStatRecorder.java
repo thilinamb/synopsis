@@ -79,7 +79,7 @@ public class QClientStatRecorder {
         responseSizeRecorder.update(payloadSizeInMB);
     }
 
-    void writeToFile(String fileName) {
+    public void writeToFile(String fileName) {
         FileOutputStream fos = null;
         DataOutputStream dos = null;
         try {
@@ -117,7 +117,7 @@ public class QClientStatRecorder {
         }
     }
 
-    void merge(QClientStatRecorder recorder) {
+    public void merge(QClientStatRecorder recorder) {
         for (QueryCreator.QueryType queryType : recorder.performanceMap.keySet()) {
             if (this.performanceMap.containsKey(queryType)) {
                 QueryPerf perf = this.performanceMap.get(queryType);
