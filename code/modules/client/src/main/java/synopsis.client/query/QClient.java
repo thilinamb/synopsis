@@ -133,4 +133,8 @@ public class QClient implements Runnable {
     void handleQueryResponse(ControlMessage ctrlMsg) {
         queue.add(ctrlMsg);
     }
+
+    synchronized QClientStatRecorder getStatRecorder() {
+        return statRecorder;
+    }
 }
