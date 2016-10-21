@@ -1,14 +1,14 @@
 package synopsis.client;
 
+import neptune.geospatial.graph.operators.QueryCreator;
+import neptune.geospatial.graph.operators.QueryWrapper;
 import org.apache.log4j.Logger;
-import synopsis.client.persistence.OutstandingPersistenceTask;
-import synopsis.client.persistence.PersistenceCompletionCallback;
+import synopsis.client.persistence.JSONConfigPersistenceCallback;
 import synopsis.client.query.QueryCallback;
 import synopsis.client.query.QueryResponse;
 
 import java.io.FileInputStream;
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.Properties;
 import java.util.concurrent.CountDownLatch;
 
@@ -36,7 +36,8 @@ public class Main {
             Client client = new Client(properties, port);
             client.init();
             //testQuery(client);
-            testPersistState(client);
+            //testPersistState(client);
+            testQClient(client);
             new CountDownLatch(1).await();
         } catch (IOException e) {
             LOGGER.error("Error when populating the properties.", e);
@@ -48,8 +49,8 @@ public class Main {
     }
 
     private static void testQuery(Client client) throws ClientException {
-        String[] geoHashes = new String[]{"9q", "9w", "9u", "c1", "cc", "9x"};
-        client.submitQuery(new byte[10], Arrays.asList(geoHashes), new QueryCallback() {
+        QueryWrapper qw = QueryCreator.create(QueryCreator.QueryType.Relational, QueryCreator.SpatialScope.Geo630km);
+        client.submitQuery(qw.payload, qw.geohashes, new QueryCallback() {
             @Override
             public void processQueryResponse(QueryResponse response) {
                 System.out.println("RECEIVED A QUERY RESPONSE! ELAPSED TIME: " + response.getElapsedTime());
@@ -58,13 +59,19 @@ public class Main {
     }
 
     private static void testPersistState(Client client) throws ClientException {
-        client.serializeState(new PersistenceCompletionCallback() {
-            @Override
-            public void handlePersistenceCompletion(OutstandingPersistenceTask task) {
-                System.out.println("------------- Persistence is complete!. Number of computations: " +
-                        task.getTotalComputationCount());
-            }
-        });
+        client.serializeState(new JSONConfigPersistenceCallback());
+    }
+
+    private static void testQClient(Client client) throws ClientException{
+        QueryWrapper[] queries = new QueryWrapper[6];
+        queries[0] = QueryCreator.create(QueryCreator.QueryType.Relational, QueryCreator.SpatialScope.Geo78km);
+        queries[1] = QueryCreator.create(QueryCreator.QueryType.Relational, QueryCreator.SpatialScope.Geo630km);
+        queries[2] = QueryCreator.create(QueryCreator.QueryType.Relational, QueryCreator.SpatialScope.Geo2500km);
+        queries[3] = QueryCreator.create(QueryCreator.QueryType.Metadata, QueryCreator.SpatialScope.Geo78km);
+        queries[4] = QueryCreator.create(QueryCreator.QueryType.Metadata, QueryCreator.SpatialScope.Geo630km);
+        queries[5] = QueryCreator.create(QueryCreator.QueryType.Metadata, QueryCreator.SpatialScope.Geo2500km);
+        double[] percentages = new double[]{0.1d, 0.1d, 0.1d, 0.3d, 0.3d, 0.1d};
+        client.dispatchQClients(1, 100, queries, percentages);
     }
 }
 
