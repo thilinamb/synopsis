@@ -53,7 +53,7 @@ public class Main {
         client.submitQuery(qw.payload, qw.geohashes, new QueryCallback() {
             @Override
             public void processQueryResponse(QueryResponse response) {
-                System.out.println("RECEIVED A QUERY RESPONSE! ELAPSED TIME: " + response.getElapsedTime());
+                System.out.println("RECEIVED A QUERY RESPONSE! ELAPSED TIME: " + response.getElapsedTimeInMS());
             }
         });
     }
@@ -70,8 +70,16 @@ public class Main {
         queries[3] = QueryCreator.create(QueryCreator.QueryType.Metadata, QueryCreator.SpatialScope.Geo78km);
         queries[4] = QueryCreator.create(QueryCreator.QueryType.Metadata, QueryCreator.SpatialScope.Geo630km);
         queries[5] = QueryCreator.create(QueryCreator.QueryType.Metadata, QueryCreator.SpatialScope.Geo2500km);
+        // query types
+        QueryCreator.QueryType[] qTypes = new QueryCreator.QueryType[6];
+        qTypes[0] = QueryCreator.QueryType.Relational;
+        qTypes[1] = QueryCreator.QueryType.Relational;
+        qTypes[2] = QueryCreator.QueryType.Relational;
+        qTypes[3] = QueryCreator.QueryType.Metadata;
+        qTypes[4] = QueryCreator.QueryType.Metadata;
+        qTypes[5] = QueryCreator.QueryType.Metadata;
         double[] percentages = new double[]{0.1d, 0.1d, 0.1d, 0.3d, 0.3d, 0.1d};
-        client.dispatchQClients(1, 100, queries, percentages);
+        client.dispatchQClients(10, 100, queries, qTypes, percentages);
     }
 }
 
