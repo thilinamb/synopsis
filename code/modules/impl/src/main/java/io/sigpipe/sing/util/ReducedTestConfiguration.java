@@ -11,12 +11,12 @@ public class ReducedTestConfiguration {
     public static final String[] FEATURE_NAMES = {
         //"vegitation_type_as_in_sib_surface",
         //"vegetation_surface",
-        //"precipitable_water_entire_atmosphere",
+        "precipitable_water_entire_atmosphere",
         //"albedo_surface",
         //"visibility_surface",
         //"pressure_surface",
         //"temperature_tropopause",
-        //"temperature_surface",
+        "temperature_surface",
         "relative_humidity_zerodegc_isotherm", // 0-100 range
         //"downward_long_wave_rad_flux_surface",
         "upward_short_wave_rad_flux_surface",
