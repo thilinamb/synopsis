@@ -1,5 +1,6 @@
 package synopsis.client.query;
 
+import ds.granules.communication.direct.control.ControlMessage;
 import neptune.geospatial.core.protocol.msg.client.ClientQueryRequest;
 import neptune.geospatial.core.protocol.msg.client.ClientQueryResponse;
 import neptune.geospatial.core.protocol.msg.client.TargetQueryResponse;
@@ -12,6 +13,8 @@ import synopsis.client.query.tasks.TargetQueryResponseHandlingTask;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -27,6 +30,8 @@ public class QueryManager {
     private final long maximumQueryId;
     private final String clientAddr;
     private ExecutorService executors = Executors.newFixedThreadPool(4);
+    private boolean dispatcherModeEnabled = false;
+    private Map<Long, QClient> dispatcherMap = new ConcurrentHashMap<>();
 
     private QueryManager(String hostAddr, int port) {
         this.queryId = getQueryIdOffSet(port);
@@ -39,6 +44,10 @@ public class QueryManager {
             instance = new QueryManager(hostAddr, port);
         }
         return instance;
+    }
+
+    public void setDispatcherModeEnabled(boolean dispatcherModeEnabled) {
+        this.dispatcherModeEnabled = dispatcherModeEnabled;
     }
 
     public long submitQuery(byte[] query, List<String> geoHashes, QueryCallback callback, String randomNodeAddr)
@@ -65,7 +74,7 @@ public class QueryManager {
         return Long.parseLong(fullQualifier) * QUERY_COUNT;
     }
 
-    private long getNextQueryId() throws ClientException {
+    synchronized long getNextQueryId() throws ClientException {
         if (++queryId <= maximumQueryId) {
             return queryId;
         } else {
@@ -74,12 +83,46 @@ public class QueryManager {
         }
     }
 
-    public void handleClientQueryResponse(ClientQueryResponse clientQueryResponse){
-        executors.submit(new ClientQueryRespHandlingTask(clientQueryResponse));
+    public void handleClientQueryResponse(ClientQueryResponse clientQueryResponse) {
+        if (this.dispatcherModeEnabled) {
+            dispatch(clientQueryResponse.getQueryId(), clientQueryResponse);
+        } else {
+            this.executors.submit(new ClientQueryRespHandlingTask(clientQueryResponse));
+        }
     }
 
-    public void handleTargetQueryResponse(TargetQueryResponse targetQueryResponse){
-        executors.submit(new TargetQueryResponseHandlingTask(targetQueryResponse));
+    public void handleTargetQueryResponse(TargetQueryResponse targetQueryResponse) {
+        if (this.dispatcherModeEnabled) {
+            dispatch(targetQueryResponse.getQueryId(), targetQueryResponse);
+        } else {
+            this.executors.submit(new TargetQueryResponseHandlingTask(targetQueryResponse));
+        }
+    }
+
+    synchronized void registerQClient(QClient client, long queryId) {
+        dispatcherMap.put(queryId, client);
+        if (logger.isDebugEnabled()) {
+            logger.debug("QClient registered. Query Id: " + queryId);
+        }
+    }
+
+    synchronized void removeClient(long queryId) {
+        dispatcherMap.remove(queryId);
+        if (logger.isDebugEnabled()) {
+            logger.debug("QClient removed. Query Id: " + queryId);
+        }
+    }
+
+    private void dispatch(Long queryId, ControlMessage ctrlMsg) {
+        QClient client;
+        synchronized (this) {
+            client = dispatcherMap.get(queryId);
+        }
+        if (client != null) {
+            client.handleQueryResponse(ctrlMsg);
+        } else {
+            logger.warn("No QClient available. Query id: " + queryId);
+        }
     }
 
 }

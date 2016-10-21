@@ -14,9 +14,10 @@ public class QueryResponse {
     private List<Long> elapsedTimesInSketchlets;
     private long elapsedTime;
     private long startTime;
+    private long queryRespSize;
 
     public QueryResponse(long queryId, byte[] query) {
-        this.startTime = System.nanoTime();
+        this.startTime = System.currentTimeMillis();
         this.queryId = queryId;
         this.query = query;
         this.queryResponse = new ArrayList<>();
@@ -41,6 +42,7 @@ public class QueryResponse {
         boolean fireCallback = false;
         queryResponse.add(queryResp);
         elapsedTimesInSketchlets.add(elapsedTime);
+        queryRespSize += queryResp.length;
         if(this.queryResponse.size() == this.expectedQueryResponseCount) {
             fireCallback = true;
             setElapsedTime();
@@ -48,8 +50,12 @@ public class QueryResponse {
         return fireCallback;
     }
 
+    public double getQueryResponseSizeInMB(){
+        return queryRespSize/(1024*1024);
+    }
+
     public void setElapsedTime(){
-        this.elapsedTime = System.nanoTime() - startTime;
+        this.elapsedTime = System.currentTimeMillis() - startTime;
     }
 
     public long getQueryId() {
@@ -68,7 +74,7 @@ public class QueryResponse {
         return elapsedTimesInSketchlets;
     }
 
-    public long getElapsedTime() {
+    public long getElapsedTimeInMS() {
         return elapsedTime;
     }
 }

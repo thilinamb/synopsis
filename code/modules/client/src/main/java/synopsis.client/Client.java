@@ -9,6 +9,8 @@ import ds.granules.util.Constants;
 import ds.granules.util.NeptuneRuntime;
 import ds.granules.util.ZooKeeperUtils;
 import neptune.geospatial.core.protocol.msg.client.PersistStateRequest;
+import neptune.geospatial.graph.operators.QueryCreator;
+import neptune.geospatial.graph.operators.QueryWrapper;
 import neptune.geospatial.util.RivuletUtil;
 import org.apache.log4j.Logger;
 import org.apache.zookeeper.KeeperException;
@@ -17,6 +19,8 @@ import synopsis.client.messaging.ClientProtocolHandler;
 import synopsis.client.messaging.Transport;
 import synopsis.client.persistence.PersistenceCompletionCallback;
 import synopsis.client.persistence.PersistenceManager;
+import synopsis.client.query.QClient;
+import synopsis.client.query.QClientStatRecorder;
 import synopsis.client.query.QueryCallback;
 import synopsis.client.query.QueryManager;
 
@@ -47,6 +51,7 @@ public class Client {
             this.clientPort = clientPort;
             this.hostname = RivuletUtil.getHostInetAddress().getHostName();
             queryManager = QueryManager.getInstance(this.hostname, this.clientPort);
+            queryManager.setDispatcherModeEnabled(true);
         } catch (GranulesConfigurationException | CommunicationsException e) {
             throw new ClientException("Error in initializing. ", e);
         }
@@ -93,11 +98,41 @@ public class Client {
         logger.info("Discovered " + this.endpoints.size() + " resources.");
     }
 
-    public long submitQuery(byte[] query, List<String> geoHashes, QueryCallback callback) throws ClientException {
+    long submitQuery(byte[] query, List<String> geoHashes, QueryCallback callback) throws ClientException {
         return queryManager.submitQuery(query, geoHashes, callback, getRandomSynopsisNode());
     }
 
-    public void serializeState(PersistenceCompletionCallback cb) throws ClientException {
+    void dispatchQClients(int qClientCount, int queryCount, QueryWrapper[] queries,
+                          QueryCreator.QueryType[] qTypes, double[] percentages) throws ClientException {
+        CountDownLatch countDownLatch = new CountDownLatch(qClientCount);
+        QClient[] qClients = new QClient[qClientCount];
+        for (int i = 0; i < qClientCount; i++) {
+            try {
+                QClient qClient = new QClient(queryCount, queries, qTypes, percentages, this.getAddr(),
+                        this.queryManager, this.endpoints, countDownLatch);
+                qClients[i] = qClient;
+                Thread clientThread = new Thread(qClient);
+                clientThread.start();
+            } catch (ClientException e) {
+                logger.error("Error initializing the QClient.", e);
+                throw e;
+            }
+        }
+        try {
+            countDownLatch.await();
+            logger.info("All the QClient threads have completed. Merging results.");
+            QClientStatRecorder statRecorder = new QClientStatRecorder();
+            for (QClient qClient : qClients) {
+                statRecorder.merge(qClient.getStatRecorder());
+            }
+            statRecorder.writeToFile("/tmp/" + hostname + "-" + clientPort + ".cstat");
+            logger.info("Written merged results to file.");
+        } catch (InterruptedException ignore) {
+
+        }
+    }
+
+    void serializeState(PersistenceCompletionCallback cb) throws ClientException {
         long checkpointId = System.currentTimeMillis();
         String randomNode = getRandomSynopsisNode();
         PersistenceManager.getInstance().submitPersistenceTask(checkpointId, endpoints.size(), cb);
@@ -115,12 +150,12 @@ public class Client {
         }
     }
 
-    private String getRandomSynopsisNode(){
+    private String getRandomSynopsisNode() {
         SynopsisEndpoint endpoint = endpoints.get(random.nextInt(endpoints.size()));
         return endpoint.toString();
     }
 
-    private String getAddr(){
+    private String getAddr() {
         return this.hostname + ":" + this.clientPort;
     }
 }
