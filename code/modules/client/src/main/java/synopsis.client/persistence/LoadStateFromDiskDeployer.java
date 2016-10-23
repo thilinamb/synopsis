@@ -39,6 +39,10 @@ public class LoadStateFromDiskDeployer extends GeoSpatialDeployer {
 
     @Override
     protected ResourceEndpoint nextResource(Operation op) {
+        if (!(op instanceof LoadStateFromDiskOperator)) {
+            super.nextResource(op);
+        }
+
         if (this.completedComputationIndex >= oldComputations.size()) {
             logger.warn("Too many computations to schedule. Index: " + this.completedComputationIndex +
                     ", maximum supported computation count: " + this.oldComputations.size());
@@ -51,7 +55,12 @@ public class LoadStateFromDiskDeployer extends GeoSpatialDeployer {
             logger.error("Old endpoint is not available now. Aborting the deployment. Endpoint: " + oldLocation);
             return null;
         } else {
-            // TODO: set the file path to the serialized state in the computation
+            String serializedStateLocation = outstandingPersistenceTask.getStorageLocations().get(mappedOldComp);
+            ((LoadStateFromDiskOperator)op).setSerializedStateLocation(
+                    serializedStateLocation);
+            logger.info(String.format("Mapped a new comp. New comp. id: %s, Old comp. id: %s, " +
+                    "Location: %s, Serialized State Loc.: %s", mappedOldComp,
+                    op.getInstanceIdentifier(), oldLocation, serializedStateLocation));
             return oldLocEndpoint;
         }
     }
