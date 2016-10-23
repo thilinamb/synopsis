@@ -9,7 +9,7 @@ import java.util.Map;
 /**
  * @author Thilina Buddhika
  */
-public class OutstandingPersistenceTask {
+class OutstandingPersistenceTask {
 
     private boolean success;
     private final long persistenceTaskId;
@@ -44,27 +44,27 @@ public class OutstandingPersistenceTask {
         return isPersistenceTaskComplete();
     }
 
-    public long getPersistenceTaskId() {
+    long getPersistenceTaskId() {
         return persistenceTaskId;
     }
 
-    public int getNodeCount() {
+    int getNodeCount() {
         return nodeCount;
     }
 
-    public Map<String, String> getComputationLocations() {
+    Map<String, String> getComputationLocations() {
         return computationLocations;
     }
 
-    public Map<String, String> getStorageLocations() {
+    Map<String, String> getStorageLocations() {
         return storageLocations;
     }
 
-    public int getTotalComputationCount() {
+    int getTotalComputationCount() {
         return totalComputationCount;
     }
 
-    public byte[] getSerializedPrefixTree() {
+    byte[] getSerializedPrefixTree() {
         return serializedPrefixTree;
     }
 
@@ -77,7 +77,7 @@ public class OutstandingPersistenceTask {
         return false;
     }
 
-    public boolean isSuccess() {
+    boolean isSuccess() {
         return success;
     }
 }
