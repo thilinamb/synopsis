@@ -160,6 +160,10 @@ public class GeoSpatialDeployer extends JobDeployer implements MembershipChangeL
                 // create the deployment plan
                 for (Operation op : operations) {
                     ResourceEndpoint resourceEndpoint = nextResource(op);
+
+                    if(resourceEndpoint == null){
+                        throw new DeploymentException("Null endpoint for operation.");
+                    }
                     // keep track of the layer one endpoints to skip them from scheduling for scaling out
                     if (op instanceof AbstractGeoSpatialStreamProcessor) {
                         layerOneEndpoints.add(resourceEndpoint);
@@ -303,7 +307,7 @@ public class GeoSpatialDeployer extends JobDeployer implements MembershipChangeL
         return topic;
     }
 
-    private ResourceEndpoint nextResource(Operation op) {
+    protected ResourceEndpoint nextResource(Operation op) {
         if (deployerConfig != null) {
             String resourceEndpointUrl = deployerConfig.getPlacementNode(op.getClass().getName());
             if (resourceEndpointUrl != null) {
