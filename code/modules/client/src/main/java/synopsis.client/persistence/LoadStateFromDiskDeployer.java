@@ -1,12 +1,23 @@
 package synopsis.client.persistence;
 
+import com.google.gson.Gson;
+import ds.granules.Granules;
 import ds.granules.exception.CommunicationsException;
 import ds.granules.exception.DeploymentException;
 import ds.granules.exception.MarshallingException;
 import ds.granules.operation.Operation;
+import ds.granules.streaming.core.Job;
+import ds.granules.util.NeptuneRuntime;
+import ds.granules.util.ParamsReader;
+import neptune.geospatial.benchmarks.sketch.ThrottledStreamIngester;
 import neptune.geospatial.core.deployer.GeoSpatialDeployer;
+import neptune.geospatial.graph.Constants;
+import neptune.geospatial.partitioner.GeoHashPartitioner;
 import org.apache.log4j.Logger;
 
+import java.io.DataInputStream;
+import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.util.*;
 
@@ -15,7 +26,7 @@ import java.util.*;
  */
 public class LoadStateFromDiskDeployer extends GeoSpatialDeployer {
 
-    private final Logger logger = Logger.getLogger(LoadStateFromDiskDeployer.class);
+    private final static Logger logger = Logger.getLogger(LoadStateFromDiskDeployer.class);
 
     private final OutstandingPersistenceTask outstandingPersistenceTask;
     private List<String> oldComputations = new ArrayList<>();
@@ -40,7 +51,7 @@ public class LoadStateFromDiskDeployer extends GeoSpatialDeployer {
     @Override
     protected ResourceEndpoint nextResource(Operation op) {
         if (!(op instanceof LoadStateFromDiskOperator)) {
-            super.nextResource(op);
+            return super.nextResource(op);
         }
 
         if (this.completedComputationIndex >= oldComputations.size()) {
@@ -62,6 +73,78 @@ public class LoadStateFromDiskDeployer extends GeoSpatialDeployer {
                     "Location: %s, Serialized State Loc.: %s", mappedOldComp,
                     op.getInstanceIdentifier(), oldLocation, serializedStateLocation));
             return oldLocEndpoint;
+        }
+    }
+
+    public static void main(String[] args) {
+        ParamsReader paramsReader = Granules.getParamsReader();
+        String configLocation = "conf/ResourceConfig.txt";
+        String serializedDeploymentPlanLoc = null;
+
+        if (args.length >= 5) {
+            configLocation = args[0];
+            serializedDeploymentPlanLoc = args[4];
+        }
+
+        logger.info("Using deployment path plan: " + serializedDeploymentPlanLoc);
+        OutstandingPersistenceTask outstandingPersistenceTask = null;
+        if(serializedDeploymentPlanLoc != null){
+            try {
+                FileInputStream fis = new FileInputStream(serializedDeploymentPlanLoc);
+                DataInputStream dis = new DataInputStream(fis);
+                int length = dis.readInt();
+                logger.info("Serialized deployment plan size: " + length);
+                byte[] serializedBytes = new byte[length];
+                dis.readFully(serializedBytes);
+                String serializedString = new String(serializedBytes);
+                Gson gson = new Gson();
+                outstandingPersistenceTask = gson.fromJson(serializedString, OutstandingPersistenceTask.class);
+            } catch (IOException e) {
+                logger.error("Error reading the deployment plan.", e);
+                System.exit(-1);
+            }
+        } else {
+            System.err.println("Location of the serialized deployment plan is not provided. Exiting.");
+            System.exit(-1);
+        }
+
+        LoadStateFromDiskDeployer deployer = new LoadStateFromDiskDeployer(outstandingPersistenceTask);
+        int compCount = outstandingPersistenceTask.getTotalComputationCount();
+        logger.info("Deploying " + compCount + " processors.");
+        try {
+            Properties resourceProps = new Properties();
+
+            /* Read properties from config file, if it exists. */
+            File configFile = new File(configLocation);
+            if (configFile.exists()) {
+                resourceProps = paramsReader.getProperties(configLocation);
+            }
+
+            NeptuneRuntime.initialize(resourceProps);
+
+            deployer.initialize(NeptuneRuntime.getInstance().getProperties());
+            Job job = new Job("NOAA-Data-Processing-Graph", deployer);
+
+            // vertices
+            Properties senderProps = new Properties();
+            senderProps.put(ds.granules.util.Constants.StreamBaseProperties.BUFFER_SIZE, Integer.toString(1024 * 1024));
+            job.addStreamSource("ingester", ThrottledStreamIngester.class, 12, senderProps);
+
+            Properties processorProps = new Properties();
+            processorProps.put(ds.granules.util.Constants.StreamBaseProperties.BUFFER_SIZE, Integer.toString(0));
+            //job.addStreamProcessor("stream-processor", SketchProcessor.class, INITIAL_PROCESSOR_COUNT, processorProps);
+            job.addStreamProcessor("stream-processor", LoadStateFromDiskOperator.class, compCount,
+                    processorProps);
+            // edges
+            job.addLink("ingester", "stream-processor", Constants.Streams.NOAA_DATA_STREAM,
+                    GeoHashPartitioner.class.getName());
+
+            job.deploy();
+
+            // TODO: Update and send the trie to everyone. Also trigger loading state from disk
+
+        } catch (Exception e) {
+            logger.error("Error deploying the graph.", e);
         }
     }
 }

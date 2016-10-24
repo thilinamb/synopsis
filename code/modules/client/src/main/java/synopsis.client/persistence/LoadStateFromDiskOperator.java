@@ -3,14 +3,14 @@ package synopsis.client.persistence;
 import ds.funnel.data.format.FormatReader;
 import ds.funnel.data.format.FormatWriter;
 import ds.granules.neptune.interfere.core.NIException;
+import neptune.geospatial.benchmarks.sketch.ExtendedSketchProcessorWithLogging;
 import neptune.geospatial.core.resource.ManagedResource;
-import neptune.geospatial.graph.operators.SketchProcessor;
 import org.apache.log4j.Logger;
 
 /**
  * @author Thilina Buddhika
  */
-public class LoadStateFromDiskOperator extends SketchProcessor {
+public class LoadStateFromDiskOperator extends ExtendedSketchProcessorWithLogging {
 
     private String serializedStateLocation;
     private Logger logger = Logger.getLogger(LoadStateFromDiskOperator.class);
