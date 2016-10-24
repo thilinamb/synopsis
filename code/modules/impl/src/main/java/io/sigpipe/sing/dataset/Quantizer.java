@@ -185,6 +185,12 @@ public class Quantizer {
         return ticks.lower(feature);
     }
 
+    /**
+     * Retrieves the first (smallest) tick mark.
+     */
+    public Feature first() {
+        return ticks.first();
+    }
     @Override
     public String toString() {
         String output = "";
