@@ -95,23 +95,25 @@ public class LoadStateFromDiskDeployer extends GeoSpatialDeployer {
     }
 
     private void updateNode(Node node) throws DeploymentException {
-        String oldComp = node.getComputationId();
-        if (oldCompToNewMap.containsKey(oldComp)) {
-            node.setComputationId(oldCompToNewMap.get(oldComp));
-            logger.info("Replaced " + oldComp + " with " + oldCompToNewMap.get(oldComp));
-        } else {
-            throw new DeploymentException("Invalid computation in prefix tree: " + oldComp);
+        if (!node.isRoot()) {
+            String oldComp = node.getComputationId();
+            if (oldCompToNewMap.containsKey(oldComp)) {
+                node.setComputationId(oldCompToNewMap.get(oldComp));
+                logger.info("Replaced " + oldComp + " with " + oldCompToNewMap.get(oldComp));
+            } else {
+                throw new DeploymentException("Invalid computation in prefix tree: " + oldComp);
+            }
         }
         for (Node child : node.getChildNodes().values()) {
             updateNode(child);
         }
     }
 
-    private byte[] getUpdatedPrefixTree(){
+    private byte[] getUpdatedPrefixTree() {
         return this.outstandingPersistenceTask.getSerializedPrefixTree();
     }
 
-    private List<ResourceEndpoint> getDeploymentLocations(){
+    private List<ResourceEndpoint> getDeploymentLocations() {
         return this.currentDeploymentNodes;
     }
 
