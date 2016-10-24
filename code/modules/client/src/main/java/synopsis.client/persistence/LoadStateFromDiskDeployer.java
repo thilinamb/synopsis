@@ -128,7 +128,7 @@ public class LoadStateFromDiskDeployer extends GeoSpatialDeployer {
             // vertices
             Properties senderProps = new Properties();
             senderProps.put(ds.granules.util.Constants.StreamBaseProperties.BUFFER_SIZE, Integer.toString(1024 * 1024));
-            job.addStreamSource("ingester", ThrottledStreamIngester.class, 12, senderProps);
+            job.addStreamSource("ingester", PartialDatasetIngester.class, 12, senderProps);
 
             Properties processorProps = new Properties();
             processorProps.put(ds.granules.util.Constants.StreamBaseProperties.BUFFER_SIZE, Integer.toString(0));

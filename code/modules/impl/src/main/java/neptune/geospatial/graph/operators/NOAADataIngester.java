@@ -80,8 +80,10 @@ public class NOAADataIngester extends StreamSource {
     private BufferedReader prefixFileBuffReader;
     private AtomicInteger remainingPhase1ScaleOutAckCount = new AtomicInteger(0);
     private boolean readAllFiles = false;
-    private String[] years = new String[]{"2013", "2014", "2015"};
+    //private String[] years = new String[]{"2011", "2012", "2013", "2014", "2015"};
+    protected String[] years = new String[]{"2015"};
     private int yearIndex = 0;
+    protected int initialWaitPeriodMS = 10000;
 
     public NOAADataIngester() {
         init();
@@ -146,13 +148,19 @@ public class NOAADataIngester extends StreamSource {
             return null;
         }
         if (indexLastReadFile == 0 && totalMessagesInCurrentFile == 0) { // reading the very first record
+            try {
+                Thread.sleep(this.initialWaitPeriodMS);
+            } catch (InterruptedException ignore) {
+
+            }
+            logger.info("Initial wait is complete. Starting the ingestion!");
             startNextFile();
             return parse();
         } else if (countEmittedFromCurrentFile < totalMessagesInCurrentFile) { // in the middle of a file
             return parse();
         } else if (indexLastReadFile < inputFiles.length && totalMessagesInCurrentFile == countEmittedFromCurrentFile) { // start next file.
             startNextFile();
-            logger.info(String.format("Reading file: %d of %d", indexLastReadFile, inputFiles.length));
+            logger.info(String.format("Reading file: %d of %d [%s]", indexLastReadFile, inputFiles.length, years[yearIndex - 1]));
             return parse();
         } else if (indexLastReadFile == inputFiles.length) {
             if (startNextYear()) {
@@ -204,6 +212,15 @@ public class NOAADataIngester extends StreamSource {
         } else {
             inputFiles = new File[0];
         }
+        // use only a subset of files to test querying -----------
+        if (inputFiles.length > 2) {
+            File[] sample = new File[2];
+            for(int i =0; i < 2; i++) {
+                sample[i] = inputFiles[i];
+            }
+            inputFiles = sample;
+        }
+        // ----------------
         return inputFiles;
     }
 
