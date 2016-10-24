@@ -28,7 +28,7 @@ public class JSONConfigPersistenceCallback implements PersistenceCompletionCallb
         FileOutputStream fos = null;
         DataOutputStream dos = null;
         try {
-            fos = new FileOutputStream(new File("/tmp/" + task.getPersistenceTaskId()));
+            fos = new FileOutputStream(new File("/tmp/" + task.getPersistenceTaskId() + ".pstat"));
             dos = new DataOutputStream(fos);
             dos.writeInt(bytes.length);
             dos.write(bytes);
