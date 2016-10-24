@@ -36,5 +36,5 @@ public final class ProtocolTypes {
     public static final int PERSIST_STATE_REQ = 12505;
     public static final int PERSIST_STATE_ACK = 12506;
     public static final int PERSIST_STATE_RESP = 12507;
-    public static final int LOAD_STATE_FROM_DISK = 12508;
+    public static final int UPDATE_PREFIX_TREE = 12508;
 }

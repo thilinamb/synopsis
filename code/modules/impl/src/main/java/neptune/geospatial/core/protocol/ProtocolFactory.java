@@ -125,6 +125,9 @@ public class ProtocolFactory {
                 case ProtocolTypes.PERSIST_STATE_RESP:
                     message = new PersistStateResponse();
                     break;
+                case ProtocolTypes.UPDATE_PREFIX_TREE:
+                    message = new UpdatePrefixTreeReq();
+                    break;
                 default:
                     String errorMsg = "Unsupported message type: " + messageType;
                     throw new ProtocolException(errorMsg);

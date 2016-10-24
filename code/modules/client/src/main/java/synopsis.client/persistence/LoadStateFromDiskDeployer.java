@@ -2,6 +2,7 @@ package synopsis.client.persistence;
 
 import com.google.gson.Gson;
 import ds.granules.Granules;
+import ds.granules.communication.direct.control.SendUtility;
 import ds.granules.exception.CommunicationsException;
 import ds.granules.exception.DeploymentException;
 import ds.granules.exception.MarshallingException;
@@ -10,6 +11,7 @@ import ds.granules.streaming.core.Job;
 import ds.granules.util.NeptuneRuntime;
 import ds.granules.util.ParamsReader;
 import neptune.geospatial.core.deployer.GeoSpatialDeployer;
+import neptune.geospatial.core.protocol.msg.client.UpdatePrefixTreeReq;
 import neptune.geospatial.graph.Constants;
 import neptune.geospatial.partitioner.GeoHashPartitioner;
 import neptune.geospatial.util.trie.GeoHashPrefixTree;
@@ -34,6 +36,7 @@ public class LoadStateFromDiskDeployer extends GeoSpatialDeployer {
     private int completedComputationIndex = 0;
     private Map<String, ResourceEndpoint> endpointMap = new HashMap<>();
     private Map<String, String> oldCompToNewMap = new HashMap<>();
+    private List<ResourceEndpoint> currentDeploymentNodes = new ArrayList<>();
 
     private LoadStateFromDiskDeployer(OutstandingPersistenceTask outstandingPersistenceTask) {
         this.outstandingPersistenceTask = outstandingPersistenceTask;
@@ -72,6 +75,7 @@ public class LoadStateFromDiskDeployer extends GeoSpatialDeployer {
             ((LoadStateFromDiskOperator) op).setSerializedStateLocation(
                     serializedStateLocation);
             oldCompToNewMap.put(mappedOldComp, op.getInstanceIdentifier());
+            currentDeploymentNodes.add(oldLocEndpoint);
             logger.info(String.format("Mapped a new comp. New comp. id: %s, Old comp. id: %s, " +
                             "Location: %s, Serialized State Loc.: %s", mappedOldComp,
                     op.getInstanceIdentifier(), oldLocation, serializedStateLocation));
@@ -101,6 +105,14 @@ public class LoadStateFromDiskDeployer extends GeoSpatialDeployer {
         for (Node child : node.getChildNodes().values()) {
             updateNode(child);
         }
+    }
+
+    private byte[] getUpdatedPrefixTree(){
+        return this.outstandingPersistenceTask.getSerializedPrefixTree();
+    }
+
+    private List<ResourceEndpoint> getDeploymentLocations(){
+        return this.currentDeploymentNodes;
     }
 
     public static void main(String[] args) {
@@ -168,8 +180,15 @@ public class LoadStateFromDiskDeployer extends GeoSpatialDeployer {
 
             job.deploy();
 
+            // update the prefix tree and propagate it
             deployer.updatePrefixTree();
-            
+            byte[] updatedPrefixTree = deployer.getUpdatedPrefixTree();
+            UpdatePrefixTreeReq updatePrefixTreeReq = new UpdatePrefixTreeReq(updatedPrefixTree);
+
+            for(ResourceEndpoint endpoint: deployer.getDeploymentLocations()){
+                SendUtility.sendControlMessage(endpoint.getControlEndpoint(), updatePrefixTreeReq);
+            }
+
         } catch (Exception e) {
             logger.error("Error deploying the graph.", e);
         }
