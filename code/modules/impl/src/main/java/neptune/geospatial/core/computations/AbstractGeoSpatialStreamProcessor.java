@@ -849,13 +849,13 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
 
     @Override
     protected void deserializeMemberVariables(FormatReader formatReader) {
+        if (!initialized.get()) {
+            init();
+        }
         try {
             if (ManagedResource.getInstance().isFaultToleranceEnabled()) {
                 // we need to make sure that the messages from deployer about replication level increasing
                 // can reach the computation
-                if (!initialized.get()) {
-                    init();
-                }
                 int replicationElementCount = formatReader.readInt();
                 this.checkpointTimeoutPeriod = ManagedResource.getInstance().getCheckpointTimeoutPeriod();
                 this.replicationStreamTopics = new ArrayList<>();
