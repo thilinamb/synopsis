@@ -32,8 +32,6 @@ public class QueryCreator {
         Geo78km,
     }
 
-    public static QueryWrapper create(QueryType type, SpatialScope scope) {
-        Random random = new Random();
     private static Map<String, SimplePair<Double>> ranges = new HashMap<>();
     static {
         /* Set up ranges for all the features */
@@ -48,6 +46,17 @@ public class QueryCreator {
         }
     }
 
+    public static QueryWrapper create() {
+        QueryType type = QueryType.values()[
+            random.nextInt(QueryType.values().length)];
+
+        SpatialScope scope = SpatialScope.values()[
+            random.nextInt(SpatialScope.values().length)];
+
+        return QueryCreator.create(type, scope);
+    }
+
+    public static QueryWrapper create(QueryType type, SpatialScope scope) {
         String geohash = "";
         switch (scope) {
             case Geo2500km:
