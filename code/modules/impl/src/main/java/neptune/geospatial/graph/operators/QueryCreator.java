@@ -3,8 +3,12 @@ package neptune.geospatial.graph.operators;
 import java.io.BufferedOutputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Random;
 
+import io.sigpipe.sing.dataset.Quantizer;
+import io.sigpipe.sing.dataset.SimplePair;
 import io.sigpipe.sing.dataset.feature.Feature;
 import io.sigpipe.sing.query.Expression;
 import io.sigpipe.sing.query.Operator;
@@ -30,6 +34,19 @@ public class QueryCreator {
 
     public static QueryWrapper create(QueryType type, SpatialScope scope) {
         Random random = new Random();
+    private static Map<String, SimplePair<Double>> ranges = new HashMap<>();
+    static {
+        /* Set up ranges for all the features */
+        for (String feature : ReducedTestConfiguration.FEATURE_NAMES) {
+            Quantizer quant = ReducedTestConfiguration.quantizers.get(feature);
+            double first = quant.first().getDouble();
+            double last = quant.last().getDouble();
+            SimplePair<Double> range = new SimplePair<>();
+            range.a = first;
+            range.b = last;
+            ranges.put(feature, range);
+        }
+    }
 
         String geohash = "";
         switch (scope) {
