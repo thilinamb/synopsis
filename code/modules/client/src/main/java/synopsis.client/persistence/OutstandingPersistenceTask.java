@@ -80,4 +80,8 @@ class OutstandingPersistenceTask {
     boolean isSuccess() {
         return success;
     }
+
+    public void setSerializedPrefixTree(byte[] serializedPrefixTree) {
+        this.serializedPrefixTree = serializedPrefixTree;
+    }
 }

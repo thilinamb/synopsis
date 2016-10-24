@@ -9,10 +9,11 @@ import ds.granules.operation.Operation;
 import ds.granules.streaming.core.Job;
 import ds.granules.util.NeptuneRuntime;
 import ds.granules.util.ParamsReader;
-import neptune.geospatial.benchmarks.sketch.ThrottledStreamIngester;
 import neptune.geospatial.core.deployer.GeoSpatialDeployer;
 import neptune.geospatial.graph.Constants;
 import neptune.geospatial.partitioner.GeoHashPartitioner;
+import neptune.geospatial.util.trie.GeoHashPrefixTree;
+import neptune.geospatial.util.trie.Node;
 import org.apache.log4j.Logger;
 
 import java.io.DataInputStream;
@@ -32,8 +33,9 @@ public class LoadStateFromDiskDeployer extends GeoSpatialDeployer {
     private List<String> oldComputations = new ArrayList<>();
     private int completedComputationIndex = 0;
     private Map<String, ResourceEndpoint> endpointMap = new HashMap<>();
+    private Map<String, String> oldCompToNewMap = new HashMap<>();
 
-    public LoadStateFromDiskDeployer(OutstandingPersistenceTask outstandingPersistenceTask) {
+    private LoadStateFromDiskDeployer(OutstandingPersistenceTask outstandingPersistenceTask) {
         this.outstandingPersistenceTask = outstandingPersistenceTask;
         this.oldComputations = new ArrayList<>(outstandingPersistenceTask.getComputationLocations().keySet());
         logger.info("Loaded OutstandingPersistenceTask. Number of computations to schedule: " + oldComputations.size());
@@ -67,12 +69,37 @@ public class LoadStateFromDiskDeployer extends GeoSpatialDeployer {
             return null;
         } else {
             String serializedStateLocation = outstandingPersistenceTask.getStorageLocations().get(mappedOldComp);
-            ((LoadStateFromDiskOperator)op).setSerializedStateLocation(
+            ((LoadStateFromDiskOperator) op).setSerializedStateLocation(
                     serializedStateLocation);
+            oldCompToNewMap.put(mappedOldComp, op.getInstanceIdentifier());
             logger.info(String.format("Mapped a new comp. New comp. id: %s, Old comp. id: %s, " +
-                    "Location: %s, Serialized State Loc.: %s", mappedOldComp,
+                            "Location: %s, Serialized State Loc.: %s", mappedOldComp,
                     op.getInstanceIdentifier(), oldLocation, serializedStateLocation));
             return oldLocEndpoint;
+        }
+    }
+
+    private void updatePrefixTree() throws DeploymentException {
+        GeoHashPrefixTree prefixTree = GeoHashPrefixTree.getInstance();
+        try {
+            prefixTree.deserialize(outstandingPersistenceTask.getSerializedPrefixTree());
+            updateNode(prefixTree.getRoot());
+            outstandingPersistenceTask.setSerializedPrefixTree(prefixTree.serialize());
+        } catch (IOException e) {
+            throw new DeploymentException("Error deserializing prefix tree.", e);
+        }
+    }
+
+    private void updateNode(Node node) throws DeploymentException {
+        String oldComp = node.getComputationId();
+        if (oldCompToNewMap.containsKey(oldComp)) {
+            node.setComputationId(oldCompToNewMap.get(oldComp));
+            logger.info("Replaced " + oldComp + " with " + oldCompToNewMap.get(oldComp));
+        } else {
+            throw new DeploymentException("Invalid computation in prefix tree: " + oldComp);
+        }
+        for (Node child : node.getChildNodes().values()) {
+            updateNode(child);
         }
     }
 
@@ -88,7 +115,7 @@ public class LoadStateFromDiskDeployer extends GeoSpatialDeployer {
 
         logger.info("Using deployment path plan: " + serializedDeploymentPlanLoc);
         OutstandingPersistenceTask outstandingPersistenceTask = null;
-        if(serializedDeploymentPlanLoc != null){
+        if (serializedDeploymentPlanLoc != null) {
             try {
                 FileInputStream fis = new FileInputStream(serializedDeploymentPlanLoc);
                 DataInputStream dis = new DataInputStream(fis);
@@ -141,10 +168,11 @@ public class LoadStateFromDiskDeployer extends GeoSpatialDeployer {
 
             job.deploy();
 
-            // TODO: Update and send the trie to everyone. Also trigger loading state from disk
-
+            deployer.updatePrefixTree();
+            
         } catch (Exception e) {
             logger.error("Error deploying the graph.", e);
         }
     }
+
 }
