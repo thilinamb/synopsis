@@ -72,7 +72,7 @@ public class PersistStateResponse extends ControlMessage {
             dataOutputStream.writeUTF(this.computationId);
             dataOutputStream.writeBoolean(this.containsPrefixTree);
             if (this.containsPrefixTree) {
-                dataOutputStream.write(this.prefixTree.length);
+                dataOutputStream.writeInt(this.prefixTree.length);
                 dataOutputStream.write(this.prefixTree);
             }
         }
