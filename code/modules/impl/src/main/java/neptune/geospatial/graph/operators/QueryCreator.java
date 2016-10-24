@@ -72,19 +72,39 @@ public class QueryCreator {
         q.addExpression(new Expression(
                     Operator.STR_PREFIX, new Feature("location", geohash)));
 
-        /* Should set up ranges for all the features here: */
-//        for (String feature : ReducedTestConfiguration.FEATURE_NAMES) {
-//            q.addExpression(
-//                    new Expression(
-//                        Operator.RANGE_INC_EXC,
-//                        new Feature(feature, 0.0f),
-//                        new Feature(feature, 1.0f)));
-//        }
+        int activeFeatures = ReducedTestConfiguration.FEATURE_NAMES.length;
+        int numFeatures = 1 + random.nextInt(activeFeatures - 1);
 
-        q.addExpression(
-                new Expression(
-                    Operator.GREATER,
-                    new Feature("upward_short_wave_rad_flux_surface", 10.0f)));
+        for (int i = 0; i < numFeatures; ++i) {
+            String feature = ReducedTestConfiguration.FEATURE_NAMES[i];
+            SimplePair<Double> range = ranges.get(feature);
+            if (range == null) {
+                continue;
+            }
+
+            if (range.a == 0.0 && range.b == 1.0) {
+                /* Boolean feature */
+                int value = random.nextInt(2);
+                q.addExpression(
+                        new Expression(
+                            Operator.EQUAL,
+                            new Feature(feature, (float) value)));
+                continue;
+            }
+
+            double mag = range.b - range.a;
+            double rangePerc = rangeSizes[random.nextInt(rangeSizes.length)];
+            double size = mag * rangePerc;
+
+            double startValue = randomRange(range.a, range.b);
+            double endValue = startValue + size;
+
+            q.addExpression(
+                    new Expression(
+                        Operator.RANGE_INC_EXC,
+                        new Feature(feature, (float) startValue),
+                        new Feature(feature, (float) endValue)));
+        }
 
         ByteArrayOutputStream bOut = new ByteArrayOutputStream();
         SerializationOutputStream sOut = new SerializationOutputStream(
@@ -106,6 +126,15 @@ public class QueryCreator {
 
         return qw;
     }
+
+    private static double randomRange(double low, double high) {
+        double rand = random.nextDouble();
+        rand *= high;
+        rand -= low;
+        return rand;
+    }
+
+    private static final double[] rangeSizes = { .2, .1, .05 };
 
     private static final String[] geo2500km = { "8", "9", "b", "c", "d", "f" };
 
