@@ -182,6 +182,10 @@ public class ResourceProtocolHandler extends AbstractProtocolHandler {
                     logger.error("Error sending Persistence Ack back to the client.", e);
                 }
                 break;
+            case ProtocolTypes.UPDATE_PREFIX_TREE:
+                logger.info("Received a update prefix tree request.");
+                managedResource.dispatchToAll(ctrlMsg);
+                break;
             default:
                 logger.warn("Unsupported message type: " + type);
         }
