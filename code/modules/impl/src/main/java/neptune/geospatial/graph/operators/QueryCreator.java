@@ -15,6 +15,8 @@ import io.sigpipe.sing.util.ReducedTestConfiguration;
 
 public class QueryCreator {
 
+    private static Random random = new Random();
+
     public enum QueryType {
         Relational,
         Metadata,
