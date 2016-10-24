@@ -40,7 +40,6 @@ public class QueryCreator {
                 break;
 
             case Geo78km:
-                //TODO finest granularity geohashes
                 geohash = geo78km[random.nextInt(geo78km.length)];
                 break;
         }
