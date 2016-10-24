@@ -46,7 +46,10 @@ public class LoadStateFromDiskOperator extends ExtendedSketchProcessorWithLoggin
         try {
             fis = new FileInputStream(this.serializedStateLocation);
             dis = new DataInputStream(fis);
+            long t1 = System.currentTimeMillis();
             deserialize(dis);
+            long t2 = System.currentTimeMillis();
+            logger.info("Successfully deserialized state from disk. Time Elapsed (seconds): " + (t2 - t1) / 1000.0);
         } catch (FileNotFoundException e) {
             logger.error("File not found. File: " + this.serializedStateLocation, e);
         } finally {
