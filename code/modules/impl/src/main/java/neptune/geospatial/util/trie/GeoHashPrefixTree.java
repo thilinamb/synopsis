@@ -115,6 +115,10 @@ public class GeoHashPrefixTree implements EntryAddedListener<String, SketchLocat
         root.deserialize(bytes);
     }
 
+    public Node getRoot() {
+        return root;
+    }
+
     private String printTree() {
         return root.printTraverseResults(root.traverse());
     }
