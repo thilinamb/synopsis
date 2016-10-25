@@ -102,8 +102,8 @@ public class Client {
         return queryManager.submitQuery(query, geoHashes, callback, getRandomSynopsisNode());
     }
 
-    void dispatchQClients(int qClientCount, int queryCount, QueryWrapper[] queries,
-                          QueryCreator.QueryType[] qTypes, double[] percentages) throws ClientException {
+    void launchQClients(int qClientCount, int queryCount, QueryWrapper[] queries,
+                        QueryCreator.QueryType[] qTypes, double[] percentages) throws ClientException {
         CountDownLatch countDownLatch = new CountDownLatch(qClientCount);
         QClient[] qClients = new QClient[qClientCount];
         for (int i = 0; i < qClientCount; i++) {
