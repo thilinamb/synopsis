@@ -7,7 +7,7 @@ echo 'Launching '${1}' clients on '${HOSTNAME}
 
 for i in `seq 1 ${client_count}`;
    do
-       new_port = $((${2} + 1))
+       new_port = $((${2} + i))
        sh client.sh ${config_file} ${new_port} 'query' ${3} ${4}
    done
 
