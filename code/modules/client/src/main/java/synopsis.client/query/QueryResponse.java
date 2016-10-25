@@ -50,8 +50,8 @@ public class QueryResponse {
         return fireCallback;
     }
 
-    public double getQueryResponseSizeInMB(){
-        return queryRespSize/(1024*1024);
+    public double getQueryResponseSizeInKB(){
+        return queryRespSize/(1024);
     }
 
     public void setElapsedTime(){

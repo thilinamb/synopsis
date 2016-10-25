@@ -63,7 +63,7 @@ public class QClientStatRecorder {
     private Map<QueryCreator.QueryType, QueryPerf> performanceMap = new ConcurrentHashMap<>();
     private Map<QueryCreator.QueryType, ResponseSizeRecorder> respSizeRecMap = new ConcurrentHashMap<>();
 
-    void record(QueryCreator.QueryType queryType, long timeElapsed, double payloadSizeInMB) {
+    void record(QueryCreator.QueryType queryType, long timeElapsed, double payloadSizeInKB) {
         QueryPerf queryPerf;
         ResponseSizeRecorder responseSizeRecorder;
         if (!performanceMap.containsKey(queryType)) {
@@ -76,7 +76,7 @@ public class QClientStatRecorder {
             responseSizeRecorder = respSizeRecMap.get(queryType);
         }
         queryPerf.update(timeElapsed);
-        responseSizeRecorder.update(payloadSizeInMB);
+        responseSizeRecorder.update(payloadSizeInKB);
     }
 
     public void writeToFile(String fileName) {
