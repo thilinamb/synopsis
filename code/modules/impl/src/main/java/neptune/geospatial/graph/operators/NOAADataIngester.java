@@ -81,7 +81,7 @@ public class NOAADataIngester extends StreamSource {
     private AtomicInteger remainingPhase1ScaleOutAckCount = new AtomicInteger(0);
     private boolean readAllFiles = false;
     //private String[] years = new String[]{"2011", "2012", "2013", "2014", "2015"};
-    protected String[] years = new String[]{"2015"};
+    protected String[] years = new String[]{"2014"};
     private int yearIndex = 0;
     protected int initialWaitPeriodMS = 10000;
 
@@ -128,14 +128,18 @@ public class NOAADataIngester extends StreamSource {
         } else {
             GeoHashIndexedRecord record = nextRecord();
             if (record != null) {
-                writeToStream(Constants.Streams.NOAA_DATA_STREAM, record);
-                countEmittedFromCurrentFile++;
-                totalEmittedMsgCount.incrementAndGet();
-                totalEmittedBytes.addAndGet(record.getPayload().length);
-                if (totalEmittedMsgCount.get() == 1) {
-                    statPublisherService.scheduleAtFixedRate(new StatPublisher(), 0, 2, TimeUnit.SECONDS);
+                try {
+                    writeToStream(Constants.Streams.NOAA_DATA_STREAM, record);
+                    totalEmittedMsgCount.incrementAndGet();
+                    totalEmittedBytes.addAndGet(record.getPayload().length);
+                    if (totalEmittedMsgCount.get() == 1) {
+                        statPublisherService.scheduleAtFixedRate(new StatPublisher(), 0, 2, TimeUnit.SECONDS);
+                    }
+                    onSuccessfulEmission();
+                } catch (StreamingDatasetException e) {
+                    logger.error(e);
                 }
-                onSuccessfulEmission();
+                countEmittedFromCurrentFile++;
             }
         }
     }
@@ -212,7 +216,7 @@ public class NOAADataIngester extends StreamSource {
         } else {
             inputFiles = new File[0];
         }
-        // use only a subset of files to test querying -----------
+        /*// use only a subset of files to test querying -----------
         if (inputFiles.length > 2) {
             File[] sample = new File[2];
             for(int i =0; i < 2; i++) {
@@ -220,7 +224,7 @@ public class NOAADataIngester extends StreamSource {
             }
             inputFiles = sample;
         }
-        // ----------------
+        // ---------------- */
         return inputFiles;
     }
 
