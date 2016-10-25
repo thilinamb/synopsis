@@ -88,7 +88,17 @@ public class RelationalQuery extends Query {
         }
 
         boolean foundSubMatch = false;
-        String childFeature = vertex.getFirstNeighbor().getLabel().getName();
+        Vertex childVertex = vertex.getFirstNeighbor();
+        if (childVertex == null) {
+            /* There are more expressions to evaluate, but we have reached the
+             * end of a path. The user may have specified a feature
+             * that does not exist, or this portion of the graph may not contain
+             * all the features in the hierarchy. */
+            pruned.add(vertex);
+            return false;
+        }
+
+        String childFeature = childVertex.getLabel().getName();
         List<Expression> expList = this.expressions.get(childFeature);
         if (expList != null) {
             Set<Vertex> matches = evaluate(vertex, expList);
