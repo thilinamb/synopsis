@@ -15,7 +15,7 @@ import java.util.*;
  *
  * @author Thilina Buddhika
  */
-class Node {
+public class Node {
 
     private Logger logger = Logger.getLogger(Node.class);
 
@@ -180,7 +180,7 @@ class Node {
         return node;
     }
 
-    private boolean isRoot() {
+    public boolean isRoot() {
         return prefix.equals("_");
     }
 
@@ -302,5 +302,13 @@ class Node {
 
     public String getCtrlEndpoint() {
         return ctrlEndpoint;
+    }
+
+    public void setComputationId(String computationId) {
+        this.computationId = computationId;
+    }
+
+    public Map<String, Node> getChildNodes() {
+        return childNodes;
     }
 }
