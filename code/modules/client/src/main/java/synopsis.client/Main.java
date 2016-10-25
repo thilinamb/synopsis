@@ -23,21 +23,37 @@ public class Main {
 
     public static void main(String[] args) {
         try {
-            if (args.length < 2) {
+            if (args.length < 3) {
                 System.err.println("Usage: <path-to-config> <port>");
                 System.exit(-1);
             }
             String configFilePath = args[0];
             int port = Integer.parseInt(args[1]);
+            String mode = args[2].toLowerCase();
             LOGGER.info("Using the config file: " + configFilePath);
             LOGGER.info("Using the client port: " + port);
+            LOGGER.info("Mode: " + mode);
             Properties properties = new Properties();
             properties.load(new FileInputStream(configFilePath));
             Client client = new Client(properties, port);
             client.init();
-            //testQuery(client);
-            //testPersistState(client);
-            testQClient2(client);
+            switch (mode){
+                case "query":
+                    if(args.length < 5){
+                        System.err.println("Not sufficient arguments for query mode.");
+                        return;
+                    }
+                    int clientCount = Integer.parseInt(args[3]);
+                    int queryCount = Integer.parseInt(args[4]);
+                    LOGGER.info("Number of clients: " + client + ", Number of queries per client: " + queryCount);
+                    testQClient2(client, clientCount, queryCount);
+                    break;
+                case "store":
+                    testPersistState(client);
+                    break;
+                default:
+                    System.err.println("Unsupported mode!");
+            }
             new CountDownLatch(1).await();
         } catch (IOException e) {
             LOGGER.error("Error when populating the properties.", e);
@@ -62,7 +78,7 @@ public class Main {
         client.serializeState(new JSONConfigPersistenceCallback());
     }
 
-    private static void testQClient(Client client) throws ClientException{
+    private static void testQClient(Client client) throws ClientException {
         QueryWrapper[] queries = new QueryWrapper[6];
         queries[0] = QueryCreator.create(QueryCreator.QueryType.Relational, QueryCreator.SpatialScope.Geo78km);
         queries[1] = QueryCreator.create(QueryCreator.QueryType.Relational, QueryCreator.SpatialScope.Geo630km);
@@ -82,8 +98,8 @@ public class Main {
         client.launchQClients(10, 100, queries, qTypes, percentages);
     }
 
-    private static void testQClient2(Client client){
-        client.launchQClients(10, 10000);
+    private static void testQClient2(Client client, int clientsCount, int queryCount) {
+        client.launchQClients(clientsCount, queryCount);
     }
 }
 
