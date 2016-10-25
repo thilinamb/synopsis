@@ -29,15 +29,16 @@ public class QClient implements Runnable {
     private Logger logger = Logger.getLogger(QClient.class);
     private BlockingQueue<ControlMessage> queue = new LinkedBlockingDeque<>();
     private final int queryCount;
-    private final QueryWrapper[] queries;
-    private final QueryCreator.QueryType[] queryTypes;
-    private final double[] cumulativePercentages;
+    private QueryWrapper[] queries;
+    private QueryCreator.QueryType[] queryTypes;
+    private double[] cumulativePercentages;
     private final Random random;
     private final List<SynopsisEndpoint> endpoints;
     private final QueryManager queryManager;
     private final String clientUrl;
     private final QClientStatRecorder statRecorder;
     private CountDownLatch latch;
+    private boolean manualMode = false;
 
     public QClient(int queryCount, QueryWrapper[] queries, QueryCreator.QueryType[] queryTypes, double[] percentages,
                    String clientUrl, QueryManager queryManager,
@@ -56,6 +57,18 @@ public class QClient implements Runnable {
         this.clientUrl = clientUrl;
         this.statRecorder = new QClientStatRecorder();
         this.latch = latch;
+        this.manualMode = true;
+    }
+
+    public QClient(int queryCount, List<SynopsisEndpoint> endpoints, String clientUrl, QueryManager queryManager,
+                   CountDownLatch latch){
+        this.queryCount = queryCount;
+        this.statRecorder = new QClientStatRecorder();
+        this.endpoints = endpoints;
+        this.queryManager = queryManager;
+        this.clientUrl = clientUrl;
+        this.latch = latch;
+        this.random = new Random();
     }
 
     private double[] prepareCumulPercentages(double[] percentages) throws ClientException {
@@ -73,42 +86,51 @@ public class QClient implements Runnable {
         String id = this.clientUrl + ":" + Thread.currentThread().getName();
         int completedQueryCount = 0;
         while (completedQueryCount <= this.queryCount) {
-            try {
+            QueryWrapper nextQ;
+            QueryCreator.QueryType queryType;
+            if (manualMode) {
                 int index = nextQueryIndex();
                 if (index != -1) {
-                    QueryWrapper nextQ = queries[index];
-                    long queryId = queryManager.getNextQueryId();
-                    ClientQueryRequest queryRequest = new ClientQueryRequest(queryId, clientUrl, nextQ.payload, nextQ.geohashes);
-                    QueryResponse currentQueryResponse = new QueryResponse(queryId, nextQ.payload);
-                    queryManager.registerQClient(this, queryId);
-                    SendUtility.sendControlMessage(nextEndpoint(), queryRequest);
-                    if (logger.isDebugEnabled()) {
-                        logger.debug("[" + id + "] Query " + queryId + " is submitted.");
-                    }
-                    boolean queryComplete = false;
-                    while (!queryComplete) {
-                        ControlMessage controlMessage = queue.take();
-                        if (controlMessage instanceof ClientQueryResponse) {
-                            ClientQueryResponse queryResponse = (ClientQueryResponse) controlMessage;
-                            queryComplete = currentQueryResponse.setExpectedQueryResponseCount(queryResponse.getTargetCompCount());
-                        } else if (controlMessage instanceof TargetQueryResponse) {
-                            TargetQueryResponse targetQueryResponse = (TargetQueryResponse) controlMessage;
-                            queryComplete = currentQueryResponse.addQueryResponse(targetQueryResponse.getResponse(),
-                                    targetQueryResponse.getQueryEvalTime());
-                        }
-                    }
-                    completedQueryCount++;
-                    queryManager.removeClient(queryId);
-                    if (logger.isDebugEnabled()) {
-                        logger.debug("[" + id + "] Query " + queryId + " is complete!. Completed: " +
-                                completedQueryCount + "[" + queryCount + "]");
-                    }
-                    statRecorder.record(queryTypes[index], currentQueryResponse.getElapsedTimeInMS(),
-                            currentQueryResponse.getQueryResponseSizeInMB());
+                    nextQ = queries[index];
+                    queryType = queryTypes[index];
                 } else {
                     logger.error("[" + id + "] Next query is null!, QClient is terminating!");
                     break;
                 }
+            } else {
+                nextQ = QueryCreator.create();
+                queryType = QueryCreator.QueryType.Relational;
+            }
+            try {
+                long queryId = queryManager.getNextQueryId();
+                ClientQueryRequest queryRequest = new ClientQueryRequest(queryId, clientUrl, nextQ.payload, nextQ.geohashes);
+                QueryResponse currentQueryResponse = new QueryResponse(queryId, nextQ.payload);
+                queryManager.registerQClient(this, queryId);
+                SendUtility.sendControlMessage(nextEndpoint(), queryRequest);
+                if (logger.isDebugEnabled()) {
+                    logger.debug("[" + id + "] Query " + queryId + " is submitted.");
+                }
+                boolean queryComplete = false;
+                while (!queryComplete) {
+                    ControlMessage controlMessage = queue.take();
+                    if (controlMessage instanceof ClientQueryResponse) {
+                        ClientQueryResponse queryResponse = (ClientQueryResponse) controlMessage;
+                        queryComplete = currentQueryResponse.setExpectedQueryResponseCount(queryResponse.getTargetCompCount());
+                    } else if (controlMessage instanceof TargetQueryResponse) {
+                        TargetQueryResponse targetQueryResponse = (TargetQueryResponse) controlMessage;
+                        queryComplete = currentQueryResponse.addQueryResponse(targetQueryResponse.getResponse(),
+                                targetQueryResponse.getQueryEvalTime());
+                    }
+                }
+                completedQueryCount++;
+                queryManager.removeClient(queryId);
+                if (logger.isDebugEnabled()) {
+                    logger.debug("[" + id + "] Query " + queryId + " is complete!. Completed: " +
+                            completedQueryCount + "[" + queryCount + "]");
+                }
+                statRecorder.record(queryType, currentQueryResponse.getElapsedTimeInMS(),
+                        currentQueryResponse.getQueryResponseSizeInKB());
+
             } catch (ClientException | IOException e) {
                 logger.error("[" + id + "] Error instantiating the query request.", e);
             } catch (CommunicationsException e) {
@@ -117,6 +139,7 @@ public class QClient implements Runnable {
                 logger.error("[" + id + "] Error retrieving messages from the internal queue.", e);
             }
         }
+
         logger.info("[" + id + "] Completed running all queries.");
         latch.countDown();
     }

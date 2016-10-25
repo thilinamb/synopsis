@@ -118,6 +118,23 @@ public class Client {
                 throw e;
             }
         }
+        onQClientsCompletion(countDownLatch, qClients);
+    }
+
+    void launchQClients(int qClientCount, int queryCount) {
+        CountDownLatch countDownLatch = new CountDownLatch(qClientCount);
+        QClient[] qClients = new QClient[qClientCount];
+        for (int i = 0; i < qClientCount; i++) {
+            QClient qClient = new QClient(queryCount, this.endpoints, this.getAddr(),
+                    this.queryManager, countDownLatch);
+            qClients[i] = qClient;
+            Thread clientThread = new Thread(qClient);
+            clientThread.start();
+        }
+        onQClientsCompletion(countDownLatch, qClients);
+    }
+
+    private void onQClientsCompletion(CountDownLatch countDownLatch, QClient[] qClients) {
         try {
             countDownLatch.await();
             logger.info("All the QClient threads have completed. Merging results.");
