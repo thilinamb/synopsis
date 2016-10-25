@@ -37,7 +37,7 @@ public class Main {
             client.init();
             //testQuery(client);
             //testPersistState(client);
-            testQClient(client);
+            testQClient2(client);
             new CountDownLatch(1).await();
         } catch (IOException e) {
             LOGGER.error("Error when populating the properties.", e);
@@ -79,7 +79,11 @@ public class Main {
         qTypes[4] = QueryCreator.QueryType.Metadata;
         qTypes[5] = QueryCreator.QueryType.Metadata;
         double[] percentages = new double[]{0.1d, 0.1d, 0.1d, 0.3d, 0.3d, 0.1d};
-        client.dispatchQClients(10, 100, queries, qTypes, percentages);
+        client.launchQClients(10, 100, queries, qTypes, percentages);
+    }
+
+    private static void testQClient2(Client client){
+        client.launchQClients(10, 10000);
     }
 }
 
