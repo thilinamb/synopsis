@@ -114,9 +114,7 @@ public class GeoTrie {
             } else {
                 if (path.hasNext() == false) {
                     /* The next vertex is the last one in the search path */
-                    System.out.println("removing: " + search.getLabel());
                     vertex.disconnect(search.getLabel());
-                    System.out.println(vertex.numNeighbors());
                 } else {
                     /* Keep going */
                     remove(neighbor, path);
