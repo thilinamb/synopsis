@@ -10,14 +10,16 @@ import neptune.geospatial.core.computations.scalingctxt.FullQualifiedComputation
 import neptune.geospatial.core.computations.scalingctxt.MonitoredPrefix;
 import neptune.geospatial.core.computations.scalingctxt.PendingScaleInRequest;
 import neptune.geospatial.core.computations.scalingctxt.ScalingContext;
+import neptune.geospatial.core.protocol.msg.StateTransferMsg;
 import neptune.geospatial.core.protocol.msg.scalein.ScaleInComplete;
 import neptune.geospatial.core.protocol.msg.scaleout.StateTransferCompleteAck;
-import neptune.geospatial.core.protocol.msg.StateTransferMsg;
 import neptune.geospatial.hazelcast.type.SketchLocation;
 import neptune.geospatial.util.RivuletUtil;
 import neptune.geospatial.util.trie.GeoHashPrefixTree;
 import org.apache.log4j.Logger;
 
+import java.io.DataOutputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.Map;
 
@@ -49,7 +51,12 @@ public class StateTransferMsgProcessor implements ProtocolProcessor {
                 completeScaleIn(stateTransferMsg.getKeyPrefix(), instanceIdentifier, pendingReq);
             }
         } else {    // scale-out
-            streamProcessor.merge(stateTransferMsg.getPrefix(), stateTransferMsg.getSerializedData());
+            try {
+                streamProcessor.merge(stateTransferMsg.getPrefix(), stateTransferMsg.getSerializedData());
+            } catch (Throwable e) {
+                logger.error(e);
+                dumpTransferredStateToDisk(stateTransferMsg.getSerializedData(), stateTransferMsg.getPrefix());
+            }
             String childPrefix = streamProcessor.getPrefix(stateTransferMsg.getLastMessagePrefix(),
                     stateTransferMsg.getPrefix().length());
             // handling the case where no messages are sent after scaling out.
@@ -107,5 +114,33 @@ public class StateTransferMsgProcessor implements ProtocolProcessor {
             }
         }
         pendingReq.setReceivedCount(0);
+    }
+
+    private void dumpTransferredStateToDisk(byte[] state, String prefix){
+        FileOutputStream fos = null;
+        DataOutputStream dos = null;
+        try {
+            String fName = "/tmp/state-" + prefix + ".dump";
+            fos = new FileOutputStream(fName);
+            dos = new DataOutputStream(fos);
+            dos.writeInt(state.length);
+            dos.write(state);
+            dos.flush();
+            fos.flush();
+            logger.info("Transferred state saved as " + fName);
+        } catch (IOException e) {
+            logger.error("Error dumping the transfered state for analysis.", e);
+        } finally {
+            try {
+                if(fos != null){
+                    fos.close();
+                }
+                if(dos != null){
+                    dos.close();
+                }
+            } catch (IOException e) {
+                logger.error("Error closing file stream.", e);
+            }
+        }
     }
 }

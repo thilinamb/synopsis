@@ -32,10 +32,12 @@ public class GeoHashPartitioner implements Partitioner {
 
     @Override
     public Topic[] partition(StreamEvent streamEvent, Topic[] topics) {
-        if (firstOutgoingMessage) {
-            shortCircuitedRoutingRegistry = ShortCircuitedRoutingRegistry.getInstance();
-            shortCircuitedRoutingRegistry.registerGeoHashPartitioner(this);
-            firstOutgoingMessage = false;
+        synchronized (this) {
+            if (firstOutgoingMessage) {
+                shortCircuitedRoutingRegistry = ShortCircuitedRoutingRegistry.getInstance();
+                shortCircuitedRoutingRegistry.registerGeoHashPartitioner(this);
+                firstOutgoingMessage = false;
+            }
         }
         GeoHashIndexedRecord ghIndexedRec = (GeoHashIndexedRecord) streamEvent;
         if (ghIndexedRec.getHeader() == Constants.RecordHeaders.PAYLOAD) {
