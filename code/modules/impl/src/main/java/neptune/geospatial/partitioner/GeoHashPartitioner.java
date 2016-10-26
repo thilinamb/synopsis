@@ -55,7 +55,7 @@ public class GeoHashPartitioner implements Partitioner {
     }
 
     private Topic[] getReceiverTopics(Topic[] topics, GeoHashIndexedRecord ghIndexedRec) {
-        Topic shortCircuitedTopic = shortCircuitedRoutingRegistry.getShortCircuitedRoutingRule(ghIndexedRec.getGeoHash());
+        Topic shortCircuitedTopic = shortCircuitedRoutingRegistry.getShortCircuitedRoutingRule(ghIndexedRec);
         if (shortCircuitedTopic == null) {
             int prefixLen = ghIndexedRec.getPrefixLength() * GeoHash.BITS_PER_CHAR;
             // convert the geo-hash string into the corresponding bit string
