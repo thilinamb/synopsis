@@ -149,6 +149,7 @@ public class SketchProcessor extends AbstractGeoSpatialStreamProcessor {
         } catch (Exception e) {
             System.out.println("Failed to merge sketch");
             e.printStackTrace();
+            dumpTransferredStateToDisk(serializedSketch, prefix);
         }
     }
 
@@ -278,6 +279,36 @@ public class SketchProcessor extends AbstractGeoSpatialStreamProcessor {
         } catch (Exception e) {
             System.out.println("Error during diff restore");
             e.printStackTrace();
+        }
+    }
+
+    private void dumpTransferredStateToDisk(byte[] state, String prefix){
+        FileOutputStream fos = null;
+        DataOutputStream dos = null;
+        try {
+            String fName = "/tmp/state-" + prefix + ".dump";
+            fos = new FileOutputStream(fName);
+            dos = new DataOutputStream(fos);
+            dos.writeInt(state.length);
+            dos.write(state);
+            dos.flush();
+            fos.flush();
+            System.out.println("Transferred state saved as " + fName);
+        } catch (IOException e) {
+            System.out.println("Error dumping the transfered state for analysis.");
+            e.printStackTrace();
+        } finally {
+            try {
+                if(fos != null){
+                    fos.close();
+                }
+                if(dos != null){
+                    dos.close();
+                }
+            } catch (IOException e) {
+                System.out.println("Error closing file stream.");
+                e.printStackTrace();
+            }
         }
     }
 }

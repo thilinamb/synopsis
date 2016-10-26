@@ -86,6 +86,7 @@
         <module>modules/benchmarks</module>
         <module>modules/stats</module>
         <module>modules/client</module>
+        <module>modules/external</module>
     </modules>
 
 </project>
