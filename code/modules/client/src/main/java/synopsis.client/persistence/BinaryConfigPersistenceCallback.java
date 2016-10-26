@@ -1,7 +1,5 @@
 package synopsis.client.persistence;
 
-import com.google.gson.Gson;
-import neptune.geospatial.core.protocol.msg.client.PersistStateResponse;
 import org.apache.log4j.Logger;
 
 import java.io.DataOutputStream;
@@ -17,21 +15,19 @@ import java.io.IOException;
  *
  * @author Thilina Buddhika
  */
-public class JSONConfigPersistenceCallback implements PersistenceCompletionCallback {
+public class BinaryConfigPersistenceCallback implements PersistenceCompletionCallback {
 
-    private final Logger logger = Logger.getLogger(JSONConfigPersistenceCallback.class);
+    private final Logger logger = Logger.getLogger(BinaryConfigPersistenceCallback.class);
+    private volatile boolean isCompleted = false;
 
     @Override
     public void handlePersistenceCompletion(OutstandingPersistenceTask task) {
-        Gson gson = new Gson();
-        byte[] bytes = gson.toJson(task).getBytes();
         FileOutputStream fos = null;
         DataOutputStream dos = null;
         try {
             fos = new FileOutputStream(new File("/tmp/" + task.getPersistenceTaskId() + ".pstat"));
             dos = new DataOutputStream(fos);
-            dos.writeInt(bytes.length);
-            dos.write(bytes);
+            task.serialize(dos);
             // flush the buffers
             dos.flush();
             fos.flush();
@@ -48,16 +44,14 @@ public class JSONConfigPersistenceCallback implements PersistenceCompletionCallb
             } catch (IOException e) {
                 logger.error("Error closing output streams.", e);
             }
+            isCompleted = true;
         }
     }
 
-    public static void main(String[] args) {
-        OutstandingPersistenceTask task = new OutstandingPersistenceTask(1000l, 1);
-        task.handlePersistStateResp(new PersistStateResponse(1000l, "/tmp/", "comp-1", new byte[1000]));
-        Gson gson = new Gson();
-        String jsonStr = gson.toJson(task);
-        OutstandingPersistenceTask task2 = gson.fromJson(jsonStr, OutstandingPersistenceTask.class);
-        System.out.println("Done!");
+    @Override
+    public boolean isCompleted() {
+        return isCompleted;
     }
+
 }
 
