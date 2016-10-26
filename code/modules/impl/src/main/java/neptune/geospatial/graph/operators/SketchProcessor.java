@@ -99,17 +99,25 @@ public class SketchProcessor extends AbstractGeoSpatialStreamProcessor {
         ByteArrayOutputStream byteOut = new ByteArrayOutputStream();
 
         try {
+            GZIPOutputStream gzOut
+                = new GZIPOutputStream(byteOut);
             SerializationOutputStream out
-                = new SerializationOutputStream(new GZIPOutputStream(byteOut));
+                = new SerializationOutputStream(gzOut);
 
             PartitionQuery pq = new PartitionQuery(this.sketch.getMetrics());
             pq.addExpression(
                     new Expression(
                         Operator.STR_PREFIX, new Feature("location", prefix)));
             pq.execute(sketch.getRoot());
+            if (pq.hasResults() == false) {
+                System.out.println("WARNING: PartitionQuery on prefix "
+                        + "[" + prefix + "] returned no matches!");
+            }
             pq.serializeResults(sketch.getRoot(), out);
-            out.close();
 
+            out.flush();
+            gzOut.finish();
+            byteOut.close();
             this.sketch.geoTrie.remove(prefix);
         } catch (Exception e) {
             System.out.println("Failed to split sketch");
@@ -126,6 +134,16 @@ public class SketchProcessor extends AbstractGeoSpatialStreamProcessor {
                         new GZIPInputStream(
                             new ByteArrayInputStream(serializedSketch))));
 
+            in.mark(0);
+            if (in.read() == -1) {
+                System.out.println("WARNING: Cannot merge sketch to prefix "
+                        + "[" + prefix + "]: "
+                        + "serialized sketch payload is empty!");
+                in.close();
+                return;
+            } else {
+                in.reset();
+            }
             this.sketch.merge(in);
             in.close();
         } catch (Exception e) {
