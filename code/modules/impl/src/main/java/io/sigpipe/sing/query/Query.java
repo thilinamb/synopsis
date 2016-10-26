@@ -192,6 +192,18 @@ public abstract class Query implements ByteSerializable {
         return matches;
     }
 
+    @Override
+    public String toString() {
+        String str = "";
+        for (String expName : expressions.keySet()) {
+            List<Expression> exps = expressions.get(expName);
+            for (Expression e : exps) {
+                str += e.toString() + System.lineSeparator();
+            }
+        }
+        return str;
+    }
+
     @Deserialize
     public Query(SerializationInputStream in)
     throws IOException, SerializationException {
