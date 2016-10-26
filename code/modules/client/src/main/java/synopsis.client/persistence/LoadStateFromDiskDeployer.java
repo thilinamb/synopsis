@@ -1,6 +1,5 @@
 package synopsis.client.persistence;
 
-import com.google.gson.Gson;
 import ds.granules.Granules;
 import ds.granules.communication.direct.control.SendUtility;
 import ds.granules.exception.CommunicationsException;
@@ -129,20 +128,28 @@ public class LoadStateFromDiskDeployer extends GeoSpatialDeployer {
 
         logger.info("Using deployment path plan: " + serializedDeploymentPlanLoc);
         OutstandingPersistenceTask outstandingPersistenceTask = null;
+        FileInputStream fis = null;
+        DataInputStream dis = null;
         if (serializedDeploymentPlanLoc != null) {
             try {
-                FileInputStream fis = new FileInputStream(serializedDeploymentPlanLoc);
-                DataInputStream dis = new DataInputStream(fis);
-                int length = dis.readInt();
-                logger.info("Serialized deployment plan size: " + length);
-                byte[] serializedBytes = new byte[length];
-                dis.readFully(serializedBytes);
-                String serializedString = new String(serializedBytes);
-                Gson gson = new Gson();
-                outstandingPersistenceTask = gson.fromJson(serializedString, OutstandingPersistenceTask.class);
+                fis = new FileInputStream(serializedDeploymentPlanLoc);
+                dis = new DataInputStream(fis);
+                outstandingPersistenceTask = new OutstandingPersistenceTask();
+                outstandingPersistenceTask.deserialize(dis);
             } catch (IOException e) {
                 logger.error("Error reading the deployment plan.", e);
                 System.exit(-1);
+            } finally {
+                try {
+                    if(fis != null){
+                        fis.close();
+                    }
+                    if(dis != null){
+                        dis.close();
+                    }
+                } catch (IOException e) {
+                    logger.error("Error closing file streams.", e);
+                }
             }
         } else {
             System.err.println("Location of the serialized deployment plan is not provided. Exiting.");
@@ -187,7 +194,9 @@ public class LoadStateFromDiskDeployer extends GeoSpatialDeployer {
             byte[] updatedPrefixTree = deployer.getUpdatedPrefixTree();
             UpdatePrefixTreeReq updatePrefixTreeReq = new UpdatePrefixTreeReq(updatedPrefixTree);
 
-            for(ResourceEndpoint endpoint: deployer.getDeploymentLocations()){
+            Thread.sleep(2 * 60 * 1000);
+
+            for (ResourceEndpoint endpoint : deployer.getDeploymentLocations()) {
                 SendUtility.sendControlMessage(endpoint.getControlEndpoint(), updatePrefixTreeReq);
             }
 
