@@ -22,6 +22,7 @@ public class StatConstants {
         public static final int PROC_LOCALLY_PROCESSED_PREF_COUNT = 2;
         public static final int PROC_THROUGHPUT = 3;
         public static final int PROC_PREFIX_LENGTH = 4;
+        public static final int PROC_QUERY_THROUGHPUT = 5;
         // ingester related metrics
         public static final int ING_SENT_MSG_COUNT = 0;
         public static final int ING_SENT_BYTE_COUNT = 1;

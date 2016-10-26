@@ -13,17 +13,18 @@ import ds.granules.scheduler.Resource;
 import ds.granules.util.Constants;
 import ds.granules.util.NeptuneRuntime;
 import ds.granules.util.ParamsReader;
-import neptune.geospatial.core.protocol.msg.client.ClientQueryRequest;
-import neptune.geospatial.core.protocol.msg.client.ClientQueryResponse;
-import neptune.geospatial.core.protocol.msg.client.TargetedQueryRequest;
 import neptune.geospatial.core.computations.AbstractGeoSpatialStreamProcessor;
 import neptune.geospatial.core.protocol.AbstractProtocolHandler;
 import neptune.geospatial.core.protocol.msg.EnableShortCircuiting;
 import neptune.geospatial.core.protocol.msg.StateTransferMsg;
+import neptune.geospatial.core.protocol.msg.client.ClientQueryRequest;
+import neptune.geospatial.core.protocol.msg.client.ClientQueryResponse;
+import neptune.geospatial.core.protocol.msg.client.TargetedQueryRequest;
 import neptune.geospatial.core.protocol.msg.scaleout.DeploymentAck;
 import neptune.geospatial.core.protocol.msg.scaleout.PrefixOnlyScaleOutCompleteAck;
 import neptune.geospatial.core.protocol.msg.scaleout.ScaleOutLockRequest;
 import neptune.geospatial.core.protocol.msg.scaleout.StateTransferCompleteAck;
+import neptune.geospatial.core.query.QueryProcessingTask;
 import neptune.geospatial.ft.protocol.CheckpointAck;
 import neptune.geospatial.graph.operators.NOAADataIngester;
 import neptune.geospatial.hazelcast.HazelcastClientInstanceHolder;
@@ -302,6 +303,8 @@ public class ManagedResource {
 
     private Map<String, NOAADataIngester> registeredIngesters = new HashMap<>();
 
+    private ExecutorService queryProcessors = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
+
     private ManagedResource(Properties inProps, int numOfThreads) throws CommunicationsException {
         Resource resource = new Resource(inProps, numOfThreads);
         resource.init();
@@ -487,7 +490,13 @@ public class ManagedResource {
 
     void dispatchControlMessage(String computationId, ControlMessage ctrlMessage) {
         synchronized (this) {
-            if (monitoredProcessors.containsKey(computationId)) {
+            if (ctrlMessage instanceof TargetedQueryRequest) {
+                TargetedQueryRequest queryRequest = (TargetedQueryRequest) ctrlMessage;
+                for(String compId : queryRequest.getCompId()) {
+                    queryProcessors.submit(new QueryProcessingTask(queryRequest,
+                            monitoredProcessors.get(compId).computation));
+                }
+            } else if (monitoredProcessors.containsKey(computationId)) {
                 monitoredProcessors.get(computationId).computation.processCtrlMessage(ctrlMessage);
             } else if (ctrlMessage instanceof StateTransferMsg) {
                 StateTransferMsg stateTransferMsg = (StateTransferMsg) ctrlMessage;

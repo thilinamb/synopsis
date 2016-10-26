@@ -92,7 +92,7 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
 
         @Override
         public void run() {
-            if (!hasStartedReceivingData.get()) {
+            if (publishData()) {
                 return;
             }
             if (firstAttempt) {
@@ -1083,5 +1083,9 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
         } else {
             logger.warn("Invalid prefixOnlyScaleOutOpId: " + prefixOnlyScaleOutOpId);
         }
+    }
+
+    protected boolean publishData(){
+        return hasStartedReceivingData.get();
     }
 }
