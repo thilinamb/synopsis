@@ -16,6 +16,7 @@ public class RelationalQuery extends Query {
 
     protected Set<Vertex> pruned;
     protected GraphMetrics metrics;
+    protected Vertex root;
 
     public RelationalQuery() {
 
@@ -35,6 +36,13 @@ public class RelationalQuery extends Query {
         return this.pruned.size();
     }
 
+    public boolean hasResults() {
+        if (this.root == null) {
+            return false;
+        }
+        return !this.pruned.contains(this.root);
+    }
+
     @Override
     public void execute(Vertex root)
     throws IOException, QueryException {
@@ -47,6 +55,8 @@ public class RelationalQuery extends Query {
         } else {
             this.pruned = new HashSet<>();
         }
+
+        this.root = root;
 
         prune(root, 0);
     }
