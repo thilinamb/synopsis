@@ -163,6 +163,14 @@ public class Client {
                 throw new ClientException(eMsg, e);
             }
         }
+        try {
+            Thread.sleep(5 * 60 * 1000);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        if(!cb.isCompleted()){
+            PersistenceManager.getInstance().forceCompletion(checkpointId);
+        }
     }
 
     private String getRandomSynopsisNode() {
