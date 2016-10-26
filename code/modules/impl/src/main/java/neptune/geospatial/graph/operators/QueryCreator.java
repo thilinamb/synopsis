@@ -3,6 +3,8 @@ package neptune.geospatial.graph.operators;
 import java.io.BufferedOutputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;
@@ -46,6 +48,14 @@ public class QueryCreator {
         }
     }
 
+    private static int[] featureIndexes;
+    static {
+        featureIndexes = new int[ReducedTestConfiguration.FEATURE_NAMES.length];
+        for (int i = 0; i < featureIndexes.length; ++i) {
+            featureIndexes[i] = i;
+        }
+    }
+
     public static QueryWrapper create() {
         QueryType type = QueryType.values()[
             random.nextInt(QueryType.values().length)];
@@ -82,10 +92,13 @@ public class QueryCreator {
                     Operator.STR_PREFIX, new Feature("location", geohash)));
 
         int activeFeatures = ReducedTestConfiguration.FEATURE_NAMES.length;
-        int numFeatures = 1 + random.nextInt(activeFeatures - 1);
+        int numFeatures = 1 + random.nextInt(activeFeatures / 2);
+
+        int[] indexes = Arrays.copyOf(featureIndexes, featureIndexes.length);
+        shuffleIndexes(indexes);
 
         for (int i = 0; i < numFeatures; ++i) {
-            String feature = ReducedTestConfiguration.FEATURE_NAMES[i];
+            String feature = ReducedTestConfiguration.FEATURE_NAMES[indexes[i]];
             SimplePair<Double> range = ranges.get(feature);
             if (range == null) {
                 continue;
@@ -141,6 +154,19 @@ public class QueryCreator {
         rand *= high;
         rand -= low;
         return rand;
+    }
+
+    private static void shuffleIndexes(int[] indexes) {
+        int idx;
+        int current, temp;
+        for (int i = indexes.length - 1; i > 0; i--) {
+            idx = random.nextInt(i + 1);
+            current = indexes[i];
+            temp = indexes[idx];
+
+            indexes[idx] = current;
+            indexes[i] = temp;
+         }
     }
 
     private static final double[] rangeSizes = { .2, .1, .05 };
