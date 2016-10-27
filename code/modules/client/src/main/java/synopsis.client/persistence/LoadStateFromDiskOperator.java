@@ -4,7 +4,6 @@ import ds.funnel.data.format.FormatReader;
 import ds.funnel.data.format.FormatWriter;
 import ds.granules.neptune.interfere.core.NIException;
 import neptune.geospatial.benchmarks.sketch.ExtendedSketchProcessorWithLogging;
-import neptune.geospatial.core.query.QueryStatReporter;
 import neptune.geospatial.core.resource.ManagedResource;
 import org.apache.log4j.Logger;
 
@@ -75,6 +74,6 @@ public class LoadStateFromDiskOperator extends ExtendedSketchProcessorWithLoggin
 
     @Override
     protected boolean publishData() {
-        return QueryStatReporter.getInstance().getProcessedQueryCount(this.getInstanceIdentifier()) > 0;
+        return true;
     }
 }
