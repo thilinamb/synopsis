@@ -51,7 +51,7 @@ public class QueryResponse {
     }
 
     public double getQueryResponseSizeInKB(){
-        return queryRespSize/(1024);
+        return queryRespSize * 1.0/(1024);
     }
 
     public void setElapsedTime(){
