@@ -27,10 +27,10 @@ import neptune.geospatial.core.protocol.msg.scaleout.ScaleOutRequest;
 import neptune.geospatial.core.protocol.processors.ProtocolProcessor;
 import neptune.geospatial.core.protocol.processors.StateTransferMsgProcessor;
 import neptune.geospatial.core.protocol.processors.client.PersistStateReqProcessor;
-import neptune.geospatial.core.protocol.processors.client.TargetedQueryProcessor;
 import neptune.geospatial.core.protocol.processors.client.UpdatePrefixTreeReqProcessor;
 import neptune.geospatial.core.protocol.processors.scalein.*;
 import neptune.geospatial.core.protocol.processors.scalout.*;
+import neptune.geospatial.core.query.QueryStatReporter;
 import neptune.geospatial.core.resource.ManagedResource;
 import neptune.geospatial.ft.*;
 import neptune.geospatial.ft.protocol.CheckpointAck;
@@ -79,6 +79,7 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
         private StatClient statClient = StatClient.getInstance();
         private long previousThroughput = 0;
         private long previousThroughputTS = -1;
+        private long previousQueryCount = -1;
         private BufferedWriter buffW;
 
         public StatPublisher() {
@@ -106,13 +107,23 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
                 if (previousThroughputTS != -1) {
                     throughput = (currentCount - previousThroughput) * 1000.0 / (now - previousThroughputTS);
                 }
-                previousThroughputTS = now;
                 previousThroughput = currentCount;
+
+                // query throughput
+                double queryThroughput = 0.0;
+                long currentQueryCount = QueryStatReporter.getInstance().getProcessedQueryCount(this.instanceId);
+                if(previousQueryCount != -1){
+                    queryThroughput = (currentQueryCount - previousQueryCount) * 1000.0/ (now - previousThroughputTS);
+                }
+                previousQueryCount = currentQueryCount;
+
+                previousThroughputTS = now;
 
                 double backlog = getBacklogLength();
                 double memUsage = getLeafCount();
                 double locallyProcessedPrefCount = scalingContext.getLocallyProcessedPrefixCount();
                 double prefixLength = scalingContext.getPrefixLength();
+
                 /*try {
                     buffW.write(System.currentTimeMillis() + "," + locallyProcessedPrefCount + "," + String.format("%.3f",memUsage/(1024*1024)) + "," + processedCount.get() + "\n");
                     buffW.flush();
@@ -121,7 +132,7 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
                 }*/
                 PeriodicInstanceMetrics periodicInstanceMetrics = new PeriodicInstanceMetrics(instanceId,
                         StatConstants.ProcessorTypes.PROCESSOR,
-                        new double[]{backlog, memUsage, locallyProcessedPrefCount, throughput, prefixLength});
+                        new double[]{backlog, memUsage, locallyProcessedPrefCount, throughput, prefixLength, queryThroughput});
                 statClient.publish(periodicInstanceMetrics);
             }
         }
@@ -201,6 +212,7 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
             new HashMap<Integer, FullQualifiedComputationAddr>());
     private int prefixOnlyScaleOutOpId = 1;
     private AtomicBoolean hasStartedReceivingData = new AtomicBoolean(false);
+    private Set<String> scaledOutPrefixes = new HashSet<>();
 
     /**
      * Implement the specific business logic to process each
@@ -789,7 +801,7 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
         protocolProcessors.put(ProtocolTypes.SCALE_IN_COMPLETE_ACK, new ScaleInCompleteAckProcessor());
         protocolProcessors.put(ProtocolTypes.STATE_REPL_LEVEL_INCREASE, new StateReplLvlIncreaseMsgProcessor());
         protocolProcessors.put(ProtocolTypes.CHECKPOINT_ACK, new CheckpointAckProcessor());
-        protocolProcessors.put(ProtocolTypes.TARGET_QUERY_REQ, new TargetedQueryProcessor());
+        //protocolProcessors.put(ProtocolTypes.TARGET_QUERY_REQ, new TargetedQueryProcessor());
         protocolProcessors.put(ProtocolTypes.PERSIST_STATE_REQ, new PersistStateReqProcessor());
         protocolProcessors.put(ProtocolTypes.UPDATE_PREFIX_TREE, new UpdatePrefixTreeReqProcessor());
     }

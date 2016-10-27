@@ -55,4 +55,12 @@ public class PersistenceManager {
         }
     }
 
+    public void forceCompletion(long persistenceTaskId){
+        OutstandingPersistenceTask task = outstandingPersistenceTaskMap.
+                remove(persistenceTaskId);
+        logger.info("Calling forced completion of the persistence task.");
+        synchronized (task) {
+            callbacks.remove(persistenceTaskId).handlePersistenceCompletion(task);
+        }
+    }
 }

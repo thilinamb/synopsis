@@ -6,4 +6,6 @@ package synopsis.client.persistence;
 public interface PersistenceCompletionCallback {
 
     public void handlePersistenceCompletion(OutstandingPersistenceTask task);
+
+    public boolean isCompleted();
 }

@@ -1,6 +1,7 @@
 package neptune.geospatial.partitioner;
 
 import ds.funnel.topic.Topic;
+import neptune.geospatial.graph.messages.GeoHashIndexedRecord;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -22,11 +23,11 @@ public class ShortCircuitedRoutingRegistry {
         return instance;
     }
 
-    public void registerGeoHashPartitioner(GeoHashPartitioner partitioner) {
+    public synchronized void registerGeoHashPartitioner(GeoHashPartitioner partitioner) {
         this.partitioner = partitioner;
     }
 
-    public GeoHashPartitioner getPartitioner() {
+    public synchronized GeoHashPartitioner getPartitioner() {
         return partitioner;
     }
 
@@ -34,7 +35,8 @@ public class ShortCircuitedRoutingRegistry {
         routingTable.put(prefix, topic);
     }
 
-    public Topic getShortCircuitedRoutingRule(String prefix) {
+    public Topic getShortCircuitedRoutingRule(GeoHashIndexedRecord record) {
+        String prefix = record.getGeoHash();
         Topic topic = null;
         int longestMatchPrefixLength = 0;
         for (String shortCircuitedPrefix : routingTable.keySet()) {
@@ -42,6 +44,9 @@ public class ShortCircuitedRoutingRegistry {
                 topic = routingTable.get(shortCircuitedPrefix);
                 longestMatchPrefixLength = shortCircuitedPrefix.length();
             }
+        }
+        if(topic != null){
+            record.setPrefixLength(longestMatchPrefixLength);
         }
         return topic;
     }
