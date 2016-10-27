@@ -101,6 +101,10 @@ public class Vertex implements ByteSerializable {
     }
 
     public Vertex getFirstNeighbor() {
+        if (edges.isEmpty()) {
+            return null;
+        }
+
         return edges.firstEntry().getValue();
     }
 
