@@ -1,6 +1,6 @@
 #!/bin/bash
 
-java_opts="-Xmx1024m"
+java_opts="-Xmx512m"
 
 if [[ -e "../lib/" ]]; then
     PRG="$0"
