@@ -3,7 +3,7 @@ package synopsis.client;
 import neptune.geospatial.graph.operators.QueryCreator;
 import neptune.geospatial.graph.operators.QueryWrapper;
 import org.apache.log4j.Logger;
-import synopsis.client.persistence.JSONConfigPersistenceCallback;
+import synopsis.client.persistence.BinaryConfigPersistenceCallback;
 import synopsis.client.query.QueryCallback;
 import synopsis.client.query.QueryResponse;
 
@@ -20,6 +20,7 @@ import java.util.concurrent.CountDownLatch;
 public class Main {
 
     private static Logger LOGGER = Logger.getLogger(Main.class);
+    private static CountDownLatch opCompletion = new CountDownLatch(1);
 
     public static void main(String[] args) {
         try {
@@ -54,7 +55,8 @@ public class Main {
                 default:
                     System.err.println("Unsupported mode!");
             }
-            new CountDownLatch(1).await();
+            opCompletion.await();
+            LOGGER.info("Operation is complete.");
         } catch (IOException e) {
             LOGGER.error("Error when populating the properties.", e);
         } catch (ClientException e) {
@@ -75,7 +77,7 @@ public class Main {
     }
 
     private static void testPersistState(Client client) throws ClientException {
-        client.serializeState(new JSONConfigPersistenceCallback());
+        client.serializeState(new BinaryConfigPersistenceCallback());
     }
 
     private static void testQClient(Client client) throws ClientException {
@@ -100,6 +102,10 @@ public class Main {
 
     private static void testQClient2(Client client, int clientsCount, int queryCount) {
         client.launchQClients(clientsCount, queryCount);
+    }
+
+    static void notifyOperationComplete(){
+        opCompletion.countDown();
     }
 }
 

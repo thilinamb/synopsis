@@ -79,7 +79,7 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
         private StatClient statClient = StatClient.getInstance();
         private long previousThroughput = 0;
         private long previousThroughputTS = -1;
-        private long previousQueryCount = -1;
+        private double previousQueryCount = -1;
         private BufferedWriter buffW;
 
         public StatPublisher() {
@@ -92,7 +92,7 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
 
         @Override
         public void run() {
-            if (publishData()) {
+            if (!publishData()) {
                 return;
             }
             if (firstAttempt) {
@@ -111,9 +111,9 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
 
                 // query throughput
                 double queryThroughput = 0.0;
-                long currentQueryCount = QueryStatReporter.getInstance().getProcessedQueryCount(this.instanceId);
-                if(previousQueryCount != -1){
-                    queryThroughput = (currentQueryCount - previousQueryCount) * 1000.0/ (now - previousThroughputTS);
+                double currentQueryCount = QueryStatReporter.getInstance().getProcessedQueryCount(this.instanceId);
+                if (previousQueryCount != -1) {
+                    queryThroughput = (currentQueryCount - previousQueryCount) * 1000.0 / (now - previousThroughputTS);
                 }
                 previousQueryCount = currentQueryCount;
 
@@ -240,6 +240,7 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
 
     /**
      * Query the sketch
+     *
      * @param query - serialized query
      * @return - results of the query in the serialized form
      */
@@ -247,12 +248,14 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
 
     /**
      * Serialize the sketch to the provided output stream
+     *
      * @param dataOutputStream Outputstream to which the serialized data is written
      */
     public abstract void serialize(DataOutputStream dataOutputStream) throws IOException;
 
     /**
      * Populate the sketch from the deserialized data
+     *
      * @param dataInputStream Input stream of serialized data
      */
     public abstract void deserialize(DataInputStream dataInputStream) throws IOException;
@@ -537,7 +540,7 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
      * triggered.
      */
     public synchronized boolean recommendScaling(double excess, boolean memoryBased) {
-        if(!memoryBased){
+        if (!memoryBased) {
             return false;
         }
         if (!hasStartedReceivingData.get()) {
@@ -1085,7 +1088,7 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
         }
     }
 
-    protected boolean publishData(){
+    protected boolean publishData() {
         return hasStartedReceivingData.get();
     }
 }

@@ -9,7 +9,7 @@ import java.util.Map;
 public class QueryStatReporter {
 
     private static QueryStatReporter instance = new QueryStatReporter();
-    private Map<String, Long> queryCounter = new HashMap<>();
+    private Map<String, Double> queryCounter = new HashMap<>();
 
     private QueryStatReporter() {
         // singleton: private constructor
@@ -20,7 +20,7 @@ public class QueryStatReporter {
     }
 
     public synchronized void record(String compId, long delta) {
-        long counter = 0;
+        double counter = 0.0;
         if (queryCounter.containsKey(compId)) {
             counter = queryCounter.get(compId);
         }
@@ -28,7 +28,7 @@ public class QueryStatReporter {
         queryCounter.put(compId, counter);
     }
 
-    public synchronized long getProcessedQueryCount(String compId) {
+    public synchronized double getProcessedQueryCount(String compId) {
         if(queryCounter.containsKey(compId)) {
             return queryCounter.get(compId);
         } else {
