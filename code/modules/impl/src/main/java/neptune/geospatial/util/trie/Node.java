@@ -1,8 +1,6 @@
 package neptune.geospatial.util.trie;
 
 
-import ds.granules.exception.GranulesConfigurationException;
-import neptune.geospatial.util.RivuletUtil;
 import org.apache.log4j.Logger;
 
 import java.io.*;
@@ -187,11 +185,12 @@ public class Node {
     // TODO: remove this
     // this is a temporary method added to make sure that the logs are printed in a single node
     private boolean shouldLogToConsole() {
-        try {
+        /*try {
             return RivuletUtil.getCtrlEndpoint().startsWith("lattice-35");
         } catch (GranulesConfigurationException e) {
             return false;
-        }
+        }*/
+        return false;
     }
 
     /**
