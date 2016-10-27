@@ -4,7 +4,6 @@ import java.io.BufferedOutputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;
@@ -22,6 +21,8 @@ import io.sigpipe.sing.util.ReducedTestConfiguration;
 public class QueryCreator {
 
     private static Random random = new Random();
+
+    private static final int FEATURE_FRAC = 2;
 
     public enum QueryType {
         Relational,
@@ -92,7 +93,7 @@ public class QueryCreator {
                     Operator.STR_PREFIX, new Feature("location", geohash)));
 
         int activeFeatures = ReducedTestConfiguration.FEATURE_NAMES.length;
-        int numFeatures = 1 + random.nextInt(activeFeatures / 2);
+        int numFeatures = 1 + random.nextInt(activeFeatures / FEATURE_FRAC);
 
         int[] indexes = Arrays.copyOf(featureIndexes, featureIndexes.length);
         shuffleIndexes(indexes);
