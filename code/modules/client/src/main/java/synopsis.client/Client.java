@@ -132,6 +132,7 @@ public class Client {
             clientThread.start();
         }
         onQClientsCompletion(countDownLatch, qClients);
+        Main.notifyOperationComplete();
     }
 
     private void onQClientsCompletion(CountDownLatch countDownLatch, QClient[] qClients) {
@@ -171,6 +172,7 @@ public class Client {
         if(!cb.isCompleted()){
             PersistenceManager.getInstance().forceCompletion(checkpointId);
         }
+        Main.notifyOperationComplete();
     }
 
     private String getRandomSynopsisNode() {
