@@ -34,13 +34,13 @@ public abstract class AbstractProtocolHandler implements ChannelReaderCallback, 
     public void run() {
         // notify the host instance of the ProtocolHandler the proper start of the
         // protocol handling thread.
-        if(firstIteration){
+        if (firstIteration) {
             notifyStartup();
             firstIteration = false;
         }
-        try {
-            // start listening to the control messages.
-            while (!Thread.interrupted()) {
+        // start listening to the control messages.
+        while (!Thread.interrupted()) {
+            try {
                 synchronized (controlMessageQueue) {
                     if (controlMessageQueue.size() == 0) {
                         try {
@@ -50,12 +50,14 @@ public abstract class AbstractProtocolHandler implements ChannelReaderCallback, 
                         }
                     }
                 }
-                TopicDataEvent topicDataEvent = controlMessageQueue.remove();
-                ControlMessage ctrlMsg = protocolFactory.parse(topicDataEvent);
-                handle(ctrlMsg);
+                if(controlMessageQueue.size() > 0) {
+                    TopicDataEvent topicDataEvent = controlMessageQueue.remove();
+                    ControlMessage ctrlMsg = protocolFactory.parse(topicDataEvent);
+                    handle(ctrlMsg);
+                }
+            } catch (Throwable e) {
+                logger.error(e.getMessage(), e);    // log and continue
             }
-        } catch (Throwable e) {
-            logger.error(e.getMessage(), e);    // log and continue
         }
     }
 

@@ -1,15 +1,15 @@
 package io.sigpipe.sing.util;
 
-import java.util.HashMap;
-import java.util.Map;
-
 import io.sigpipe.sing.dataset.Quantizer;
 import io.sigpipe.sing.dataset.feature.Feature;
+
+import java.util.HashMap;
+import java.util.Map;
 
 public class TestConfiguration {
 
     public static final String[] FEATURE_NAMES = {
-        "vegitation_type_as_in_sib_surface",
+        /*"vegitation_type_as_in_sib_surface",
         "vegetation_surface",
         "precipitable_water_entire_atmosphere",
         "albedo_surface",
@@ -19,7 +19,7 @@ public class TestConfiguration {
         "temperature_surface",
         "relative_humidity_zerodegc_isotherm", // 0-100 range
         "downward_long_wave_rad_flux_surface",
-        "upward_short_wave_rad_flux_surface",
+        "upward_short_wave_rad_flux_surface",*/
         "snow_depth_surface",
         "lightning_surface", // boolean
         "ice_cover_ice1_no_ice0_surface", // boolean

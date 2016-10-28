@@ -216,15 +216,15 @@ public class NOAADataIngester extends StreamSource {
         } else {
             inputFiles = new File[0];
         }
-        /*// use only a subset of files to test querying -----------
-        if (inputFiles.length > 2) {
-            File[] sample = new File[2];
-            for(int i =0; i < 2; i++) {
+        // use only a subset of files to test querying -----------
+        if (inputFiles.length > 150) {
+            File[] sample = new File[150];
+            for(int i =0; i < 150; i++) {
                 sample[i] = inputFiles[i];
             }
             inputFiles = sample;
         }
-        // ---------------- */
+        // ----------------
         return inputFiles;
     }
 

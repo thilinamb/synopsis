@@ -33,7 +33,7 @@ public class ThrottledStreamIngester extends NOAADataIngester {
 
     @Override
     public void onSuccessfulEmission() {
-        if (tsLastEmitted == -1) {
+        /*if (tsLastEmitted == -1) {
             try {
                 Thread.sleep(20 * 1000);
                 logger.debug("Initial sleep period is over. Starting to emit messages.");
@@ -57,6 +57,7 @@ public class ThrottledStreamIngester extends NOAADataIngester {
             }
         }
         busywait();
+        */
     }
 
     private void busywait() {

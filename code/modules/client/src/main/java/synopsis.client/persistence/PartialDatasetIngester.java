@@ -14,7 +14,7 @@ public class PartialDatasetIngester extends NOAADataIngester{
     @Override
     protected void deserializeMemberVariables(FormatReader formatReader) {
         super.deserializeMemberVariables(formatReader);
-        this.initialWaitPeriodMS = 3 * 60 * 1000;
+        this.initialWaitPeriodMS = 300 * 60 * 1000;
         this.years = new String[]{"2015"};
     }
 }

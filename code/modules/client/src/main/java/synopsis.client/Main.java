@@ -57,6 +57,7 @@ public class Main {
             }
             opCompletion.await();
             LOGGER.info("Operation is complete.");
+            System.exit(-1);
         } catch (IOException e) {
             LOGGER.error("Error when populating the properties.", e);
         } catch (ClientException e) {
