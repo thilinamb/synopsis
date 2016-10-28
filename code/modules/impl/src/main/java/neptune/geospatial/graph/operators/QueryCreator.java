@@ -24,6 +24,8 @@ public class QueryCreator {
 
     private static final int FEATURE_FRAC = 2;
 
+    private static final double[] rangeSizes = { .2, .1, .05 };
+
     public enum QueryType {
         Relational,
         Metadata,
@@ -169,8 +171,6 @@ public class QueryCreator {
             indexes[i] = temp;
          }
     }
-
-    private static final double[] rangeSizes = { .2, .1, .05 };
 
     private static final String[] geo2500km = { "8", "9", "b", "c", "d", "f" };
 
