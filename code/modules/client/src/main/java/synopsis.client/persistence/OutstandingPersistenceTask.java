@@ -13,7 +13,7 @@ import java.util.Map;
 /**
  * @author Thilina Buddhika
  */
-class OutstandingPersistenceTask {
+public class OutstandingPersistenceTask {
 
     private Logger logger = Logger.getLogger(OutstandingPersistenceTask.class);
     private boolean success;
@@ -76,7 +76,7 @@ synchronized boolean handlePersistStateResp(PersistStateResponse resp) {
         return totalComputationCount;
     }
 
-    byte[] getSerializedPrefixTree() {
+    public byte[] getSerializedPrefixTree() {
         return serializedPrefixTree;
     }
 

@@ -295,6 +295,10 @@ public class Node {
                 '}';
     }
 
+    public String getPrefix() {
+        return prefix;
+    }
+
     public String getComputationId() {
         return computationId;
     }
