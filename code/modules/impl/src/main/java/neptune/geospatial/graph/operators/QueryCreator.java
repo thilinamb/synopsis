@@ -22,7 +22,7 @@ public class QueryCreator {
 
     private static Random random = new Random();
 
-    private static final int FEATURE_FRAC = 2;
+    private static final int FEATURE_FRAC = 1;
 
     private static final double[] rangeSizes = { .2, .1, .05 };
 
