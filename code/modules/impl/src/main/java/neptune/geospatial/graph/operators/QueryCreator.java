@@ -24,7 +24,7 @@ public class QueryCreator {
 
     private static final int FEATURE_FRAC = 1;
 
-    private static final double[] rangeSizes = { .2, .1, .05 };
+    private static final double[] rangeSizes = { 0.1, 0.05, 0.01 };
 
     public enum QueryType {
         Relational,
