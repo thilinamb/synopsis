@@ -168,7 +168,7 @@ public class Node {
         Node node = null;
         int longestMatchLen = 0;
         for (String childPrefix : childNodes.keySet()) {
-            if (prefix.contains(childPrefix)) {
+            if (prefix.startsWith(childPrefix)) {
                 if (childPrefix.length() > longestMatchLen) {
                     longestMatchLen = childPrefix.length();
                     node = childNodes.get(childPrefix);
