@@ -26,7 +26,9 @@ import neptune.geospatial.util.geohash.GeoHash;
 import org.apache.log4j.Logger;
 
 import java.io.*;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -84,6 +86,7 @@ public class NOAADataIngester extends StreamSource {
     protected String[] years = new String[]{"2014"};
     private int yearIndex = 0;
     protected int initialWaitPeriodMS = 10000;
+    private Map<String, Long> prefixFreq = new HashMap<>();
 
     public NOAADataIngester() {
         init();
@@ -174,6 +177,7 @@ public class NOAADataIngester extends StreamSource {
                 if (!readAllFiles) { // set a flag to stop flooding logs when it has completed processing data
                     readAllFiles = true;
                     logger.info("Completed reading all files.");
+                    dumpFrequencyInfo();
                 }
             }
         }
@@ -333,4 +337,44 @@ public class NOAADataIngester extends StreamSource {
             logger.error("Error when flushing buffers of existing outgoing topics.", e);
         }
     }
+
+    private synchronized void updateFrequency(String geoHash) {
+        String prefix = geoHash.substring(0, 4);
+        long count = 0;
+        if (prefixFreq.containsKey(prefix)) {
+            count = prefixFreq.get(prefix);
+        }
+        prefixFreq.put(prefix, count + 1);
+    }
+
+    private synchronized void dumpFrequencyInfo() {
+        FileWriter fileWriter = null;
+        BufferedWriter bufferedWriter = null;
+        try {
+            fileWriter = new FileWriter("/tmp/freq-info.fstat");
+            bufferedWriter = new BufferedWriter(fileWriter);
+            logger.info("Dumping frequency info. Number of prefixes: " + prefixFreq.size());
+            for (String prefix : prefixFreq.keySet()) {
+                bufferedWriter.write(prefix + "," + prefixFreq.get(prefix) + "\n");
+            }
+            bufferedWriter.flush();
+            fileWriter.flush();
+            bufferedWriter.close();
+            logger.info("Successfully dumped freq. info to file.");
+        } catch (IOException e) {
+            logger.error("Error writing to file.", e);
+        } finally {
+            try {
+                if(bufferedWriter != null){
+                    bufferedWriter.close();
+                }
+                if(fileWriter != null){
+                    fileWriter.close();
+                }
+            } catch (IOException e) {
+                logger.error("Error closing file stream.", e);
+            }
+        }
+    }
 }
+
