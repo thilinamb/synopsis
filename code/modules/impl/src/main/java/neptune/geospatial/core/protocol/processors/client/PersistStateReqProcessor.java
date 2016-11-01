@@ -29,7 +29,7 @@ public class PersistStateReqProcessor implements ProtocolProcessor {
                         AbstractGeoSpatialStreamProcessor streamProcessor) {
         PersistStateRequest persistStateRequest = (PersistStateRequest) ctrlMsg;
         long checkpointId = persistStateRequest.getCheckpointId();
-        String fileName = getSerializationLocation() + "/" + checkpointId;
+        String fileName = getSerializationLocation() + "/" + checkpointId + streamProcessor.getInstanceIdentifier().substring(0, 4);
         DataOutputStream dataOutputStream = null;
         FileOutputStream fos = null;
         boolean success = false;
