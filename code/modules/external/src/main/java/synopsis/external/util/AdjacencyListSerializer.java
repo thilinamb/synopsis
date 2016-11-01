@@ -106,32 +106,7 @@ public class AdjacencyListSerializer {
             System.err.println("Usage: <location_of_the_serialized_deployment_plan>");
         }
         String serializedDeplomentPlanLoc = args[0];
-        FileInputStream fis = null;
-        DataInputStream dis = null;
-        OutstandingPersistenceTask outstandingPersistenceTask = null;
-        try {
-            fis = new FileInputStream(serializedDeplomentPlanLoc);
-            dis = new DataInputStream(fis);
-            outstandingPersistenceTask = new OutstandingPersistenceTask();
-            outstandingPersistenceTask.deserialize(dis);
-            System.out.println("Successfully deserliazed the OutstandingPersistenceTask!");
-        } catch (IOException e) {
-            System.err.println("Error reading the deployment plan.");
-            e.printStackTrace();
-            System.exit(-1);
-        } finally {
-            try {
-                if (fis != null) {
-                    fis.close();
-                }
-                if (dis != null) {
-                    dis.close();
-                }
-            } catch (IOException e) {
-                System.err.println("Error closing file streams.");
-                e.printStackTrace();
-            }
-        }
+        OutstandingPersistenceTask outstandingPersistenceTask = Util.deserializeOutstandingPersistenceTask(serializedDeplomentPlanLoc);
 
         if (outstandingPersistenceTask == null) {
             System.err.println("OutstandingPersistenceTask is null. Exiting!");
