@@ -135,6 +135,7 @@ public class NOAADataIngester extends StreamSource {
                     writeToStream(Constants.Streams.NOAA_DATA_STREAM, record);
                     totalEmittedMsgCount.incrementAndGet();
                     totalEmittedBytes.addAndGet(record.getPayload().length);
+                    updateFrequency(record.getGeoHash());
                     if (totalEmittedMsgCount.get() == 1) {
                         statPublisherService.scheduleAtFixedRate(new StatPublisher(), 0, 2, TimeUnit.SECONDS);
                     }
