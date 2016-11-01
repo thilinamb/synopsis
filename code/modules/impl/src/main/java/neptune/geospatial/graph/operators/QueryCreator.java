@@ -60,11 +60,14 @@ public class QueryCreator {
     }
 
     public static QueryWrapper create() {
-        QueryType type = QueryType.values()[
-            random.nextInt(QueryType.values().length)];
+//        QueryType type = QueryType.values()[
+//            random.nextInt(QueryType.values().length)];
 
-        SpatialScope scope = SpatialScope.values()[
-            random.nextInt(SpatialScope.values().length)];
+        QueryType type = QueryType.Metadata;
+
+//        SpatialScope scope = SpatialScope.values()[
+//            random.nextInt(SpatialScope.values().length)];
+        SpatialScope scope = SpatialScope.Geo78km;
 
         return QueryCreator.create(type, scope);
     }
@@ -96,6 +99,9 @@ public class QueryCreator {
 
         int activeFeatures = ReducedTestConfiguration.FEATURE_NAMES.length;
         int numFeatures = 1 + random.nextInt(activeFeatures / FEATURE_FRAC);
+        if (numFeatures < 4) {
+            numFeatures = 4;
+        }
 
         int[] indexes = Arrays.copyOf(featureIndexes, featureIndexes.length);
         shuffleIndexes(indexes);
