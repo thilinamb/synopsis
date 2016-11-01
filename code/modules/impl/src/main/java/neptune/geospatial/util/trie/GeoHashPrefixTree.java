@@ -87,6 +87,10 @@ public class GeoHashPrefixTree implements EntryAddedListener<String, SketchLocat
         return locationMap;
     }
 
+    public synchronized int getDepth(String prefix){
+        return root.getDepth(prefix);
+    }
+
     @Override
     public void entryAdded(EntryEvent<String, SketchLocation> entryEvent) {
         String prefix = entryEvent.getKey();
@@ -157,7 +161,7 @@ public class GeoHashPrefixTree implements EntryAddedListener<String, SketchLocat
         */
 
         // serialization test
-        try {
+        /*try {
             byte[] serializedData = prefixTree.serialize();
             GeoHashPrefixTree prefTree2 = new GeoHashPrefixTree();
             System.out.println("empty tree: " + prefTree2.printTree());
@@ -165,7 +169,12 @@ public class GeoHashPrefixTree implements EntryAddedListener<String, SketchLocat
             System.out.println("After populating: " + prefTree2.printTree());
         } catch (IOException e) {
             e.printStackTrace();
-        }
+        } */
+        System.out.println(prefixTree.getDepth("9X1A"));
+        System.out.println(prefixTree.getDepth("9X1"));
+        System.out.println(prefixTree.getDepth("9X2"));
+        System.out.println(prefixTree.getDepth("8GF"));
+        System.out.println(prefixTree.getDepth("ABC"));
     }
 
     private static void printNodeList(Map<String, String> locs) {

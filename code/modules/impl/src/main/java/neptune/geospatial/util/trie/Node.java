@@ -215,6 +215,18 @@ public class Node {
         }
     }
 
+    public int getDepth(String prefix){
+        if (this.prefix.equals(prefix)) {
+            return 1;
+        }
+        Node longestMatchingChild = getChildWithLongestMatchingPrefix(prefix);
+        if (longestMatchingChild != null) {
+            return longestMatchingChild.getDepth(prefix) + 1;
+        } else {
+            return 1;
+        }
+    }
+
     /**
      * A list of all children traversing the trie in depth first
      *
