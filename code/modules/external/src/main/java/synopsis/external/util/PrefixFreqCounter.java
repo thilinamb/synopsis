@@ -5,6 +5,7 @@ import synopsis.client.persistence.OutstandingPersistenceTask;
 
 import java.io.*;
 import java.util.HashMap;
+import java.util.Map;
 
 /**
  * @author Thilina Buddhika
@@ -58,8 +59,18 @@ public class PrefixFreqCounter {
             }
         }
 
+        Map<String, Long> shrinked = new HashMap<>();
+        for(String p : prefixFreqMap.keySet()){
+            String shrinkedPrefix = p.substring(0, 3);
+            long count = prefixFreqMap.get(p);
+            if(shrinked.containsKey(shrinkedPrefix)){
+                count += shrinked.get(shrinkedPrefix);
+            }
+            shrinked.put(shrinkedPrefix, count);
+        }
+
         // read and populate the prefix tree
-        String prefixTreePath = "";
+        String prefixTreePath = "/Users/thilina/Desktop/2014_6f_full.pstat";
         OutstandingPersistenceTask task = Util.deserializeOutstandingPersistenceTask(prefixTreePath);
         if (task == null) {
             System.err.println("Error deserializing the task.");
@@ -77,10 +88,11 @@ public class PrefixFreqCounter {
         try {
             FileWriter fileW = new FileWriter("/tmp/freq-count-depth.csv");
             BufferedWriter bufferedWriter = new BufferedWriter(fileW);
-            for (String prefix : prefixFreqMap.keySet()) {
+            for (String prefix : shrinked.keySet()) {
+                int sketchletCount = prefixTree.query(prefix).size();
                 int depth = prefixTree.getDepth(prefix);
-                long count = prefixFreqMap.get(prefix);
-                bufferedWriter.write(prefix + "," + count + "," + depth + "\n");
+                long count = shrinked.get(prefix);
+                bufferedWriter.write(prefix + "," + count + "," + sketchletCount + "," + depth + "\n");
             }
             bufferedWriter.flush();
             fileW.flush();
