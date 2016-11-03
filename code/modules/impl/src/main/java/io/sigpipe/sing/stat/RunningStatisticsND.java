@@ -253,6 +253,16 @@ public class RunningStatisticsND implements ByteSerializable {
 
         return vars;
     }
+
+    public double[] mins() {
+        return this.min;
+    }
+
+    public double[] maxes() {
+        return this.max;
+    }
+
+
     @Deserialize
     public RunningStatisticsND(SerializationInputStream in)
     throws IOException {
