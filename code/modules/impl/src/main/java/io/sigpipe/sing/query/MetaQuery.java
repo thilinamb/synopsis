@@ -37,7 +37,7 @@ public class MetaQuery extends Query {
     throws IOException, QueryException {
         DataContainer container = vertex.getData();
         if (container != null) {
-            this.aggregateData.merge(container);
+            foundMatch(container);
         }
 
         if (vertex.numNeighbors() == 0) {
@@ -67,5 +67,10 @@ public class MetaQuery extends Query {
             }
         }
     }
+
+    private void foundMatch(DataContainer container) {
+        this.aggregateData.merge(container);
+    }
+
 }
 
