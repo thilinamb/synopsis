@@ -221,7 +221,7 @@ public class NOAADataIngester extends StreamSource {
         } else {
             inputFiles = new File[0];
         }
-        // use only a subset of files to test querying -----------
+        /*// use only a subset of files to test querying -----------
         if (inputFiles.length > 150) {
             File[] sample = new File[150];
             for(int i =0; i < 150; i++) {
@@ -229,7 +229,7 @@ public class NOAADataIngester extends StreamSource {
             }
             inputFiles = sample;
         }
-        // ----------------
+        // ---------------- */
         return inputFiles;
     }
 

@@ -3,9 +3,7 @@ package synopsis.client.query;
 import neptune.geospatial.graph.operators.QueryCreator;
 import org.apache.log4j.Logger;
 
-import java.io.DataOutputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
+import java.io.*;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -62,6 +60,27 @@ public class QClientStatRecorder {
     private Logger logger = Logger.getLogger(QClientStatRecorder.class);
     private Map<QueryCreator.QueryType, QueryPerf> performanceMap = new ConcurrentHashMap<>();
     private Map<QueryCreator.QueryType, ResponseSizeRecorder> respSizeRecMap = new ConcurrentHashMap<>();
+    private BufferedWriter bufferedWriter = null;
+
+    void recordIndividualRecord(String queryType, long elapsedTime, double payloadSize, String fileName)
+            throws IOException {
+        if (bufferedWriter == null) {
+            try {
+                bufferedWriter = new BufferedWriter(new FileWriter(fileName));
+            } catch (IOException e) {
+                logger.error("Error opening the buffered writer.", e);
+                throw e;
+            }
+        }
+        bufferedWriter.write(queryType + "," + elapsedTime + "," + payloadSize + "\n");
+    }
+
+    void finalizeStats() throws IOException {
+        if (bufferedWriter != null) {
+            bufferedWriter.flush();
+            bufferedWriter.close();
+        }
+    }
 
     void record(QueryCreator.QueryType queryType, long timeElapsed, double payloadSizeInKB) {
         QueryPerf queryPerf;
