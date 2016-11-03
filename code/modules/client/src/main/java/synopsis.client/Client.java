@@ -20,7 +20,6 @@ import synopsis.client.messaging.Transport;
 import synopsis.client.persistence.PersistenceCompletionCallback;
 import synopsis.client.persistence.PersistenceManager;
 import synopsis.client.query.QClient;
-import synopsis.client.query.QClientStatRecorder;
 import synopsis.client.query.QueryCallback;
 import synopsis.client.query.QueryManager;
 
@@ -139,12 +138,13 @@ public class Client {
         try {
             countDownLatch.await();
             logger.info("All the QClient threads have completed. Merging results.");
-            QClientStatRecorder statRecorder = new QClientStatRecorder();
+            /*QClientStatRecorder statRecorder = new QClientStatRecorder();
             for (QClient qClient : qClients) {
                 statRecorder.merge(qClient.getStatRecorder());
             }
             statRecorder.writeToFile("/tmp/" + hostname + "-" + clientPort + ".cstat");
             logger.info("Written merged results to file.");
+            */
         } catch (InterruptedException ignore) {
 
         }

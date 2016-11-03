@@ -84,6 +84,8 @@ public class QClient implements Runnable {
     @Override
     public void run() {
         String id = this.clientUrl + ":" + Thread.currentThread().getName();
+        String statisticsOutputFile = "/tmp/" + clientUrl.split(":")[0] + "-" + clientUrl.split(":")[1] + "-" +
+                Thread.currentThread().getId() + ".qstat";
         int completedQueryCount = 0;
         while (completedQueryCount <= this.queryCount) {
             QueryWrapper nextQ;
@@ -128,8 +130,10 @@ public class QClient implements Runnable {
                     logger.debug("[" + id + "] Query " + queryId + " is complete!. Completed: " +
                             completedQueryCount + "[" + queryCount + "]");
                 }
-                statRecorder.record(queryType, currentQueryResponse.getElapsedTimeInMS(),
-                        currentQueryResponse.getQueryResponseSizeInKB());
+                /*statRecorder.record(queryType, currentQueryResponse.getElapsedTimeInMS(),
+                        currentQueryResponse.getQueryResponseSizeInKB());*/
+                statRecorder.recordIndividualRecord("metadata", currentQueryResponse.getElapsedTimeInMS(),
+                        currentQueryResponse.getQueryResponseSizeInKB(), statisticsOutputFile);
 
             } catch (ClientException | IOException e) {
                 logger.error("[" + id + "] Error instantiating the query request.", e);
@@ -140,6 +144,11 @@ public class QClient implements Runnable {
             }
         }
 
+        try {
+            statRecorder.finalizeStats();
+        } catch (IOException e) {
+            logger.error("Error flushing outputs.", e);
+        }
         logger.info("[" + id + "] Completed running all queries.");
         latch.countDown();
     }
