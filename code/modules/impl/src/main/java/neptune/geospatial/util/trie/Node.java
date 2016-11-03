@@ -217,7 +217,14 @@ public class Node {
 
     public int getDepth(String prefix){
         if (this.prefix.equals(prefix)) {
-            return 1;
+            int maxDepth = 0;
+            for(Node node : childNodes.values()){
+                int depth = node.getDepth(prefix);
+                if(depth > maxDepth){
+                    maxDepth = depth;
+                }
+            }
+            return 1 + maxDepth;
         }
         Node longestMatchingChild = getChildWithLongestMatchingPrefix(prefix);
         if (longestMatchingChild != null) {
