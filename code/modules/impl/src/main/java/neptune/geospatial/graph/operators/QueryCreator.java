@@ -29,6 +29,7 @@ public class QueryCreator {
     public enum QueryType {
         Relational,
         Metadata,
+        Synthetic,
     }
 
     public enum SpatialScope {
@@ -63,7 +64,7 @@ public class QueryCreator {
 //        QueryType type = QueryType.values()[
 //            random.nextInt(QueryType.values().length)];
 
-        QueryType type = QueryType.Metadata;
+        QueryType type = QueryType.Relational;
 
 //        SpatialScope scope = SpatialScope.values()[
 //            random.nextInt(SpatialScope.values().length)];
