@@ -42,6 +42,7 @@ public class NOAABinaryToJSONExporter {
                     extractedData.put(f, featureSet.get(f).getDouble());
                 }
                 bufferedWriter.write(gson.toJson(extractedData));
+                bufferedWriter.write("\n");
             }
             bufferedWriter.flush();
             bufferedWriter.close();
