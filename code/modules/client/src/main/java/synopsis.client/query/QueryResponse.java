@@ -17,7 +17,7 @@ public class QueryResponse {
     private long queryRespSize;
 
     public QueryResponse(long queryId, byte[] query) {
-        this.startTime = System.currentTimeMillis();
+        this.startTime = System.nanoTime();
         this.queryId = queryId;
         this.query = query;
         this.queryResponse = new ArrayList<>();
@@ -55,7 +55,7 @@ public class QueryResponse {
     }
 
     public void setElapsedTime(){
-        this.elapsedTime = System.currentTimeMillis() - startTime;
+        this.elapsedTime = System.nanoTime() - startTime;
     }
 
     public long getQueryId() {
@@ -76,5 +76,9 @@ public class QueryResponse {
 
     public long getElapsedTimeInMS() {
         return elapsedTime;
+    }
+
+    public long getQueryRespSize() {
+        return queryRespSize;
     }
 }
