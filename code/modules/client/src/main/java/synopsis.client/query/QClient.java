@@ -61,7 +61,7 @@ public class QClient implements Runnable {
     }
 
     public QClient(int queryCount, List<SynopsisEndpoint> endpoints, String clientUrl, QueryManager queryManager,
-                   CountDownLatch latch){
+                   CountDownLatch latch) {
         this.queryCount = queryCount;
         this.statRecorder = new QClientStatRecorder();
         this.endpoints = endpoints;
@@ -132,8 +132,10 @@ public class QClient implements Runnable {
                 }
                 /*statRecorder.record(queryType, currentQueryResponse.getElapsedTimeInMS(),
                         currentQueryResponse.getQueryResponseSizeInKB());*/
-                statRecorder.recordIndividualRecord("metadata", currentQueryResponse.getElapsedTimeInMS(),
-                        currentQueryResponse.getQueryResponseSizeInKB(), statisticsOutputFile);
+                if (currentQueryResponse.getQueryRespSize() > 0) {
+                    statRecorder.recordIndividualRecord("metadata", currentQueryResponse.getElapsedTimeInMS(),
+                            currentQueryResponse.getQueryResponseSizeInKB(), statisticsOutputFile);
+                }
 
             } catch (ClientException | IOException e) {
                 logger.error("[" + id + "] Error instantiating the query request.", e);
