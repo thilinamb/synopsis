@@ -227,6 +227,27 @@ public class SketchProcessor extends AbstractGeoSpatialStreamProcessor {
         return estimateMemoryUsage(vertices, leaves);
     }
 
+    public double getMemoryConsumptionForPrefixSlow(String prefix) {
+        CountQuery cq = new CountQuery(this.sketch.getMetrics());
+        try {
+        cq.addExpression(
+                new Expression(
+                    Operator.STR_PREFIX, new Feature("location", prefix)));
+        cq.execute(sketch.getRoot());
+        if (cq.hasResults() == false) {
+            System.out.println("WARNING: CountQuery on prefix "
+                    + "[" + prefix + "] returned no matches!");
+        }
+        } catch (Exception e) {
+            System.out.println("Failed to gather graph statistics!");
+            e.printStackTrace();
+        }
+
+        CountContainer container = cq.getCount(this.sketch.getRoot());
+
+        return estimateMemoryUsage(container.a, container.b);
+    }
+
     public double getMemoryConsumptionForAllPrefixes() {
         GraphMetrics gm = this.sketch.getMetrics();
         return estimateMemoryUsage(gm.getVertexCount(), gm.getLeafCount());
