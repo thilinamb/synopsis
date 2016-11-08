@@ -28,11 +28,26 @@ We captured how backlog length and throughput at an individual node vary with th
 The \textsc{Synopsis} node that was considered for the experiment immediately received data from stream ingesters, hence the input rate observed at the node closely resembled the varying data ingestion rate.
 As shown in Figure~\ref{fig:stability-backlog}, scaling out helps a node to keep up with the variations in the workload which in turn causes the backlog to stay within a safe range.
 It also demonstrates the infrequent rapid scaling out activities and the continuous gradual downscaling activities as explained in section~\ref{subsec:scaling-out}. \\
-\begin{figure*}
-    \centerline{\includegraphics[width=6.5in]{figures/stability_partial.pdf}}
+\begin{figure}
+    \centerline{\includegraphics[width=\linewidth]{figures/stability_partial.pdf}}
     \caption{How scaling out enables maintaining stability at \textsc{Synopsis} nodes.}
     \label{fig:stability-backlog}
+\end{figure}
+
+% scale out graph
+\begin{figure*}
+    \centerline{\includegraphics[width=\linewidth]{figures/scaleout_graph_analysis.pdf}}
+    \caption{Analysis of a snapshot of stream processing graph during ingestion}
+    \label{fig:scaleout-graph-analysis}
 \end{figure*}
+
+% system benchmark on mem. consumption
+\begin{figure}
+    \centerline{\includegraphics[width=\linewidth]{figures/ing-and-mem-usage.pdf}}
+    \caption{Memory usage of the distributed sketch over time against the amount of ingested data}
+    \label{fig:stability-backlog}
+\end{figure}
+
 
 \subsection{Sketch Query Evaluation}
 To evaluate the performance of the sketch, we executed several representative query workloads across a variety of sketchlet sizes. These queries were separated into two groups: data structure lookups and graph lookups. Data structure lookups include density queries, set queries, and summary statistics for the entire sketch, while graph lookups involve targeted portions of the overall feature space. In general, queries that require a graph lookup consume more processing time, but are much more expressive; for instance, such a query could request summary statistics or feature relationships when the temperature is between 20 to 30 degrees, humidity is above 80\%, and the wind is blowing at 16 km/h, while a data structure lookup would be restricted to chronological parameters and select features of interest. Table~\ref{tbl:query-times} outlines the query times for both evaluation types. In general, data structure lookup operations require minimal processing. While graph lookups take longer to complete, it is worth noting that varying the geographical scope across sketchlet sizes from 5km to 800km did not result in a proportionate increase in processing time. Overall, the sketch is able to satisfy our goal of low-latency query evaluations for each query type. \\ \vspace{2.5em}
@@ -68,6 +83,12 @@ To evaluate the performance of the sketch, we executed several representative qu
         \end{tabular}
     \end{center}
 \end{table}
+% distributed query evaluation
+\begin{figure*}
+    \centerline{\includegraphics[width=\linewidth]{figures/query_benchmark_both.pdf}}
+    \caption{Distributed Query Evaluation Performance}
+    \label{fig:dist-query}
+\end{figure*}
 
 
 \begin{figure}
