@@ -9,7 +9,9 @@ import neptune.geospatial.util.geohash.GeoHash;
 import org.apache.log4j.Logger;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Geo-Hash based partitioner
@@ -22,12 +24,14 @@ public class GeoHashPartitioner implements Partitioner {
     private List<Character> northAmericaPrefixList = new ArrayList<>();
     private boolean firstOutgoingMessage = true;
     private ShortCircuitedRoutingRegistry shortCircuitedRoutingRegistry;
+    private Map<String, Integer> allLength2Prefixes = new HashMap<>();
 
     public GeoHashPartitioner() {
         char[] northAmericaPrefixes = new char[]{'b', 'c', '8', 'd', 'f', '9'};
         for (Character c : northAmericaPrefixes) {
             northAmericaPrefixList.add(c);
         }
+        initLength2PrefixList();
     }
 
     @Override
@@ -57,15 +61,20 @@ public class GeoHashPartitioner implements Partitioner {
     private Topic[] getReceiverTopics(Topic[] topics, GeoHashIndexedRecord ghIndexedRec) {
         Topic shortCircuitedTopic = shortCircuitedRoutingRegistry.getShortCircuitedRoutingRule(ghIndexedRec);
         if (shortCircuitedTopic == null) {
-            int prefixLen = ghIndexedRec.getPrefixLength() * GeoHash.BITS_PER_CHAR;
-            // convert the geo-hash string into the corresponding bit string
-            ArrayList<Boolean> hashInBits = GeoHash.getBits(ghIndexedRec.getGeoHash());
-            int sum = 0;
-            for (int i = prefixLen - 1; i >= 0; i--) {
-                sum += Math.pow(2, prefixLen - 1 - i) * (hashInBits.get(prefixLen - 1 - i) ? 1 : 0);
+            if (ghIndexedRec.getPrefixLength() > 2) {  // if this is a stream processor
+                int prefixLen = ghIndexedRec.getPrefixLength() * GeoHash.BITS_PER_CHAR;
+                // convert the geo-hash string into the corresponding bit string
+                ArrayList<Boolean> hashInBits = GeoHash.getBits(ghIndexedRec.getGeoHash());
+                int sum = 0;
+                for (int i = prefixLen - 1; i >= 0; i--) {
+                    sum += Math.pow(2, prefixLen - 1 - i) * (hashInBits.get(prefixLen - 1 - i) ? 1 : 0);
+                }
+                Topic topic = topics[sum % topics.length];
+                return new Topic[]{topic};
+            } else {    // If it is an ingester
+                Topic topic = topics[allLength2Prefixes.get(ghIndexedRec.getGeoHash().substring(0,2)) % topics.length];
+                return new Topic[]{topic};
             }
-            Topic topic = topics[sum % topics.length];
-            return new Topic[]{topic};
         } else {
             if (logger.isDebugEnabled()) {
                 logger.debug("Found a short circuited stream. Geohash: " + ghIndexedRec.getGeoHash());
@@ -76,5 +85,15 @@ public class GeoHashPartitioner implements Partitioner {
 
     private int isNorthAmerica(String geoHash) {
         return northAmericaPrefixList.indexOf(geoHash.toLowerCase().charAt(0));
+    }
+
+    private void initLength2PrefixList() {
+        String[] prefixes = new String[]{"dd", "de", "dh", "dj", "dk", "dm", "f0", "dn", "f1", "f2", "dp", "f3", "dq", "dr", "f4", "ds", "f6", "dt",
+                "f8", "dw", "f9", "dx", "dz", "b8", "b9", "94", "95", "96", "97", "c0", "c1", "8g", "c2", "c3", "c4", "c6", "c8", "c9", "fb", "8u", "fc",
+                "8v", "fd", "bb", "8x", "ff", "bc", "8y", "8z", "bf", "9d", "9e", "9g", "9h", "d4", "d5", "9j", "d6", "9k", "d7", "9m", "9n", "9p", "9q",
+                "9r", "9s", "9t", "9u", "9v", "9w", "cb", "9x", "cc", "9y", "cd", "9z", "cf"};
+        for (int i = 0; i < prefixes.length; i++) {
+            allLength2Prefixes.put(prefixes[i], i);
+        }
     }
 }

@@ -194,7 +194,7 @@ public class LoadStateFromDiskDeployer extends GeoSpatialDeployer {
             byte[] updatedPrefixTree = deployer.getUpdatedPrefixTree();
             UpdatePrefixTreeReq updatePrefixTreeReq = new UpdatePrefixTreeReq(updatedPrefixTree);
 
-            Thread.sleep(2 * 60 * 1000);
+            Thread.sleep(5 * 60 * 1000);
 
             for (ResourceEndpoint endpoint : deployer.getDeploymentLocations()) {
                 SendUtility.sendControlMessage(endpoint.getControlEndpoint(), updatePrefixTreeReq);

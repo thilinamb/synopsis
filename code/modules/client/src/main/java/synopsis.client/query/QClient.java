@@ -27,6 +27,7 @@ import java.util.concurrent.LinkedBlockingDeque;
 public class QClient implements Runnable {
 
     private Logger logger = Logger.getLogger(QClient.class);
+    public static final int WARMUP_THRESHOLD = 100;
     private BlockingQueue<ControlMessage> queue = new LinkedBlockingDeque<>();
     private final int queryCount;
     private QueryWrapper[] queries;
@@ -47,7 +48,7 @@ public class QClient implements Runnable {
         if (queries.length != percentages.length) {
             throw new ClientException("Query count doesn't match the percentage distribution.");
         }
-        this.queryCount = queryCount;
+        this.queryCount = queryCount + WARMUP_THRESHOLD;
         this.queries = queries;
         this.queryTypes = queryTypes;
         this.cumulativePercentages = prepareCumulPercentages(percentages);
@@ -61,7 +62,7 @@ public class QClient implements Runnable {
     }
 
     public QClient(int queryCount, List<SynopsisEndpoint> endpoints, String clientUrl, QueryManager queryManager,
-                   CountDownLatch latch){
+                   CountDownLatch latch) {
         this.queryCount = queryCount;
         this.statRecorder = new QClientStatRecorder();
         this.endpoints = endpoints;
@@ -132,8 +133,10 @@ public class QClient implements Runnable {
                 }
                 /*statRecorder.record(queryType, currentQueryResponse.getElapsedTimeInMS(),
                         currentQueryResponse.getQueryResponseSizeInKB());*/
-                statRecorder.recordIndividualRecord("metadata", currentQueryResponse.getElapsedTimeInMS(),
-                        currentQueryResponse.getQueryResponseSizeInKB(), statisticsOutputFile);
+                if (completedQueryCount > WARMUP_THRESHOLD && currentQueryResponse.getQueryRespSize() > 0) {
+                    statRecorder.recordIndividualRecord("metadata", currentQueryResponse.getElapsedTimeInMS(),
+                            currentQueryResponse.getQueryResponseSizeInKB(), statisticsOutputFile);
+                }
 
             } catch (ClientException | IOException e) {
                 logger.error("[" + id + "] Error instantiating the query request.", e);
