@@ -36,6 +36,10 @@ public class GeoHashPrefixTree implements EntryAddedListener<String, SketchLocat
         return instance;
     }
 
+    public void reset(){
+        this.root = new Node();
+    }
+
     /**
      * Register a new prefix. Does not perform and expansion or shrink of the prefix tree.
      *
