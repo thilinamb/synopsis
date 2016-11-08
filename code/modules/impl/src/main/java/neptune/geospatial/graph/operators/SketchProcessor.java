@@ -194,7 +194,7 @@ public class SketchProcessor extends AbstractGeoSpatialStreamProcessor {
     }
 
     @Override
-    public void serialize(DataOutputStream dataOutputStream) {
+    public synchronized void serialize(DataOutputStream dataOutputStream) {
         try {
             SerializationOutputStream out
                 = new SerializationOutputStream(dataOutputStream);
@@ -209,7 +209,7 @@ public class SketchProcessor extends AbstractGeoSpatialStreamProcessor {
     }
 
     @Override
-    public void deserialize(DataInputStream dataInputStream) {
+    public synchronized void deserialize(DataInputStream dataInputStream) {
         try {
             SerializationInputStream in
                 = new SerializationInputStream(dataInputStream);
