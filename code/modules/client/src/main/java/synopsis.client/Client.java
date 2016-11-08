@@ -19,6 +19,7 @@ import synopsis.client.messaging.ClientProtocolHandler;
 import synopsis.client.messaging.Transport;
 import synopsis.client.persistence.PersistenceCompletionCallback;
 import synopsis.client.persistence.PersistenceManager;
+import synopsis.client.query.PrefixMemUsageQueryCallback;
 import synopsis.client.query.QClient;
 import synopsis.client.query.QueryCallback;
 import synopsis.client.query.QueryManager;
@@ -50,7 +51,7 @@ public class Client {
             this.clientPort = clientPort;
             this.hostname = RivuletUtil.getHostInetAddress().getHostName();
             queryManager = QueryManager.getInstance(this.hostname, this.clientPort);
-            queryManager.setDispatcherModeEnabled(true);
+            queryManager.setDispatcherModeEnabled(false);
         } catch (GranulesConfigurationException | CommunicationsException e) {
             throw new ClientException("Error in initializing. ", e);
         }
@@ -99,6 +100,10 @@ public class Client {
 
     long submitQuery(byte[] query, List<String> geoHashes, QueryCallback callback) throws ClientException {
         return queryManager.submitQuery(query, geoHashes, callback, getRandomSynopsisNode());
+    }
+
+    long submitQuery(long queryId, byte[] query, List<String> geoHashes, QueryCallback callback) throws ClientException {
+        return queryManager.submitQuery(queryId, query, geoHashes, callback, getRandomSynopsisNode());
     }
 
     void launchQClients(int qClientCount, int queryCount, QueryWrapper[] queries,
@@ -150,6 +155,18 @@ public class Client {
         }
     }
 
+    public void getMemConsumptionInfo(String[] prefixes) throws ClientException {
+        long queryId = -1;
+        PrefixMemUsageQueryCallback callback = new PrefixMemUsageQueryCallback(prefixes.length);
+        for (String prefix : prefixes) {
+            List<String> prefixList = new ArrayList<>();
+            prefixList.add(prefix);
+            queryId--;
+            submitQuery(queryId, prefix.getBytes(), prefixList, callback);
+        }
+        logger.info("Submitted " + prefixes.length + " queries.");
+    }
+
     void serializeState(PersistenceCompletionCallback cb) throws ClientException {
         long checkpointId = System.currentTimeMillis();
         PersistenceManager.getInstance().submitPersistenceTask(checkpointId, endpoints.size(), cb);
@@ -169,7 +186,7 @@ public class Client {
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
-        if(!cb.isCompleted()){
+        if (!cb.isCompleted()) {
             PersistenceManager.getInstance().forceCompletion(checkpointId);
         }
         Main.notifyOperationComplete();

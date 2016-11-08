@@ -7,8 +7,9 @@ import synopsis.client.persistence.BinaryConfigPersistenceCallback;
 import synopsis.client.query.QueryCallback;
 import synopsis.client.query.QueryResponse;
 
-import java.io.FileInputStream;
-import java.io.IOException;
+import java.io.*;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Properties;
 import java.util.concurrent.CountDownLatch;
 
@@ -52,6 +53,10 @@ public class Main {
                 case "store":
                     testPersistState(client);
                     break;
+                case "prefix":
+                    String fileName = args[3];
+                    String[] prefixes = readPrefixList(fileName);
+                    client.getMemConsumptionInfo(prefixes);
                 default:
                     System.err.println("Unsupported mode!");
             }
@@ -107,6 +112,22 @@ public class Main {
 
     static void notifyOperationComplete(){
         opCompletion.countDown();
+    }
+
+    private static String[] readPrefixList(String inputFile){
+        List<String> prefixes = new ArrayList<>();
+        try {
+            BufferedReader bufferedReader = new BufferedReader(new FileReader(inputFile));
+            String line;
+            while ((line = bufferedReader.readLine()) != null){
+                prefixes.add(line);
+            }
+            bufferedReader.close();
+        } catch (IOException e) {
+            System.err.println("Error reading prefix list.");
+            e.printStackTrace();
+        }
+        return prefixes.toArray(new String[prefixes.size()]);
     }
 }
 

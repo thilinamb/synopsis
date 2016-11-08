@@ -53,6 +53,11 @@ public class QueryManager {
     public long submitQuery(byte[] query, List<String> geoHashes, QueryCallback callback, String randomNodeAddr)
             throws ClientException {
         long queryId = getNextQueryId();
+        return submitQuery(queryId, query, geoHashes, callback, randomNodeAddr);
+    }
+
+    public long submitQuery(long queryId, byte[] query, List<String> geoHashes, QueryCallback callback,
+                            String randomNodeAddr){
         ClientQueryRequest clientQueryReq = new ClientQueryRequest(queryId, this.clientAddr, query, geoHashes);
         QuerySubmitTask querySubmitTask = new QuerySubmitTask(queryId, randomNodeAddr, clientQueryReq, callback);
         executors.submit(querySubmitTask);
