@@ -5,6 +5,7 @@ import io.sigpipe.sing.dataset.Quantizer;
 import io.sigpipe.sing.dataset.feature.Feature;
 import io.sigpipe.sing.dataset.feature.FeatureType;
 import io.sigpipe.sing.graph.*;
+import io.sigpipe.sing.query.CountQuery;
 import io.sigpipe.sing.query.Expression;
 import io.sigpipe.sing.query.Operator;
 import io.sigpipe.sing.query.MetaQuery;
@@ -155,6 +156,7 @@ public class SketchProcessor extends AbstractGeoSpatialStreamProcessor {
 
     @Override
     public byte[] query(byte[] query) {
+        String queryStr = "";
         try {
             SerializationInputStream sIn = new SerializationInputStream(
                     new ByteArrayInputStream(query));
@@ -163,6 +165,7 @@ public class SketchProcessor extends AbstractGeoSpatialStreamProcessor {
                 /* Relational Query */
                 RelationalQuery q = new RelationalQuery(
                         sIn, this.sketch.getMetrics());
+                queryStr = q.toString();
                 q.execute(this.sketch.getRoot());
                 ByteArrayOutputStream byteOut = new ByteArrayOutputStream();
                 SerializationOutputStream sOut = new SerializationOutputStream(
@@ -182,7 +185,7 @@ public class SketchProcessor extends AbstractGeoSpatialStreamProcessor {
 
             sIn.close();
         } catch (Exception e) {
-            System.out.println("Failed to process query!");
+            System.out.println("Failed to process query: " + queryStr);
             e.printStackTrace();
         }
 
@@ -222,6 +225,27 @@ public class SketchProcessor extends AbstractGeoSpatialStreamProcessor {
         long vertices = cc.a;
         long leaves = cc.b;
         return estimateMemoryUsage(vertices, leaves);
+    }
+
+    public double getMemoryConsumptionForPrefixSlow(String prefix) {
+        CountQuery cq = new CountQuery(this.sketch.getMetrics());
+        try {
+        cq.addExpression(
+                new Expression(
+                    Operator.STR_PREFIX, new Feature("location", prefix)));
+        cq.execute(sketch.getRoot());
+        if (cq.hasResults() == false) {
+            System.out.println("WARNING: CountQuery on prefix "
+                    + "[" + prefix + "] returned no matches!");
+        }
+        } catch (Exception e) {
+            System.out.println("Failed to gather graph statistics!");
+            e.printStackTrace();
+        }
+
+        CountContainer container = cq.getCount(this.sketch.getRoot());
+
+        return estimateMemoryUsage(container.a, container.b);
     }
 
     public double getMemoryConsumptionForAllPrefixes() {
