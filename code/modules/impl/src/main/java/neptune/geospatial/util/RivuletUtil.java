@@ -15,6 +15,7 @@ import org.apache.log4j.Logger;
 import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.ZooKeeper;
 
+import java.io.*;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.List;
@@ -131,5 +132,31 @@ public class RivuletUtil {
 
     public static double inGigabytes(double bytes){
         return bytes/(1024 * 1024 * 1024);
+    }
+
+    public static void writeByteArrayToDisk(byte[] bytes, String fileName){
+        try {
+            DataOutputStream dos = new DataOutputStream(new FileOutputStream(fileName));
+            dos.writeInt(bytes.length);
+            dos.write(bytes);
+            dos.flush();
+            dos.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public static byte[] readByteArrayFromDisk(String fileName){
+        try {
+            DataInputStream dis = new DataInputStream(new FileInputStream(fileName));
+            int len = dis.readInt();
+            byte[] bytes = new byte[len];
+            dis.readFully(bytes);
+            dis.close();
+            return bytes;
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return null;
     }
 }
