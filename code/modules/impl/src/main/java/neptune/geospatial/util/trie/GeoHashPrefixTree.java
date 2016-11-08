@@ -111,11 +111,11 @@ public class GeoHashPrefixTree implements EntryAddedListener<String, SketchLocat
         }
     }
 
-    public byte[] serialize() throws IOException {
+    public synchronized byte[] serialize() throws IOException {
         return root.serialize();
     }
 
-    public void deserialize(byte[] bytes) throws IOException{
+    public synchronized void deserialize(byte[] bytes) throws IOException{
         root.deserialize(bytes);
     }
 
