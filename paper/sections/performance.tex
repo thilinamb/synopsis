@@ -24,15 +24,33 @@ Since we allow aggressive scale out, it shows a rapid scale out activity during 
 \subsection{Stability at Individual Nodes}
 The objective of this benchmark was to demonstrate how scaling out operations manage to maintain stability at each node under varying workload conditions.
 The same setup as in previous micro benchmark was used, but the evaluation metrics captured are corresponding to an individual node instead of the entire system.
+For this experiment, we have enabled only a single threshold-based rule (either backlog growth based or memory usage based) at a time to demonstrate its effectiveness.
+
 We captured how backlog length and throughput at an individual node vary with the input rate when dynamic scaling is enabled.
 The \textsc{Synopsis} node that was considered for the experiment immediately received data from stream ingesters, hence the input rate observed at the node closely resembled the varying data ingestion rate.
 As shown in Figure~\ref{fig:stability-backlog}, scaling out helps a node to keep up with the variations in the workload which in turn causes the backlog to stay within a safe range.
 It also demonstrates the infrequent rapid scaling out activities and the continuous gradual downscaling activities as explained in section~\ref{subsec:scaling-out}. \\
-\begin{figure}
-    \centerline{\includegraphics[width=\linewidth]{figures/stability_partial.pdf}}
-    \caption{How scaling out enables maintaining stability at \textsc{Synopsis} nodes.}
-    \label{fig:stability-backlog}
-\end{figure}
+
+Figure~\ref{fig:stability-mem} demonstrates how memory consumption based threshold-based rules trigger scaling manures to maintain the system stability.
+We have used a 0.45 of the total available memory for a JVM process as the upper threshold for triggering a scale out operation.
+In certain occasions, it is required to perform multiple consecutive scaling out operations (interleaved with the cooling down periods) to bring the memory usage to the desired level due to the increased memory utilization caused by the data ingestion happening in the background.
+% system stability
+\begin{figure*}
+    \begin{subfigure}{0.48\textwidth}
+            \centering
+            \includegraphics[scale=0.42]{figures/stability_partial.pdf}
+            \caption{Dynamic scaling manures triggered by backlog growth based threshold rules}
+            \label{fig:stability-backlog}
+    \end{subfigure}
+    \begin{subfigure}{0.48\textwidth}
+            \centering
+            \includegraphics[scale=0.42]{figures//mem_stability.pdf} 
+            \caption{Dynamic scaling manures triggered by memory usage based threshold rules}
+            \label{fig:stability-mem}
+    \end{subfigure}
+    \caption{How scaling out enables maintaining stability at an individual \textsc{Synopsis} node based on backlog growth and memory usage}
+    \label{fig:system-stability}
+\end{figure*}
 
 % scale out graph
 \begin{figure*}
