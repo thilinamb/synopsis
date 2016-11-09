@@ -13,14 +13,12 @@ import neptune.geospatial.core.deployer.GeoSpatialDeployer;
 import neptune.geospatial.core.protocol.msg.client.UpdatePrefixTreeReq;
 import neptune.geospatial.graph.Constants;
 import neptune.geospatial.partitioner.GeoHashPartitioner;
+import neptune.geospatial.util.RivuletUtil;
 import neptune.geospatial.util.trie.GeoHashPrefixTree;
 import neptune.geospatial.util.trie.Node;
 import org.apache.log4j.Logger;
 
-import java.io.DataInputStream;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
+import java.io.*;
 import java.util.*;
 
 /**
@@ -194,9 +192,9 @@ public class LoadStateFromDiskDeployer extends GeoSpatialDeployer {
             byte[] updatedPrefixTree = deployer.getUpdatedPrefixTree();
             UpdatePrefixTreeReq updatePrefixTreeReq = new UpdatePrefixTreeReq(updatedPrefixTree);
 
-            Thread.sleep(5 * 60 * 1000);
+            Thread.sleep(3 * 60 * 1000);
 
-            for (ResourceEndpoint endpoint : deployer.getDeploymentLocations()) {
+            for (ResourceEndpoint endpoint : deployer.resourceEndpoints) {
                 SendUtility.sendControlMessage(endpoint.getControlEndpoint(), updatePrefixTreeReq);
             }
 
