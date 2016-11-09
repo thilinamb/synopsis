@@ -5,6 +5,7 @@ import neptune.geospatial.core.computations.AbstractGeoSpatialStreamProcessor;
 import neptune.geospatial.core.computations.scalingctxt.ScalingContext;
 import neptune.geospatial.core.protocol.msg.client.UpdatePrefixTreeReq;
 import neptune.geospatial.core.protocol.processors.ProtocolProcessor;
+import neptune.geospatial.util.RivuletUtil;
 import neptune.geospatial.util.trie.GeoHashPrefixTree;
 import org.apache.log4j.Logger;
 
@@ -25,6 +26,9 @@ public class UpdatePrefixTreeReqProcessor implements ProtocolProcessor {
         try {
             prefixTree.deserialize(updatePrefixTreeReq.getUpdatedPrefixTree());
             logger.info("[" + streamProcessor.getInstanceIdentifier() + "] Successfully deserialized prefix tree.");
+            if(logger.isDebugEnabled()) {
+                RivuletUtil.writeByteArrayToDisk(prefixTree.serialize(), "/tmp/preftree-at-node.binary");
+            }
         } catch (IOException e) {
             logger.error("Error deserializing prefix tree.", e);
         }
