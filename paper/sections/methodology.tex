@@ -64,19 +64,20 @@ Once this process is complete, the source node will initiate a state transfer as
 %Completing the scale out protocol quickly is important because it can release mutual exclusive locks in both origin and target \textsc{Synopsis} nodes quickly and participate in other scaling activities soon after the stabilization period.
 %
 \begin{figure*}
-\subfloat[Scale out protocol]{
-        \centering
-        \label{fig:scale-out-protocol}
-        \includegraphics[width=0.45\textwidth, valign=t]{figures/scale-out.pdf}
-        \vphantom{\includegraphics[width=0.45\textwidth,valign=t]{figures/scale-in.pdf} } 
-        }
-\subfloat[Scale in protocol]{
-        \centering
-        \label{fig:scale-in-protocol}
-        \includegraphics[width=0.45\textwidth,valign=t]{figures/scale-in.pdf} 
-        }
-\caption{Steps of dynamic scaling protocols in chronological order}
-\label{fig:dynamic-scaling-protocols}
+        \begin{subfigure}{0.45\textwidth}
+                \centering
+                \includegraphics[scale=0.45, valign=t]{figures/scale-out.pdf}
+                \caption{Scale out protocol}
+                \label{fig:scale-out-protocol}    
+        \end{subfigure}
+        \begin{subfigure}{0.45\textwidth}
+                \centering
+                \includegraphics[scale=0.45, valign=t]{figures/scale-in.pdf} 
+                \caption{Scale in protocol}
+                \label{fig:scale-in-protocol}
+        \end{subfigure}
+        \caption{Steps of dynamic scaling protocols in chronological order}
+        \label{fig:dynamic-scaling-protocols}
 \end{figure*}
 %
 \subsection{Downscaling}
