@@ -20,6 +20,7 @@ import neptune.geospatial.core.protocol.msg.StateTransferMsg;
 import neptune.geospatial.core.protocol.msg.client.ClientQueryRequest;
 import neptune.geospatial.core.protocol.msg.client.ClientQueryResponse;
 import neptune.geospatial.core.protocol.msg.client.TargetedQueryRequest;
+import neptune.geospatial.core.protocol.msg.client.UpdatePrefixTreeReq;
 import neptune.geospatial.core.protocol.msg.scaleout.DeploymentAck;
 import neptune.geospatial.core.protocol.msg.scaleout.PrefixOnlyScaleOutCompleteAck;
 import neptune.geospatial.core.protocol.msg.scaleout.ScaleOutLockRequest;
@@ -496,7 +497,16 @@ public class ManagedResource {
                     queryProcessors.submit(new QueryProcessingTask(queryRequest,
                             monitoredProcessors.get(compId).computation));
                 }
-            } else if (monitoredProcessors.containsKey(computationId)) {
+            } else if (ctrlMessage instanceof UpdatePrefixTreeReq){
+                UpdatePrefixTreeReq updatePrefixTreeReq = (UpdatePrefixTreeReq)ctrlMessage;
+                try {
+                    GeoHashPrefixTree.getInstance().deserialize(updatePrefixTreeReq.getUpdatedPrefixTree());
+                    logger.info("Succesfully deserialized the prefix tree.");
+                } catch (IOException e) {
+                    logger.error("Error deserializing the prefix tree.", e);
+                }
+            }
+            else if (monitoredProcessors.containsKey(computationId)) {
                 monitoredProcessors.get(computationId).computation.processCtrlMessage(ctrlMessage);
             } else if (ctrlMessage instanceof StateTransferMsg) {
                 StateTransferMsg stateTransferMsg = (StateTransferMsg) ctrlMessage;
@@ -649,8 +659,20 @@ public class ManagedResource {
     }
 
     int dispatchToAll(ControlMessage ctrlMsg) {
-        for (MonitoredComputationState monitoredComputationState : monitoredProcessors.values()) {
-            monitoredComputationState.computation.processCtrlMessage(ctrlMsg);
+        if(monitoredProcessors.isEmpty()){
+            if(ctrlMsg instanceof UpdatePrefixTreeReq){
+                UpdatePrefixTreeReq req = (UpdatePrefixTreeReq) ctrlMsg;
+                try {
+                    GeoHashPrefixTree.getInstance().deserialize(req.getUpdatedPrefixTree());
+                    logger.info("Successfully deserialized the prefix tree.");
+                } catch (IOException e) {
+                    logger.error("Error deserializing the prefix tree.", e);
+                }
+            }
+        } else {
+            for (MonitoredComputationState monitoredComputationState : monitoredProcessors.values()) {
+                monitoredComputationState.computation.processCtrlMessage(ctrlMsg);
+            }
         }
         return monitoredProcessors.size();
     }
