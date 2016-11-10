@@ -2,7 +2,7 @@
 \label{sec:system}
 \textsc{Synopsis} is a distributed sketch constructed over voluminous data streams.
 The number of nodes (or sketchlets) that comprise the sketch varies dynamically as the sketch upscales or downscales to cope with data arrival rates and memory pressure.
-Each sketchlet is responsible for one or more geographical scopes and is implemented as a stateful Neptune stream processor that can build and retain state over time.
+Each sketchlet is responsible for one or more geographical scopes and is implemented as a stateful stream processing node that can build and retain state over time.
 A stream partitioning scheme, based on the Geohash algorithm (described in Section 3.2), is used to route packets to the appropriate sketchlet.
 Sketchlets ingest stream packets and construct compact, in-memory representations of the observational data by extracting metadata from individual stream packets.
 During dynamic scaling operations, the geographical extents managed by a sketch varies.
