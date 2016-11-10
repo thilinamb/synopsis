@@ -124,7 +124,8 @@ To evaluate the performance of the sketch, we executed several representative qu
 
 Figure~\ref{fig:dist-query} demonstrates the efficiency of the query evaluations over the distributed sketch.
 Cumulative query throughput and latencies were measured with different number of concurrent query funnels.
-A query funnel continously generates random queries and dispatch at their maximum possible rate.
-Our setup included 40 Synopsis nodes and one of those nodes were acting as the conduit for each query.
+A query funnel continously generates and dispatches random queries at their maximum possible rate.
+Our setup included 40 Synopsis nodes and one of those nodes was randomly chosen as the conduit for each query.
+
 
 \input{sections/visualization.tex}
