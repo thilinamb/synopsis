@@ -8,18 +8,35 @@ Our subject dataset was sourced from the NOAA North American Mesoscale (NAM) For
 Our performance evaluation was carried out on a 75-node heterogeneous cluster consisting of 45 HP DL160 servers (Xeon E5620, 12 GB RAM) and 30 HP DL320e servers (Xeon E3-1220 V2, 8 GB RAM) running Fedora 23. \textsc{Synopsis} was executed under the OpenJDK Java runtime, version 1.8.0\_72. \\
 
 \subsection{Dynamic Scaling}
+\begin{figure}
+    \centerline{\includegraphics[width=3.5in]{figures/dyn-scaling.pdf}}
+    \caption{The variation of number of sketchlets with the data ingestion rate.}
+    \label{fig:dyn-scaling}
+\end{figure}
 We evaluated how \textsc{Synopsis} dynamically scales when the data ingestion rate is varied.
 The data ingestion rate was varied over time such that the peak data ingestion rate is less than the highest possible throughput that will create a backlog at \textsc{Synopsis} nodes.
 We used the number of sketchlets created in the system to quantify the scaling activities.
 If the system scales out, more sketchlets will be created in child nodes after the targeted load migration.
 We started with a single \textsc{Synopsis} node and allowed the system to dynamically scale.
 As can be observed in Figure~\ref{fig:dyn-scaling}, the number of sketchlets varies with the ingestion rate.
-Since we allow aggressive scale out, it shows a rapid scale out activity during high data ingestion rates whereas scaling in takes place gradually with one sub region (hence one sketch) at a time. \\
-\begin{figure}
-    \centerline{\includegraphics[width=3.5in]{figures/dyn-scaling.pdf}}
-    \caption{The variation of number of sketchlets with the data ingestion rate.}
-    \label{fig:dyn-scaling}
-\end{figure}
+Since we allow aggressive scale out, it shows a rapid scale out activity during high data ingestion rates whereas scaling in takes place gradually with one sub region (hence one sketch) at a time.
+% scale out graph
+\begin{figure*}
+    \centerline{\includegraphics[width=\linewidth]{figures/scaleout_graph_analysis.pdf}}
+    \caption{Analysis of a snapshot of stream processing graph during ingestion}
+    \label{fig:scaleout-graph-analysis}
+\end{figure*}
+
+Figure~\ref{fig:scaleout-graph-analysis} visualizes a snapshot of the stream processing graph in runtime which validates our dynamic scaling implementation. 
+This represents the state of the system after consuming the complete NOAA dataset for 2014 and the graph contained 48 sketchlets. 
+It shows the distribution and size of the information maintained across \textsc{Synopsis} nodes for each geohash prefix of length 3 against the number of records processed for that particular prefix.
+The space requirement is measured in terms of the number of leaf nodes in the corresponding sketchlets.
+For the majority of the prefixes, the space requirement increases with the number of records processed for a particular prefix.
+If the data for a particular prefix is distributed across multiple sketchlets, then it is more likely to be a prefix with a high number of records as shown in the first subplot.
+In such cases, some of these sketchlets are created in multiple iterations of scaling out operations from their original nodes which results in a higher distance from the root in the prefix tree. This is depicted in the second sub figure of Figure~\ref{fig:scaleout-graph-analysis}.
+A few prefixes with high number of records can be observed with a low memory consumption and are distributed across multiple sketchlets.
+Their observations spans across a smaller range, hence requires less memory but they were chosen for scaling out operations due to their high message rates. 
+
 
 \subsection{Stability at Individual Nodes}
 The objective of this benchmark was to demonstrate how scaling out operations manage to maintain stability at each node under varying workload conditions.
@@ -29,7 +46,7 @@ For this experiment, we have enabled only a single threshold-based rule (either 
 We captured how backlog length and throughput at an individual node vary with the input rate when dynamic scaling is enabled.
 The \textsc{Synopsis} node that was considered for the experiment immediately received data from stream ingesters, hence the input rate observed at the node closely resembled the varying data ingestion rate.
 As shown in Figure~\ref{fig:stability-backlog}, scaling out helps a node to keep up with the variations in the workload which in turn causes the backlog to stay within a safe range.
-It also demonstrates the infrequent rapid scaling out activities and the continuous gradual downscaling activities as explained in section~\ref{subsec:scaling-out}. \\
+It also demonstrates the infrequent rapid scaling out activities and the continuous gradual downscaling activities as explained in section~\ref{subsec:scaling-out}.
 
 Figure~\ref{fig:stability-mem} demonstrates how memory consumption based threshold-based rules trigger scaling manures to maintain the system stability.
 We have used a 0.45 of the total available memory for a JVM process as the upper threshold for triggering a scale out operation.
@@ -52,18 +69,12 @@ In certain occasions, it is required to perform multiple consecutive scaling out
     \label{fig:system-stability}
 \end{figure*}
 
-% scale out graph
-\begin{figure*}
-    \centerline{\includegraphics[width=\linewidth]{figures/scaleout_graph_analysis.pdf}}
-    \caption{Analysis of a snapshot of stream processing graph during ingestion}
-    \label{fig:scaleout-graph-analysis}
-\end{figure*}
 
 % system benchmark on mem. consumption
 \begin{figure}
     \centerline{\includegraphics[width=\linewidth]{figures/ing-and-mem-usage.pdf}}
     \caption{Memory usage of the distributed sketch over time against the amount of ingested data}
-    \label{fig:stability-backlog}
+    \label{fig:dist-sketch-mem-usage}
 \end{figure}
 
 
