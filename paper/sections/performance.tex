@@ -69,13 +69,16 @@ In certain occasions, it is required to perform multiple consecutive scaling out
     \label{fig:system-stability}
 \end{figure*}
 
-
+\subsection{Growth of the Distributed Sketch over Time}
 % system benchmark on mem. consumption
 \begin{figure}
     \centerline{\includegraphics[width=\linewidth]{figures/ing-and-mem-usage.pdf}}
     \caption{Memory usage of the distributed sketch over time against the amount of ingested data}
     \label{fig:dist-sketch-mem-usage}
 \end{figure}
+We evaluated the growth in memory consumption of the distributed sketch over time with continous data ingestion as shown in Figure~\ref{fig:dist-sketch-mem-usage}.
+The rate of growth of the distributed sketch is decreased overtime.
+At the end of our monitoring period, the ingested data size was over three magnitudes higher ($\sim 1285$) than the sketch size. 
 
 
 \subsection{Sketch Query Evaluation}
@@ -119,5 +122,9 @@ To evaluate the performance of the sketch, we executed several representative qu
     \label{fig:dist-query}
 \end{figure*}
 
+Figure~\ref{fig:dist-query} demonstrates the efficiency of the query evaluations over the distributed sketch.
+Cumulative query throughput and latencies were measured with different number of concurrent query funnels.
+A query funnel continously generates random queries and dispatch at their maximum possible rate.
+Our setup included 40 Synopsis nodes and one of those nodes were acting as the conduit for each query.
 
 \input{sections/visualization.tex}
