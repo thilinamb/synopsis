@@ -21,7 +21,7 @@ We started with a single \textsc{Synopsis} node and allowed the system to dynami
 As can be observed in Figure~\ref{fig:dyn-scaling}, the number of sketchlets varies with the ingestion rate.
 Since we allow aggressive scale out, it shows a rapid scale out activity during high data ingestion rates whereas scaling in takes place gradually with one sub region (hence one sketch) at a time.
 % scale out graph
-\begin{figure*}
+\begin{figure*}[h!]
     \centerline{\includegraphics[width=\linewidth]{figures/scaleout_graph_analysis.pdf}}
     \caption{Analysis of a snapshot of the stream processing graph during data ingestion demonstrating the size and distribution of the information corresponding to different prefixes against the observed record count. If the information is dispersed over multiple sketchlets, it is likely to be a prefix with higher number of records and/or a wide range of observed values.}
     \label{fig:scaleout-graph-analysis}
@@ -53,7 +53,7 @@ Figure~\ref{fig:stability-mem} demonstrates how memory consumption based thresho
 We have used a 0.45 of the total available memory for a JVM process as the upper threshold for triggering a scale out operation.
 In certain occasions, it is required to perform multiple consecutive scaling out operations (interleaved with the cooling down periods) to bring the memory usage to the desired level due to the increased memory utilization caused by the data ingestion happening in the background.
 % system stability
-\begin{figure*}
+\begin{figure*}[h!]
     \begin{subfigure}{0.48\textwidth}
             \centering
             \includegraphics[scale=0.42]{figures/stability_partial.pdf}
@@ -72,7 +72,7 @@ In certain occasions, it is required to perform multiple consecutive scaling out
 
 \subsection{Growth of the Distributed Sketch over Time}
 % system benchmark on mem. consumption
-\begin{figure}
+\begin{figure}[h]
     \centerline{\includegraphics[width=\linewidth]{figures/ing-and-mem-usage.pdf}}
     \caption{Memory usage of the distributed sketch over time against the amount of ingested data. The rate of growth of the distributed sketch decreases over time resulting in a sketch which is multiple degrees of magnitudes smaller than the amount of ingested data}
     \label{fig:dist-sketch-mem-usage}
