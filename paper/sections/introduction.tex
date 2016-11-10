@@ -22,13 +22,12 @@ The challenges associated with implementing this functionality led us to formula
     \item   How can we ensure low latency in the assimilation of observations, updates to the sketch, and query evaluations? A particular challenge is preservation of accuracy in query evaluations despite high data arrivals, scaling in response to changes in system load, and concurrent query evaluations.
 \end{enumerate}
 
-\subsection{Methodology}
+\subsection{Approach Summary}
 Our methodology targets (1) creation of the distributed sketch, (2) updating the sketch in response to data arrivals, (3) splitting and fusing sketch instances to deal with hotspots, (4) using the distributed sketch to perform query evaluations, and (5) achieving low latency by minimizing synchronization between different components in the system. 
 
 The sketch supports three key features: maintaining a compact representation of incoming data streams, splitting and fusing portions of the overall sketch, and expressive query evaluations. Relationships between observations and their values are maintained in a graph-based structure that employs several online, in-memory summarization techniques. The sketch is also naturally amenable to distribution, with each node in the cluster holding information about a particular subset of the observational space.  This ensures each node in the system can evaluate multiple concurrent queries independently.
 
 Distributing the sketch across multiple nodes allows us to maintain a finer-grained representation of the feature space while also improving the accuracy of query evaluations; for example, an arctic region and a tropical region would be maintained on separate nodes that specialize for particular climates. Additionally, the sketch updates its precision dynamically to ensure representativeness of the dataset. This is achieved in one of two possible modes: biasing towards the recent past, or ensuring equal representation. In the former approach, the sketch targets finer-grained representations of observations in the recent past, and progressively coarser grained representations for the farther past. This scheme ensures that the apportioning of the available memory for the sketch is proportional to the time intervals under consideration.  In the latter approach, the sketch adaptively moves toward a coarser-grained representation as data accumulates.
-
 
 \subsection{Paper Contributions}
 In this paper, we present a framework for real-time query evaluations over voluminous, time-series data streams. Our specific contributions include:
@@ -42,5 +41,5 @@ In this paper, we present a framework for real-time query evaluations over volum
 To our knowledge, \textsc{Synopsis} is the first sketch designed specifically for geospatial observational data. We have validated the suitability of our approach through a comprehensive set of benchmarks with real observational data. 
 
 \subsection{Paper Organization}
-The remainder of this paper is organized as follows. Section~\ref{sec:system} describes the underlying technology \textsc{Synopsis} is based on, followed by our methodology in Section~\ref{sec:methodology}. Section~\ref{sec:performance} contains our performance evaluation of the system. Section~\ref{sec:related} discusses related approaches, and Section~\ref{sec:conclusions} concludes the paper and outlines our future research direction.
+The remainder of this paper is organized as follows. Section~\ref{sec:system} provides an overview of the system, followed by our methodology in Section~\ref{sec:methodology}. Section~\ref{sec:performance} contains our performance evaluation of the system. Section~\ref{sec:related} discusses related approaches, and Section~\ref{sec:conclusions} concludes the paper and outlines our future research direction.
 
