@@ -3,14 +3,14 @@
 \textsc{Synopsis} is a distributed sketch constructed over voluminous data streams.
 The system is composed of several hosts that form a cluster, with each participating host managing one or more \textsc{Synopsis} \emph{nodes}.
 Each node contains a \emph{sketchlet}, which maintains multidimensional data points falling within its assigned geospatial scope(s).
-The number of nodes that comprise the sketch varies dynamically as the sketch upscales or downscales to cope with data arrival rates and memory pressure.
-Each sketchlet is responsible for one or more geographical scopes and is implemented as a stateful stream processing node that can build and retain state over time.
+The number of nodes that comprise the sketch varies dynamically as the sketch scales in or out to cope with data arrival rates and memory pressure.
+%Each sketchlet is responsible for one or more geographical scopes and is implemented as a stateful stream processing node that can build and retain state over time.
 A stream partitioning scheme, based on the Geohash algorithm (described in Section 3.2), is used to route packets to the appropriate sketchlet.
 Sketchlets ingest stream packets and construct compact, in-memory representations of the observational data by extracting metadata from individual stream packets.
 During dynamic scaling operations, the geographical extents managed by a sketch varies.
 
 \textsc{Synopsis} relies on a set of auxiliary services that are needed to construct, update, and maintain the sketch and also to adapt to changing system conditions.
-These services include the control plane and the gossip, querying, and monitoring subsystems.
+These services include the control plane as well as the gossip, querying, and monitoring subsystems.
 
 \begin{description}[leftmargin=*]
 	\item[Control plane:] The control plane is responsible for orchestrating control messages exchanged between \textsc{Synopsis} nodes as part of various distributed protocols such dynamic scaling.
