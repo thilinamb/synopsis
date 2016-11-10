@@ -1,27 +1,12 @@
 \section{System Overview}
-\label{sec:system}
-\textsc{Synopsis} is implemented on top of the Neptune stream processing system \cite{buddhika2016neptune} as a specialized layer for geospatial data.
-In this section, we will briefly introduce Neptune followed by a discussion on the design of \textsc{Synopsis}.
-
-\subsection{Neptune}
-Neptune is a distributed stream processing system that is designed to cope with application requirements such as high volumes of small stream packets, high and variable data rates, and heterogeneity within stream processing jobs.
-Satisfying these requirements imposes various system level challenges including possible buffer overflow errors, increased number of context switches, object creation overhead and memory management issues.
-Neptune takes a holistic approach that considers CPU, memory, network and kernel issues to address these challenges.
-This is achieved through optimizations such as application level buffering, batched scheduling, object reuse, built-in support for backpressure and selective compression to ensure better utilization of system resources \cite{buddhika2016neptune}.
-
-Users can deploy stream processing jobs as directed acyclic graphs in Neptune.
-A stream processing graph consists of a set of stream ingestion points and stream processors (vertices) and streams connecting these operators (edges).
-To provide each job with an initial load-balanced deployment plan, each operator in a stream processing graph can be annotated with a parallelism level while each stream is associated with a partitioning scheme.
-
-\subsection{Synopsis}
 \textsc{Synopsis} is a distributed sketch constructed over voluminous data streams.
 The number of nodes (or sketchlets) that comprise the sketch varies dynamically as the sketch upscales or downscales to cope with data arrival rates and memory pressure.
 Each sketchlet is responsible for one or more geographical scopes and is implemented as a stateful Neptune stream processor that can build and retain state over time.
 A stream partitioning scheme, based on the Geohash algorithm (described in Section 3.2), is used to route packets to the appropriate sketchlet.
 Sketchlets ingest stream packets and construct compact, in-memory representations of the observational data by extracting metadata from individual stream packets.
-During upscaling and downscaling operations, the geographical extents managed by a sketch varies.
+During dynamic scaling operations, the geographical extents managed by a sketch varies.
 
-Each sketchlet instance extends Neptune's generic stream processor to provide auxiliary services that are needed to construct, update, and maintain the sketch and also to adapt to changing system conditions.
+\textsc{Synopsis} relies on a set of auxiliary services that are needed to construct, update, and maintain the sketch and also to adapt to changing system conditions.
 These services include the control plane and the gossip, querying, and monitoring subsystems.
 
 \begin{description}[leftmargin=*]
