@@ -48,7 +48,7 @@ Only a single scale out operation takes place at a given time per node, which is
 Further, every scaling operation is followed by a stabilization period where no scaling operation takes place and system does not enter the monitoring phase for the next MAPE cycle.
 The objective of these constraints is to avoid oscillations in scaling activities; for instance, repetitively scaling out in the presence of memory pressure could result in overprovisioning, which would then lead to recurring downscaling.
 
-Figure~\ref{fig:scale-out-protocol} depicts the phases of the scale out protocol.
+Figure~\ref{fig:scale-out-protocol} depicts the phases of the scale out protocol with respect to our example in Figure~\ref{fig:stream-partitioning} when node A is scaling out to node D .
 Once the \textsc{Synopsis} node decides on subregions to scale, it initiates the scale out protocol by contacting the \emph{deployer} node, which is responsible for launching tasks.
 In this message, it includes a list of preferred \textsc{Synopsis} nodes for the load migration as well as memory requirements and expected message rate for the load.
 The preferred node set includes the \textsc{Synopsis} nodes that already hold other subregions.
@@ -92,7 +92,8 @@ Scaling in is more complex than scaling out because it involves more than one \t
 At this point, it is possible that further scale out operations have taken place in the scaled out subregion after the initial scale out.
 For instance, if node A in Figure~\ref{fig:stream-partitioning} decides to scale in the subregion \emph{DJK}, then it must communicate with both nodes C and E.
 
-The downscaling protocol starts with a lock acquisition protocol similar to scaling out as illustrated in Figure~\ref{fig:scale-in-protocol}, but locking the entire subtree is required.
+The downscaling protocol starts with a lock acquisition protocol similar to scaling out protocol, but locking the entire subtree is required.
+The steps are depicted in Figure~\ref{fig:scale-in-protocol} with respect to our example in Figure~\ref{fig:stream-partitioning} where node C is scaled in.
 As per our example, node A will have to acquire locks for nodes C and E.
 Locks are acquired in a top-to-bottom fashion where parent locks itself and then attempts to lock the child.
 If lock acquisition is failed in any part of the subtree, then the scale in operation is aborted and the monitoring process will start the next iteration of the MAPE loop immediately.
