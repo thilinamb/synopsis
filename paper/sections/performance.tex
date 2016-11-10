@@ -23,13 +23,14 @@ Since we allow aggressive scale out, it shows a rapid scale out activity during 
 % scale out graph
 \begin{figure*}
     \centerline{\includegraphics[width=\linewidth]{figures/scaleout_graph_analysis.pdf}}
-    \caption{Analysis of a snapshot of stream processing graph during ingestion}
+    \caption{Analysis of a snapshot of the stream processing graph during data ingestion demonstrating the size and distribution of the information corresponding to different prefixes against the observed record count. If the information is dispersed over multiple sketchlets, it is likely to be a prefix with higher number of records and/or a wide range of observed values.}
     \label{fig:scaleout-graph-analysis}
 \end{figure*}
 
 Figure~\ref{fig:scaleout-graph-analysis} visualizes a snapshot of the stream processing graph in runtime which validates our dynamic scaling implementation. 
 This represents the state of the system after consuming the complete NOAA dataset for 2014 and the graph contained 48 sketchlets. 
 It shows the distribution and size of the information maintained across \textsc{Synopsis} nodes for each geohash prefix of length 3 against the number of records processed for that particular prefix.
+The memory requirement for a particular geohash prefix depends on the number of records as well as the range of the observed values for different features.
 The space requirement is measured in terms of the number of leaf nodes in the corresponding sketchlets.
 For the majority of the prefixes, the space requirement increases with the number of records processed for a particular prefix.
 If the data for a particular prefix is distributed across multiple sketchlets, then it is more likely to be a prefix with a high number of records as shown in the first subplot.
@@ -65,7 +66,7 @@ In certain occasions, it is required to perform multiple consecutive scaling out
             \caption{Dynamic scaling manures triggered by memory usage based threshold rules}
             \label{fig:stability-mem}
     \end{subfigure}
-    \caption{How scaling out enables maintaining stability at an individual \textsc{Synopsis} node based on backlog growth and memory usage}
+    \caption{Scaling out enables maintaining stability at an individual node based on backlog growth and memory usage}
     \label{fig:system-stability}
 \end{figure*}
 
@@ -73,7 +74,7 @@ In certain occasions, it is required to perform multiple consecutive scaling out
 % system benchmark on mem. consumption
 \begin{figure}
     \centerline{\includegraphics[width=\linewidth]{figures/ing-and-mem-usage.pdf}}
-    \caption{Memory usage of the distributed sketch over time against the amount of ingested data}
+    \caption{Memory usage of the distributed sketch over time against the amount of ingested data. The rate of growth of the distributed sketch decreases over time resulting in a sketch which is multiple degrees of magnitudes smaller than the amount of ingested data}
     \label{fig:dist-sketch-mem-usage}
 \end{figure}
 We evaluated the growth in memory consumption of the distributed sketch over time with continous data ingestion as shown in Figure~\ref{fig:dist-sketch-mem-usage}.
@@ -118,7 +119,7 @@ To evaluate the performance of the sketch, we executed several representative qu
 % distributed query evaluation
 \begin{figure*}
     \centerline{\includegraphics[width=\linewidth]{figures/query_benchmark_both.pdf}}
-    \caption{Distributed Query Evaluation Performance}
+    \caption{Distributed Query Evaluation Performance. Variation of cumulative throughput and latency against the number of concurrent query funnels in a 40 node \textsc{Synopsis} cluster.}
     \label{fig:dist-query}
 \end{figure*}
 
