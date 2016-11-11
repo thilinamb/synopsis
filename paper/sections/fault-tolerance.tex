@@ -7,22 +7,22 @@ This incremental checkpointing scheme forms an edit stream between the two stage
 This consumes a less bandwidth compared to a periodic checkpointing scheme that replicates the entire state every time \cite{castro2013integrating}.
 The stage two operator, which is also known as the \textit{state replication sink}, serializes the messages received via the edit stream to persistent storage.
 By default, \textsc{Synopsis} uses the disk of the machine which hosts the state replication sink operator for persistent storage, but necessary API level provisions are included to support highly available storage implementations such as HDFS~\cite{borthakur2008hdfs}.
-The state replication sink operator can fan out to more instances to support higher replication levels.
-For instance, if the required replication level is three then there will be three instances of the state replication sink running.
-Having a fixed number of state replication sinks and not using any additional memory to maintain state replicas contribute to a smaller resource footprint required for fault tolerance.
+%The state replication sink operator can fan out to more instances to support higher replication levels.
+%For instance, if the required replication level is three then there will be three instances of the state replication sink running.
+%Having a fixed number of state replication sinks and not using any additional memory to maintain state replicas contribute to a smaller resource footprint required for fault tolerance.
 
 Incremental checkpoints are performed based on a special control message emitted by the stream ingesters.
 These messages help to orchestrate a system-wide incremental checkpoint.
 \textsc{Synopsis} uses upstream backups at stream ingesters to keep a copy of the messages that entered the system since the last successful checkpoint.
 In case of a failure, all messages since the last checkpoint will be replayed.
 
-\textsc{Synopsis} nodes are implemented as idempotent operators (using the message sequence numbers), hence they will process the replayed messages only if necessary.
-Users can apply their own policy for defining the period between the incremental checkpoints because too frequent checkpoints can incur high overhead whereas longer periods between successive checkpoints may consume more resources for upstream backups as well as for processing replayed messages in case of a failure.
+\textsc{Synopsis} nodes are implemented as idempotent operators using message sequence numbers, hence they will process the replayed messages only if necessary.
+Users can apply their own policy for defining the period between the incremental checkpoints because frequent checkpoints can incur high overhead whereas longer periods between successive checkpoints may consume more resources for upstream backups as well as for replaying messages in case of a failure.
 
 Membership management is implemented using Zookeeper \cite{hunt2010zookeeper}, which is leveraged to detect failed nodes.
-Upon receiving notifications from the system about node failures, an upstream node switches to a secondary child node if necessary. The secondary child node is a \textsc{Synopsis} node running on the process where a state replication sink was running; allowing it access to the persisted replicated state.
+Upon receiving notifications from the system about node failures, an upstream node switches to a secondary child node if necessary. The secondary child node is a \textsc{Synopsis} node running on the process where a state replication sink was running, allowing it access to the persisted replicated state.
 The secondary will start processing messages immediately and start populating its state from the persistent storage in the background.
-Given this mode of operation, there may be a small window of time during which the correctness of queries are impacted.
-This is rectified once the stored state is loaded to memory and replay of the upstream backup is completed.
-The sketch's ability to correctly process out of order messages and support for merging with other sketches is useful during this failure recovery process.
+%Given this mode of operation, there may be a small window of time during which the correctness of queries are impacted.
+%This is rectified once the stored state is loaded to memory and replay of the upstream backup is completed.
+%The sketch's ability to correctly process out of order messages and support for merging with other sketches is useful during this failure recovery process.
 

@@ -82,7 +82,7 @@ Once this process is complete, the source node will initiate a state transfer as
 We captured how backlog length and throughput at an individual node vary with the input rate when dynamic scaling is enabled.
 The \textsc{Synopsis} node that was considered for the experiment immediately received data from stream ingesters, hence the input rate observed at the node closely resembled the varying data ingestion rate.
 As shown in Figure~\ref{fig:stability-backlog}, scaling out helps a node to keep up with the variations in the workload which in turn causes the backlog to stay within a safe range.
-It also demonstrates infrequent, rapid scaling out and continuous, gradual scaling in as explained in section~\ref{subsec:scaling-out}.
+It also demonstrates infrequent, rapid scaling out and continuous, gradual scaling in as explained in \S\ref{subsec:scaling-out}.
 
 Figure~\ref{fig:stability-mem} demonstrates how memory consumption based threshold-based rules trigger scaling maneuvers to maintain the stability of an individual node.
 For this experiment, we have enabled only a single threshold-based rule (either backlog growth based or memory usage based) at a time to demonstrate its effectiveness.
@@ -118,7 +118,7 @@ Monitoring and analysis during scale-in operations proceeds similarly to scaling
 When scaling in, we use a less aggressive scheme than scaling out; a single subregion is acquired during a single scale in operation.
 Scaling in is more complex than scaling out because it involves more than one \textsc{Synopsis} node in most cases.
 At this point, it is possible that further scale out operations have taken place in the scaled out subregion after the initial scale out.
-For instance, if node A in Figure~\ref{fig:stream-partitioning} decides to scale in the subregion \emph{DJK}, then it must communicate with both nodes C and E.
+For instance, if node A in Figure~\ref{fig:stream-partitioning} decides to scale in the subregion \emph{DJK}, then it must communicate with nodes C and E.
 
 The scale-in protocol starts with a lock acquisition protocol similar to scaling out protocol, but locking the entire subtree is required.
 The steps are depicted in Figure~\ref{fig:scale-in-protocol} with respect to our example in Figure~\ref{fig:stream-partitioning} where node C is scaled in.
