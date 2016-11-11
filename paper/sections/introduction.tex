@@ -15,12 +15,12 @@ Support for real-time evaluation of queries --- discrete and continuous --- over
 
 \subsection{Research Questions}
 The challenges associated with implementing this functionality led us to formulate the following research questions:
-\begin{enumerate}
-    \item   How can we generate compact, memory-resident representations of the observational space? These \emph{sketches} must be amenable to fast, continuous updates to ensure they are representative of the observational space.
-    \item   How can we scale effectively in situations where the observations arrive at a rate faster than the rate at which the sketch can be updated? The density and arrival rates for observations vary based on the geospatial characteristics of the data. For example, in a smart-city setting, New York City would have a far higher rate of observations than Denver, Colorado.
+\begin{itemize}
+    \item[\textbf{RQ-1}]   How can we generate compact, memory-resident representations of the observational space? The resulting \emph{sketch} must be amenable to fast, continuous updates to ensure its representativeness.
+    \item[\textbf{RQ-2}]   How can we scale effectively in situations where the observations arrive at a rate faster than the rate at which the sketch can be updated? The density and arrival rates for observations may vary based on the geospatial characteristics of the data. For example, in a smart-city setting, New York City would have a far higher rate of observations than Denver, Colorado.
     \item   How can we account for spatiotemporal attributes associated with observations and queries? This spans the generation and updates of the sketch, scaling in response to high data arrival rates, and the evaluation of queries.
     \item   How can we ensure low latency in the assimilation of observations, updates to the sketch, and query evaluations? A particular challenge is preservation of accuracy in query evaluations despite high data arrivals, scaling in response to changes in system load, and concurrent query evaluations.
-\end{enumerate}
+\end{itemize}
 
 \subsection{Approach Summary}
 Our methodology targets (1) creation of the distributed sketch, (2) updating the sketch in response to data arrivals, (3) splitting and fusing sketch instances to deal with hotspots, (4) using the distributed sketch to perform query evaluations, and (5) achieving low latency by minimizing synchronization between different components in the system. 
