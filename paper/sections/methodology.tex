@@ -8,6 +8,7 @@ Enabling real-time query evaluations over voluminous spatiotemporal data streams
 
 \subsection{Coping with High Data Rates: Scaling out}
 \label{subsec:scaling-out}
+%
 There are two primary approaches to scaling a node that is experiencing high traffic: \emph{replication} and \emph{load migration}. In replication-based scaling, new nodes are spawned during high data arrival rates that are responsible for identical spatial scopes as their originating node. Assimilation of the newly-created node involves partitioning inbound streams directed to the original node. The upstream node is responsible for this partitioning, which may be performed in a skewed fashion with the new node receiving a larger portion of the inbound stream.  Alternatively, inbound streams to the original node may also be partitioned in a round-robin fashion between the original and the newly-created node.
 
 In targeted load migration, particular geospatial scopes are evicted from the original node to the newly created node during heavy traffic. Deciding which spatial scopes to migrate is based on data arrival rates and the rates at which particular portions of the sketch are being updated.
@@ -47,7 +48,23 @@ Nodes often migrate several prefixes during a scale out operation.
 Only a single scale out operation takes place at a given time per node, which is controlled by a mutex lock.
 Further, every scaling operation is followed by a stabilization period where no scaling operation takes place and system does not enter the monitoring phase for the next MAPE cycle.
 The objective of these constraints is to avoid oscillations in scaling activities; for instance, repetitively scaling out in the presence of memory pressure could result in overprovisioning, which would then lead to recurring scale-in operations.
-
+%
+\begin{figure*}[h!]
+        \begin{subfigure}{0.45\textwidth}
+                \centering
+                \includegraphics[scale=0.45, valign=t]{figures/scale-out.pdf}
+                \caption{Scale out protocol}
+                \label{fig:scale-out-protocol}    
+        \end{subfigure}
+        \begin{subfigure}{0.45\textwidth}
+                \centering
+                \includegraphics[scale=0.45, valign=t]{figures/scale-in.pdf} 
+                \caption{Scale in protocol}
+                \label{fig:scale-in-protocol}
+        \end{subfigure}
+        \caption{Steps of dynamic scaling protocols in chronological order}
+        \label{fig:dynamic-scaling-protocols}
+\end{figure*}
 Figure~\ref{fig:scale-out-protocol} depicts the phases of the scale out protocol with respect to our example in Figure~\ref{fig:stream-partitioning} when node A is scaling out to node D .
 Once the \textsc{Synopsis} node decides on subregions to scale, it initiates the scale out protocol by contacting the \emph{deployer} node, which is responsible for launching tasks.
 In this message, it includes a list of preferred \textsc{Synopsis} nodes for the load migration as well as memory requirements and expected message rate for the load.
@@ -90,23 +107,6 @@ In certain occasions, it is required to perform multiple consecutive scaling out
 
 %Completing the scale out protocol quickly is important because it can release mutual exclusive locks in both origin and target \textsc{Synopsis} nodes quickly and participate in other scaling activities soon after the stabilization period.
 %
-\begin{figure*}
-        \begin{subfigure}{0.45\textwidth}
-                \centering
-                \includegraphics[scale=0.45, valign=t]{figures/scale-out.pdf}
-                \caption{Scale out protocol}
-                \label{fig:scale-out-protocol}    
-        \end{subfigure}
-        \begin{subfigure}{0.45\textwidth}
-                \centering
-                \includegraphics[scale=0.45, valign=t]{figures/scale-in.pdf} 
-                \caption{Scale in protocol}
-                \label{fig:scale-in-protocol}
-        \end{subfigure}
-        \caption{Steps of dynamic scaling protocols in chronological order}
-        \label{fig:dynamic-scaling-protocols}
-\end{figure*}
-%
 \subsection{Scaling In}
 \label{subsec:scaling-in}
 During scaling in, \textsc{Synopsis} nodes merge back some of the subregions scaled out previously.
@@ -136,7 +136,7 @@ After the entire subtree has seen all messages up to the termination point, they
 Once the parent node receives acknowledgments from the entire subtree, it starts propagating the protocol end messages to initiate lock releasing.
 Locks are released from the bottom to top in the subtree, with the parent releasing its lock after each child has released its lock.
 
-\begin{figure}
+\begin{figure}[b!]
     \centerline{\includegraphics[width=3.5in]{figures/dyn-scaling.pdf}}
     \caption{The variation of number of sketchlets with the data ingestion rate.}
     \label{fig:dyn-scaling}
