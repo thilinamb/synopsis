@@ -1,11 +1,10 @@
 \subsection{Use with Analytic Engines}
-\textsc{Synopsis} can be used to generate synthetic data that requires less space while providing an effective representation of the actual data.
-Such synthetic datasets can be used efficiently with analytic engines such as Spark and Tensorflow.
-
-We used Apache Spark to train a regression model based on Random Forests ensemble method to predict temperature using surface visibility, humidity and precipitation.
-Different models were generated using the actual data and synthetic data sets representing 10\% and 20\% of the actual data.
+Synthetic data queries in \textsc{Synopsis} can be used to generate representative datasets that require less space while still providing high accuracy.  
+Such synthetic datasets can be used efficiently with analytic engines such as Apache Spark \cite{zaharia2010spark} and TensorFlow \cite{tensorflow}.  
+We used Spark to train regression models based on the Random Forest ensemble method to predict temperatures using surface visibility, humidity and precipitation.
+These models were generated using the original full-resolution data as well as synthetic data sets that were sized at 10\% and 20\% of the original data.
 The accuracy of these models were measured using the a test dataset extracted from actual observations.
-The data was staged on HDFS and loaded into Spark to train the ensemble models.
+All three datasets were staged on HDFS and loaded into Spark to train the ensemble models.
 %
 \begin{table*}
     \renewcommand{\arraystretch}{1.3}
