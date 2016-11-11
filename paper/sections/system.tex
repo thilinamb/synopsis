@@ -9,9 +9,7 @@ A stream partitioning scheme, based on the Geohash algorithm (described in Secti
 Sketchlets ingest stream packets and construct compact, in-memory representations of the observational data by extracting metadata from individual stream packets.
 During dynamic scaling operations, the geographical extents managed by a sketch varies.
 
-\textsc{Synopsis} relies on a set of auxiliary services that are needed to construct, update, and maintain the sketch and also to adapt to changing system conditions.
-These services include the control plane as well as the gossip, querying, and monitoring subsystems.
-
+In addition to the data plane, \textsc{Synopsis} relies on a set of auxiliary services that are needed to construct, update, and maintain the sketch and also to adapt to changing system conditions as listed below.
 \begin{description}[leftmargin=*]
 	\item[Control plane:] The control plane is responsible for orchestrating control messages exchanged between \textsc{Synopsis} nodes as part of various distributed protocols such dynamic scaling.
     It is decoupled from the generic data plane to ensure higher priority and low latency processing without being affected by buffering delays and backpressure during stream processing.

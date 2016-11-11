@@ -78,6 +78,7 @@ Upon receivesiving a response from the deployer, the node that is scaling out co
 A lock will be granted if the target can accommodate the load and no other scaling operations are taking place.
 If the lock acquisition fails, another node from the list is attempted; otherwise, the original \textsc{Synopsis} node will create a pass-through channel and direct traffic towards the target node.
 Once this process is complete, the source node will initiate a state transfer asynchronously using a background channel to ensure the stream data flow is not affected, and update its memory utilization metrics to account for the pending state transfer.
+
 We captured how backlog length and throughput at an individual node vary with the input rate when dynamic scaling is enabled.
 The \textsc{Synopsis} node that was considered for the experiment immediately received data from stream ingesters, hence the input rate observed at the node closely resembled the varying data ingestion rate.
 As shown in Figure~\ref{fig:stability-backlog}, scaling out helps a node to keep up with the variations in the workload which in turn causes the backlog to stay within a safe range.
