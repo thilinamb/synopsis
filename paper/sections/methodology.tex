@@ -21,11 +21,11 @@ Our implementation closely follows the MAPE loop~\cite{maurer2011revealing} whic
 %The monitoring task as shown in Figure~\ref{fig:process-monitor} periodically probes every \textsc{Synopsis} task to gather two performance metrics as part of monitoring phase.
 A monitoring task periodically probes every node to gather two performance metrics:
 \begin{enumerate}[leftmargin=*]
-	\item Length of the backlog: This represents the number of unprocessed messages in the queue. If the \textsc{Synopsis} task cannot keep up with the incoming data rate, then the backlog will grow over time.
-	\item Memory pressure: Each node is allocated a fixed amount of memory. 
+	\item \textbf{Length of the backlog:} This represents the number of unprocessed messages in the queue. If the \textsc{Synopsis} task cannot keep up with the incoming data rate, then the backlog will grow over time.
+	\item \textbf{Memory pressure:} Each node is allocated a fixed amount of memory. 
 	Exceeding these memory limits creates memory pressure, which may cause extended garbage collection cycles and increased paging activity. 
 	This will eventually lead to reduced performance in every \textsc{Synopsis} task running on the node.
-	The monitoring task records memory utilization of the process as well as its individual tasks.
+	The monitoring task continously monitors the memory utilization of the JVM process and individual \textsc{Synopsis} tasks and triggers scaling activities accordingly.
 \end{enumerate} 
 
 The objective of scaling out is to maintain the \emph{stability} of each node.
@@ -56,7 +56,7 @@ The objective here is to minimize the number of nodes responsible for each geogr
 
 The \textsc{Synopsis} deployer component has an approximate view of the entire system gathered through gossip messages, which includes the memory pressure and cumulative backlog information for each node.
 Based on this view and the information present in the request, the deployer replies back with a set of target \textsc{Synopsis} nodes.
-If a suitable node cannot be found, a new node will be launched that includes the location in question.
+Only if a suitable node cannot be found from the set of currently active nodes, a new node will be spawned.
 Upon receiving a response from the deployer, the node that is scaling out contacts the target node and tries to acquire the mutex.
 A lock will be granted if the target can accommodate the load and no other scaling operations are taking place.
 If the lock acquisition fails, another node from the list is attempted; otherwise, the original \textsc{Synopsis} node will create a pass-through channel and direct traffic towards the target node.
