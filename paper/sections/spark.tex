@@ -3,17 +3,17 @@
     \caption{Generating a random forest based regression model using Spark Mllib}
     \label{tab:resource-util}
     \begin{center}
-        \begin{tabularx}{0.98\textwidth}{|X|c|c|c|c|c|c|c|}
+        \begin{tabularx}{0.98\textwidth}{|X|c|X|c|c|c|c|c|c|}
             \hline
-            \multirow{2}{*}{Dataset} & \multirow{2}{*}{Size (GB)} & \multicolumn{2}{c|}{\cellcolor[gray]{0.7}Data Loading Time (s)} &\multicolumn{2}{c|}{\cellcolor[gray]{0.7}Model Training Time (s)} & \multicolumn{2}{c|}{\cellcolor[gray]{0.7}Accuracy (RMSE)}\\
-            \cline{3-8}
-             & & \cellcolor[gray]{0.9}Mean & \cellcolor[gray]{0.9}Std. Dev.  &  \cellcolor[gray]{0.9}Mean & \cellcolor[gray]{0.9}Std. Dev. &  \cellcolor[gray]{0.9}Mean & \cellcolor[gray]{0.9}Std. Dev. \\
+            \multirow{2}{*}{Dataset} & \multirow{2}{*}{Size (GB)} & \multirow{2}{*}{RDD Count} & \multicolumn{2}{c|}{\cellcolor[gray]{0.7}Data Loading Time (s)} &\multicolumn{2}{c|}{\cellcolor[gray]{0.7}Model Training Time (s)} & \multicolumn{2}{c|}{\cellcolor[gray]{0.7}Accuracy (RMSE)}\\
+            \cline{4-9}
+             & & & \cellcolor[gray]{0.9}Mean & \cellcolor[gray]{0.9}Std. Dev.  &  \cellcolor[gray]{0.9}Mean & \cellcolor[gray]{0.9}Std. Dev. &  \cellcolor[gray]{0.9}Mean & \cellcolor[gray]{0.9}Std. Dev. \\
             \hline
-            Original Data & 25.350 & 4.611 & 0.133 & 168.803 & 9.673 & 6.191 & 0.005 \\
+            Original Data & 25.350 & & 4.611 & 0.133 & 168.803 & 9.673 & 6.191 & 0.005 \\
             \hline
-            Synthetic Data - 10\% & 2.549 & 3.424 & 0.288 & 125.527 & 7.145 & 6.210 & 0.013 \\
+            Synthetic Data - 10\% & 2.549 & & 3.424 & 0.288 & 125.527 & 7.145 & 6.210 & 0.013 \\
             \hline
-            Synthetic Data - 20\% & - & - & - & 144.681 & 8.2845 & 6.196 & 0.015 \\
+            Synthetic Data - 20\% & 4.336 & & - & - & 144.681 & 8.2845 & 6.196 & 0.015 \\
             \hline
 		\end{tabularx}
 	\end{center}
