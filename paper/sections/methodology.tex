@@ -57,10 +57,37 @@ The objective here is to minimize the number of nodes responsible for each geogr
 The \textsc{Synopsis} deployer component has an approximate view of the entire system gathered through gossip messages, which includes the memory pressure and cumulative backlog information for each node.
 Based on this view and the information present in the request, the deployer replies back with a set of target \textsc{Synopsis} nodes.
 Only if a suitable node cannot be found from the set of currently active nodes, a new node will be spawned.
-Upon receiving a response from the deployer, the node that is scaling out contacts the target node and tries to acquire the mutex.
+Upon receivesiving a response from the deployer, the node that is scaling out contacts the target node and tries to acquire the mutex.
 A lock will be granted if the target can accommodate the load and no other scaling operations are taking place.
 If the lock acquisition fails, another node from the list is attempted; otherwise, the original \textsc{Synopsis} node will create a pass-through channel and direct traffic towards the target node.
 Once this process is complete, the source node will initiate a state transfer asynchronously using a background channel to ensure the stream data flow is not affected, and update its memory utilization metrics to account for the pending state transfer.
+We captured how backlog length and throughput at an individual node vary with the input rate when dynamic scaling is enabled.
+The \textsc{Synopsis} node that was considered for the experiment immediately received data from stream ingesters, hence the input rate observed at the node closely resembled the varying data ingestion rate.
+As shown in Figure~\ref{fig:stability-backlog}, scaling out helps a node to keep up with the variations in the workload which in turn causes the backlog to stay within a safe range.
+It also demonstrates infrequent, rapid scaling out and continuous, gradual scaling in as explained in section~\ref{subsec:scaling-out}.
+
+Figure~\ref{fig:stability-mem} demonstrates how memory consumption based threshold-based rules trigger scaling maneuvers to maintain the stability of an individual node.
+For this experiment, we have enabled only a single threshold-based rule (either backlog growth based or memory usage based) at a time to demonstrate its effectiveness.
+We have used a 0.45 of the total available memory for a JVM process as the upper threshold for triggering a scale out operation.
+In certain occasions, it is required to perform multiple consecutive scaling out operations (interleaved with the cooling down periods) to bring the memory usage to the desired level due to the increased memory utilization caused by the data ingestion happening in the background.
+% system stability
+\begin{figure*}[h!]
+    \begin{subfigure}{0.48\textwidth}
+            \centering
+            \includegraphics[scale=0.42]{figures/stability_partial.pdf}
+            \caption{Dynamic scaling maneuvers triggered by backlog growth based threshold rules}
+            \label{fig:stability-backlog}
+    \end{subfigure}
+    \begin{subfigure}{0.48\textwidth}
+            \centering
+            \includegraphics[scale=0.42]{figures//mem_stability.pdf} 
+            \caption{Dynamic scaling maneuvers triggered by memory usage based threshold rules}
+            \label{fig:stability-mem}
+    \end{subfigure}
+    \caption{Scaling out enables maintaining stability at an individual node based on backlog growth and memory usage}
+    \label{fig:system-stability}
+\end{figure*}
+
 %Completing the scale out protocol quickly is important because it can release mutual exclusive locks in both origin and target \textsc{Synopsis} nodes quickly and participate in other scaling activities soon after the stabilization period.
 %
 \begin{figure*}
@@ -108,6 +135,19 @@ Once the child node has processed every message up to the termination point, it 
 After the entire subtree has seen all messages up to the termination point, they acknowledge the initiator node and start transferring their states asynchronously.
 Once the parent node receives acknowledgments from the entire subtree, it starts propagating the protocol end messages to initiate lock releasing.
 Locks are released from the bottom to top in the subtree, with the parent releasing its lock after each child has released its lock.
+
+\begin{figure}
+    \centerline{\includegraphics[width=3.5in]{figures/dyn-scaling.pdf}}
+    \caption{The variation of number of sketchlets with the data ingestion rate.}
+    \label{fig:dyn-scaling}
+\end{figure}
+We evaluated how \textsc{Synopsis} dynamically scales when the data ingestion rate is varied.
+The data ingestion rate was varied over time such that the peak data ingestion rate is less than the highest possible throughput that will create a backlog at \textsc{Synopsis} nodes.
+We used the number of sketchlets created in the system to quantify the scaling activities.
+If the system scales out, more sketchlets will be created in child nodes after the targeted load migration.
+We started with a single \textsc{Synopsis} node and allowed the system to dynamically scale.
+As can be observed in Figure~\ref{fig:dyn-scaling}, the number of sketchlets varies with the ingestion rate.
+Since we allow aggressive scale out, it shows a rapid scale out activity during high data ingestion rates whereas scaling in takes place gradually with one sub region (hence one sketch) at a time.
 
 \input{sections/queries.tex}
 
