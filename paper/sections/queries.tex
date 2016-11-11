@@ -29,7 +29,7 @@ Our distributed prefix tree enables query evaluations during both scaling in and
 \end{description}
 
 \subsubsection{Query Evaluation Performance}
-To evaluate distributed query performance, we executed several representative workloads across a variety of sketchlet sizes. These queries were separated into two groups: metadata lookups and graph retrievals. Metadata lookups include density queries, set queries, and statistical queries, while graph retrievals request targeted portions of the overall feature space as a graph.  Note that while metadata lookups do not return a graph structure to the client, they still require a graph traversal to resolve. In general, graph retrievals consume more processing time due to their high serialization and I/O costs.
+To evaluate distributed query performance, we executed several representative workloads across a variety of sketchlet sizes. These queries were separated into two groups: conventional lookups and graph retrievals. Conventional lookups include density queries, set queries, and statistical queries, while graph retrievals request targeted portions of the overall feature space as a graph.  Note that while conventional lookups do not return a graph structure to the client, they still require a graph traversal to resolve. In general, graph retrievals consume more processing time due to their high serialization and I/O costs.
 
 Figure~\ref{fig:dist-query} demonstrates the end-to-end efficiency of the query evaluations over the distributed sketch.
 Cumulative query throughput and latencies were measured with varying numbers of concurrent query \emph{funnels}.
@@ -42,7 +42,7 @@ These randomized queries fluctuated in both the ranges of values and spatial sco
     \label{fig:dist-query}
 \end{figure*}
 
-Table~\ref{tbl:query-times} outlines the local sketchlet traversal times for both evaluation types on a single node, and also includes results that combine the two types (retrieving a graph that also includes metadata). In general, metadata lookups require less processing time. While graph lookups take longer to complete, it is worth noting that varying the geographical scope across sketchlet sizes from 5km to 800km did not result in a proportionate increase in processing time. Overall, the sketch is able to satisfy our goal of low-latency query evaluations for each query type.
+Table~\ref{tbl:query-times} outlines the local sketchlet traversal times for both evaluation types on a single node, and also includes results that combine the two types (retrieving a graph that also includes metadata). In general, conventional lookups require less processing time. While graph lookups take longer to complete, it is worth noting that varying the geographical scope across sketchlet sizes from 5km to 800km did not result in a proportionate increase in processing time. Overall, the sketch is able to satisfy our goal of low-latency query evaluations for each query type.
 
 \begin{table}[h!]
     \renewcommand{\arraystretch}{1.4}
