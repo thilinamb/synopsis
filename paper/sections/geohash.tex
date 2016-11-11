@@ -41,7 +41,8 @@ We use our gossiping subsystem to update parent nodes on child state information
     \label{fig:scaleout-graph-analysis}
 \end{figure*}
 %
-Figure~\ref{fig:scaleout-graph-analysis} visualizes a snapshot of the stream processing graph in runtime which validates our dynamic scaling implementation. 
+
+Figure~\ref{fig:scaleout-graph-analysis} visualizes a snapshot of the stream processing graph in runtime which demonstrates the stream partitioning concepts discussed above. 
 This represents the state of the system after consuming the complete NOAA dataset for 2014 and the graph contained 48 sketchlets. 
 It shows the distribution and size of the information maintained across \textsc{Synopsis} nodes for each geohash prefix of length 3 against the number of records processed for that particular prefix.
 The memory requirement for a particular geohash prefix depends on the number of records as well as the range of the observed values for different features.
