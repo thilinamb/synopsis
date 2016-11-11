@@ -30,7 +30,7 @@ A monitoring task periodically probes every node to gather two performance metri
 \end{enumerate} 
 
 The objective of scaling out is to maintain the \emph{stability} of each node.
-We define stability as the ability to keep up with incoming data rates while incurring a manageable memory pressure.  During the analysis phase, we use threshold-based rules \cite{lorido2012auto} to provide scale out recommendations to \textsc{Synopsis} nodes.
+We define stability as the ability to keep up with incoming data rates while incurring a manageable memory pressure.  During the analysis phase, we use threshold-based rules \cite{lorido2012auto} to provide scale-out recommendations to \textsc{Synopsis} nodes.
 We rely on a reactive scheme where the rules are evaluated on current observations.
 Scaling out recommendations are provided if either of the following rules are consistently satisfied for a certain number of observations:
 \begin{itemize}[leftmargin=*]  
@@ -40,12 +40,12 @@ Scaling out recommendations are provided if either of the following rules are co
 
 Upon receiving a scaling out recommendation from the monitoring task, the \textsc{Synopsis} node executes the planning and execution phases.
 During the planning phase, the node chooses portion(s) of the region within its current purview to be handed over to another node.
-For this task, the node relies on metadata it maintains for each subregion (corresponding to longer Geohash strings) and a numeric value provided by the scale out recommendation that measures how much load should be migrated.
+For this task, the node relies on metadata it maintains for each subregion (corresponding to longer Geohash strings) and a numeric value provided by the scale-out recommendation that measures how much load should be migrated.
 This metadata includes the data rate and the timestamp of the last processed message for each subregion.
 A \textsc{Synopsis} node updates these metadata records with each message it processes.
-Nodes often migrate several prefixes during a scale out operation.
+Nodes often migrate several prefixes during a scale-out operation.
 
-Only a single scale out operation takes place at a given time per node, which is controlled by a mutex lock.
+Only a single scale-out operation takes place at a given time per node, which is controlled by a mutex lock.
 Further, every scaling operation is followed by a stabilization period where no scaling operation takes place and system does not enter the monitoring phase for the next MAPE cycle.
 The objective of these constraints is to avoid oscillations in scaling activities; for instance, repetitively scaling out in the presence of memory pressure could result in overprovisioning, which would then lead to recurring scale-in operations.
 %
@@ -53,7 +53,7 @@ The objective of these constraints is to avoid oscillations in scaling activitie
         \begin{subfigure}{0.45\textwidth}
                 \centering
                 \includegraphics[scale=0.45, valign=t]{figures/scale-out.pdf}
-                \caption{Scale out protocol}
+                \caption{Scale-out protocol}
                 \label{fig:scale-out-protocol}    
         \end{subfigure}
         \begin{subfigure}{0.45\textwidth}
@@ -65,8 +65,8 @@ The objective of these constraints is to avoid oscillations in scaling activitie
         \caption{Steps of dynamic scaling protocols in chronological order}
         \label{fig:dynamic-scaling-protocols}
 \end{figure*}
-Figure~\ref{fig:scale-out-protocol} depicts the phases of the scale out protocol with respect to our example in Figure~\ref{fig:stream-partitioning} when node A is scaling out to node D.
-Once the \textsc{Synopsis} node decides on subregions to scale, it initiates the scale out protocol by contacting the \emph{deployer} node, which is responsible for launching tasks.
+Figure~\ref{fig:scale-out-protocol} depicts the phases of the scale-out protocol with respect to our example in Figure~\ref{fig:stream-partitioning} when node A is scaling out to node D.
+Once the \textsc{Synopsis} node decides on subregions to scale, it initiates the scale-out protocol by contacting the \emph{deployer} node, which is responsible for launching tasks.
 In this message, it includes a list of preferred \textsc{Synopsis} nodes for the load migration as well as memory requirements and expected message rate for the load.
 The preferred node set includes the \textsc{Synopsis} nodes that already hold other subregions.
 The objective here is to minimize the number of nodes responsible for each geographical region to reduce communication during query evaluations.
@@ -86,7 +86,7 @@ It also demonstrates infrequent, rapid scaling out and continuous, gradual scali
 
 Figure~\ref{fig:stability-mem} demonstrates how memory consumption based threshold-based rules trigger scaling maneuvers to maintain the stability of an individual node.
 For this experiment, we have enabled only a single threshold-based rule (either backlog growth based or memory usage based) at a time to demonstrate its effectiveness.
-We have used a 0.45 of the total available memory for a JVM process as the upper threshold for triggering a scale out operation.
+We have used a 0.45 of the total available memory for a JVM process as the upper threshold for triggering a scale-out operation.
 In certain occasions, it is required to perform multiple consecutive scaling out operations (interleaved with the cooling down periods) to bring the memory usage to the desired level due to the increased memory utilization caused by the data ingestion happening in the background.
 % system stability
 \begin{figure*}[h!]
@@ -106,18 +106,18 @@ In certain occasions, it is required to perform multiple consecutive scaling out
     \label{fig:system-stability}
 \end{figure*}
 
-%Completing the scale out protocol quickly is important because it can release mutual exclusive locks in both origin and target \textsc{Synopsis} nodes quickly and participate in other scaling activities soon after the stabilization period.
+%Completing the scale-out protocol quickly is important because it can release mutual exclusive locks in both origin and target \textsc{Synopsis} nodes quickly and participate in other scaling activities soon after the stabilization period.
 %
 \subsection{Scaling In}
 \label{subsec:scaling-in}
 During scaling in, \textsc{Synopsis} nodes merge back some of the subregions scaled out previously.
 This ensures better resource utilization in the system in addition to efficient query evaluations by having to contact fewer nodes.
-Scaling in is also guarded by the same mutex lock used for scaling out (only one scale out or scale-in operation takes place at a given time) and are followed by a stabilization period.
+Scaling in is also guarded by the same mutex lock used for scaling out (only one scale-out or scale-in operation takes place at a given time) and are followed by a stabilization period.
 
 Monitoring and analysis during scale-in operations proceeds similarly to scaling out, except for the obvious change to the threshold-based rules: now both memory pressure and backlog length metrics should consistently record values below a predefined lower threshold.
 When scaling in, we use a less aggressive scheme than scaling out; a single subregion is acquired during a single scale-in operation.
 Scaling in is more complex than scaling out because it involves more than one \textsc{Synopsis} node in most cases.
-At this point, it is possible that further scale out operations have taken place in the scaled out subregion after the initial scale out.
+At this point, it is possible that further scale-out operations have taken place in the scaled out subregion after the initial scale-out.
 For instance, if node A in Figure~\ref{fig:stream-partitioning} decides to scale-in the subregion \emph{DJK}, then it must communicate with nodes C and E.
 
 The scale-in protocol starts with a lock acquisition protocol similar to scaling out protocol, but locking the entire subtree is required.
@@ -148,7 +148,7 @@ We used the number of sketchlets created in the system to quantify the scaling a
 If the system scales out, more sketchlets will be created in child nodes after the targeted load migration.
 We started with a single \textsc{Synopsis} node and allowed the system to dynamically scale.
 As can be observed in Figure~\ref{fig:dyn-scaling}, the number of sketchlets varies with the ingestion rate.
-Since we allow aggressive scale out, it shows a rapid scale out activity during high data ingestion rates whereas scaling in takes place gradually with one sub region (hence one sketch) at a time.
+Since we allow aggressive scale-out, it shows rapid scaling activity during high data ingestion rates whereas scaling in takes place gradually with one sub region (hence one sketch) at a time.
 
 \input{sections/queries.tex}
 
