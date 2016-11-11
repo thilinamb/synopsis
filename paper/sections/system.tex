@@ -9,14 +9,13 @@ A stream partitioning scheme, based on the Geohash algorithm (described in Secti
 Sketchlets ingest stream packets and construct compact, in-memory representations of the observational data by extracting metadata from individual stream packets.
 During dynamic scaling operations, the geographical extents managed by a sketch varies.
 
-\textsc{Synopsis} relies on a set of auxiliary services that are needed to construct, update, and maintain the sketch and also to adapt to changing system conditions.
-These services include the control plane as well as the gossip, querying, and monitoring subsystems.
+\textsc{Synopsis} relies on a set of auxiliary services that are needed to construct, update, and maintain the sketch and also to adapt to changing system conditions:
 
 \begin{description}[leftmargin=*]
 	\item[Control plane:] The control plane is responsible for orchestrating control messages exchanged between \textsc{Synopsis} nodes as part of various distributed protocols such dynamic scaling.
     It is decoupled from the generic data plane to ensure higher priority and low latency processing without being affected by buffering delays and backpressure during stream processing.
 
-	\item[Gossip subsystem:] While a majority of the \textsc{Synopsis} functionality relies on the local state constructed at a particular node, certain functionalities require an approximate global knowledge.
+	\item[Gossip subsystem:] While a majority of the \textsc{Synopsis} functionality relies on the local state constructed at a particular node, certain functionalities require approximate global knowledge.
     For instance, each sketchlet maintains a Geohash prefix tree to assist in distributed query evaluations by forwarding queries to sketchlets that are responsible for particular geographical extents.
         In order to establish and maintain this global view of the entire system, sketchlets gossip about their state periodically (based on time intervals and the number of pending updates) as well as when a change in state occurs.
     \textsc{Synopsis} supports \emph{eventual consistency} with respect to these updates given their inherent propagation and convergence delays.
