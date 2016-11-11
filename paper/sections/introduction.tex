@@ -27,14 +27,12 @@ Similar to other sketches, the design of \textsc{Synopsis} is guided by the func
 
 Our sketch is also naturally amenable to distribution, with each node in the cluster holding information about a particular subset of the observational space.  This ensures each node in the system can evaluate multiple concurrent queries independently. The nodes are capable of scaling in or out depending on streaming ingress rates and memory footprints, with scale-out operations that support targeted alleviation of hotspots. Our framework manages the complexity of identifying these hotspots, splitting portions of the sketch, and migrating the relevant subsets to nodes with higher capacity. Distributing the sketch across multiple nodes allows us to maintain a finer-grained representation of the feature space while also improving the accuracy of query evaluations; for example, an arctic region and a tropical region would be maintained on separate nodes that specialize for particular climates.
 
-To our knowledge, \textsc{Synopsis} is the first sketch designed specifically for geospatial observational data. We have validated the suitability of our approach through a comprehensive set of benchmarks with real observational data. 
+To our knowledge, \textsc{Synopsis} is the first sketch designed specifically for spatiotemporal observational data. We have validated the suitability of our approach through a comprehensive set of benchmarks with real observational data. 
 
 \subsection{Dataset and Experimental Setup}
 Our subject dataset was sourced from the NOAA North American Mesoscale (NAM) Forecast System \cite{noaa_nam}.  The NAM collects atmospheric data several times per day and includes features of interest such as surface temperature, visibility, relative humidity, snow, and precipitation. Each observation in the dataset also incorporates a relevant geographical location and time of creation. This information is used during the data ingest process to partition streams across available computing resources and preserve temporal ordering of events. The compressed, on-disk size of the entire dataset was 25 TB.
 
-%TODO update these stats:
 Performance evaluations throughout the paper were carried out on a cluster of 40 HP DL160 servers (Xeon E5620, 12 GB RAM). For our application benchmarks on Apache Spark, we used our baseline cluster of 40 machines as well as 30 HP DL320e servers (Xeon E3-1220 V2, 8 GB RAM) and 30 HP DL60 servers (Xeon E5-2620, 16 GB RAM). The test cluster was configured to run Fedora 24, and \textsc{Synopsis} was executed under the OpenJDK Java runtime 1.8.0\_72.
 
 \subsection{Paper Organization}
 The remainder of this paper is organized as follows. Section~\ref{sec:system} provides an overview of the system, followed by our methodology in Section~\ref{sec:methodology}. Section~\ref{sec:performance} contains our performance evaluation of the system. Section~\ref{sec:related} discusses related approaches, and Section~\ref{sec:conclusions} concludes the paper and outlines our future research direction.
-
