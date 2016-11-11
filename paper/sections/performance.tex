@@ -49,7 +49,7 @@ The \textsc{Synopsis} node that was considered for the experiment immediately re
 As shown in Figure~\ref{fig:stability-backlog}, scaling out helps a node to keep up with the variations in the workload which in turn causes the backlog to stay within a safe range.
 It also demonstrates infrequent, rapid scaling out and continuous, gradual scaling in as explained in section~\ref{subsec:scaling-out}.
 
-Figure~\ref{fig:stability-mem} demonstrates how memory consumption based threshold-based rules trigger scaling manures to maintain the system stability.
+Figure~\ref{fig:stability-mem} demonstrates how memory consumption based threshold-based rules trigger scaling maneuvers to maintain the system stability.
 We have used a 0.45 of the total available memory for a JVM process as the upper threshold for triggering a scale out operation.
 In certain occasions, it is required to perform multiple consecutive scaling out operations (interleaved with the cooling down periods) to bring the memory usage to the desired level due to the increased memory utilization caused by the data ingestion happening in the background.
 % system stability
@@ -57,13 +57,13 @@ In certain occasions, it is required to perform multiple consecutive scaling out
     \begin{subfigure}{0.48\textwidth}
             \centering
             \includegraphics[scale=0.42]{figures/stability_partial.pdf}
-            \caption{Dynamic scaling manures triggered by backlog growth based threshold rules}
+            \caption{Dynamic scaling maneuvers triggered by backlog growth based threshold rules}
             \label{fig:stability-backlog}
     \end{subfigure}
     \begin{subfigure}{0.48\textwidth}
             \centering
             \includegraphics[scale=0.42]{figures//mem_stability.pdf} 
-            \caption{Dynamic scaling manures triggered by memory usage based threshold rules}
+            \caption{Dynamic scaling maneuvers triggered by memory usage based threshold rules}
             \label{fig:stability-mem}
     \end{subfigure}
     \caption{Scaling out enables maintaining stability at an individual node based on backlog growth and memory usage}
