@@ -33,7 +33,7 @@ def main():
     col_3 = colors[3]
     col_4 = colors[7]
 
-    fig,ax2 = plt.subplots(figsize=(8.5,4))
+    fig,ax2 = plt.subplots(figsize=(8,4))
     leg_backlog = plt.plot(backlog[:,0], backlog[:,1], lw=0.8, label='Backlog Size', color=col_1)
     xmin, xmax = ax2.get_xlim()
     leg_threshold = plt.plot((xmin, xmax), (20, 20), '-.', lw=1.2, color=col_2, label='Scale Out Threshold')

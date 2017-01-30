@@ -13,13 +13,13 @@ def main():
 
     colors = ['#332288', '#88CCEE', '#44AA99', '#117733', '#999933', '#DDCC77', '#CC6677', '#882255', '#AA4499']
     col_1 = colors[0]
-    col_2 = colors[7]
+    col_2 = 'darkorange'
 
-    leg_thru = plt.plot(thru[:,0], thru[:,1], color=col_1, dashes=(1,2), lw=1.3, label='Data Ingestion Rate',)
+    leg_thru = plt.plot(thru[:,0], thru[:,1], color='black', dashes=(1,2), lw=1.3, label='Data Ingestion Rate',)
     pylab.ylabel('Data Ingestion Rate(Msgs/s)', fontsize=13)
     pylab.ylim((0,400))
-    ax2.tick_params(axis='y', colors=col_1)
-    ax2.yaxis.label.set_color(col_1)
+    #ax2.tick_params(axis='y', colors=col_1)
+    #ax2.yaxis.label.set_color(col_1)
     ax2.xaxis.set_major_formatter(NullFormatter())
     pylab.xlabel('Time', fontsize=13)
 
@@ -29,7 +29,7 @@ def main():
     ax.yaxis.label.set_color(col_2)
     pylab.ylim((0,1100))
 
-    pylab.xlabel('Time', fontsize=14)
+    pylab.xlabel('Time', fontsize=13)
     pylab.ylabel('Number of Sketchlets', fontsize=13)
     plt.tick_params(axis='x', which='major', labelsize=12)
     plt.tick_params(axis='y', which='major', labelsize=12)

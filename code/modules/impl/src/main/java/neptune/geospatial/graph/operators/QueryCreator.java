@@ -1,13 +1,5 @@
 package neptune.geospatial.graph.operators;
 
-import java.io.BufferedOutputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Random;
-
 import io.sigpipe.sing.dataset.Quantizer;
 import io.sigpipe.sing.dataset.SimplePair;
 import io.sigpipe.sing.dataset.feature.Feature;
@@ -17,6 +9,14 @@ import io.sigpipe.sing.query.Query;
 import io.sigpipe.sing.query.RelationalQuery;
 import io.sigpipe.sing.serialization.SerializationOutputStream;
 import io.sigpipe.sing.util.ReducedTestConfiguration;
+
+import java.io.BufferedOutputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Random;
 
 public class QueryCreator {
 
@@ -64,7 +64,8 @@ public class QueryCreator {
 //        QueryType type = QueryType.values()[
 //            random.nextInt(QueryType.values().length)];
 
-        QueryType type = QueryType.Relational;
+        //QueryType type = QueryType.Relational;
+        QueryType type = QueryType.Metadata;
 
 //        SpatialScope scope = SpatialScope.values()[
 //            random.nextInt(SpatialScope.values().length)];

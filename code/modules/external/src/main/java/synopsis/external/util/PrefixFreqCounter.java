@@ -60,17 +60,28 @@ public class PrefixFreqCounter {
         }
 
         Map<String, Long> shrinked = new HashMap<>();
-        for(String p : prefixFreqMap.keySet()){
+        for (String p : prefixFreqMap.keySet()) {
             String shrinkedPrefix = p.substring(0, 3);
             long count = prefixFreqMap.get(p);
-            if(shrinked.containsKey(shrinkedPrefix)){
+            if (shrinked.containsKey(shrinkedPrefix)) {
                 count += shrinked.get(shrinkedPrefix);
             }
             shrinked.put(shrinkedPrefix, count);
         }
 
+        try {
+            BufferedWriter prefWriter = new BufferedWriter(new FileWriter("/tmp/prefixlist-2.txt"));
+            for (String p : shrinked.keySet()) {
+                prefWriter.write(p + "\n");
+            }
+            prefWriter.flush();
+            prefWriter.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
         // read and populate the prefix tree
-        String prefixTreePath = "/Users/thilina/Desktop/2014_6f_full.pstat";
+        String prefixTreePath = "/Users/thilina/Desktop/nov1-6f-2014.pstat";
         OutstandingPersistenceTask task = Util.deserializeOutstandingPersistenceTask(prefixTreePath);
         if (task == null) {
             System.err.println("Error deserializing the task.");
@@ -85,6 +96,27 @@ public class PrefixFreqCounter {
             e.printStackTrace();
             return;
         }
+
+        // try the one at the deployer
+        Map<String, Double> prefixMemUsage = new HashMap<>();
+        try {
+            BufferedReader bufferedReader = new BufferedReader(new FileReader("/Users/thilina/csu/research/dsg/source/vldb/" +
+                    "neptune-geospatial/benchmarks/scale-out-graph/prefix-mem-usage.csv"));
+            String line;
+            while((line = bufferedReader.readLine()) != null){
+                String[] splits = line.split(",");
+                String prefix = splits[0].substring(0, 4);
+                double memUsage = 0;
+                if(prefixMemUsage.containsKey(prefix)){
+                    memUsage = prefixMemUsage.get(prefix);
+                }
+                memUsage += Double.parseDouble(splits[1]);
+                prefixMemUsage.put(prefix, memUsage);
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
         try {
             FileWriter fileW = new FileWriter("/tmp/freq-count-depth.csv");
             BufferedWriter bufferedWriter = new BufferedWriter(fileW);
@@ -92,7 +124,9 @@ public class PrefixFreqCounter {
                 int sketchletCount = prefixTree.query(prefix).size();
                 int depth = prefixTree.getDepth(prefix);
                 long count = shrinked.get(prefix);
-                bufferedWriter.write(prefix + "," + count + "," + sketchletCount + "," + depth + "\n");
+                double memUsage = prefixMemUsage.get(prefix);
+                System.out.println(prefix + " -> " + sketchletCount);
+                bufferedWriter.write(prefix + "," + count + "," + sketchletCount + "," + depth + "," + memUsage + "\n");
             }
             bufferedWriter.flush();
             fileW.flush();
@@ -103,5 +137,7 @@ public class PrefixFreqCounter {
             System.err.println("Error writing freq-depth counts into a file.");
             e.printStackTrace();
         }
+
+
     }
 }

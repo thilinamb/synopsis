@@ -51,7 +51,7 @@ public class Client {
             this.clientPort = clientPort;
             this.hostname = RivuletUtil.getHostInetAddress().getHostName();
             queryManager = QueryManager.getInstance(this.hostname, this.clientPort);
-            queryManager.setDispatcherModeEnabled(false);
+            queryManager.setDispatcherModeEnabled(true);
         } catch (GranulesConfigurationException | CommunicationsException e) {
             throw new ClientException("Error in initializing. ", e);
         }

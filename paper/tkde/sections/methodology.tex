@@ -1,0 +1,155 @@
+\section{Methodology}
+\label{sec:methodology}
+Enabling real-time query evaluations over voluminous spatiotemporal data streams requires several components that must coordinate processing and scaling activities over a cluster of heterogeneous resources. This includes our distributed sketch, partitioning scheme, scaling logic, and query support. In each of the following subsections, we provide detailed performance benchmarks to evaluate the efficacy of our approach.
+
+\input{sections/sketch}
+
+\input{sections/geohash}
+
+\subsection{Coping with High Data Rates: Scaling out}
+\label{subsec:scaling-out}
+%
+There are two primary approaches to scaling a node that is experiencing high traffic: \emph{replication} and \emph{load migration}. In replication-based scaling, new nodes are spawned during high data arrival rates that are responsible for identical spatial scopes as their originating node. Assimilation of the newly-created node involves partitioning inbound streams directed to the original node. The upstream node is responsible for this partitioning, which may be performed in a skewed fashion with the new node receiving a larger portion of the inbound stream.  Alternatively, inbound streams to the original node may also be partitioned in a round-robin fashion between the original and the newly-created node.
+
+In targeted load migration, particular geospatial scopes are evicted from the original node to the newly created node during heavy traffic. Deciding which spatial scopes to migrate is based on data arrival rates and the rates at which particular portions of the sketch are being updated.
+
+%[malensek] NOTE: I removed this because it contradicts our discussion on the ability of the sketch to merge arbitrary states (even duplicated state -- in fact, that makes things easier). I think there are plenty of other reasons why replication-based scaling is weaker anyway.
+%Replication-based scaling introduces a challenge during query evaluations in that the query must be forwarded to all nodes responsible for a particular scope and the results merged; depending on the nature of these queries (for e.g., correlation analysis and inferential queries) merging of results may be difficult to accomplish without extensive state synchronizations.
+%TODO: lines about how scaling in can be difficult in replication settings
+\begin{figure*}[h!]
+        \begin{subfigure}{0.45\textwidth}
+                \centering
+                \includegraphics[scale=0.45, valign=t]{figures/scale-out.pdf}
+                \caption{Scale-out protocol}
+                \label{fig:scale-out-protocol}    
+        \end{subfigure}
+        \begin{subfigure}{0.45\textwidth}
+                \centering
+                \includegraphics[scale=0.45, valign=t]{figures/scale-in.pdf} 
+                \caption{Scale-in protocol}
+                \label{fig:scale-in-protocol}
+        \end{subfigure}
+        \caption{Our dynamic scaling protocol in chronological order.}
+        \label{fig:dynamic-scaling-protocols}
+\end{figure*}
+
+In \textsc{Synopsis}, we use targeted load migration for scaling out.
+Our implementation closely follows the MAPE loop~\cite{maurer2011revealing} which is comprised of four phases: monitor (M), analyze (A), planning (P) and execution (E).
+%The monitoring task as shown in Figure~\ref{fig:process-monitor} periodically probes every \textsc{Synopsis} task to gather two performance metrics as part of monitoring phase.
+A \textbf{monitoring} task periodically probes every node to gather two performance metrics:
+\begin{enumerate}[leftmargin=*]
+	\item \textbf{Length of the backlog:} This represents the number of unprocessed messages in the queue. If the \textsc{Synopsis} task cannot keep up with the incoming data rate, then the backlog will grow over time.
+	\item \textbf{Memory pressure:} Each node is allocated a fixed amount of memory. 
+	Exceeding these memory limits creates memory pressure, which may cause extended garbage collection cycles, increased paging activity, and will eventually lead to reduced performance.
+	The monitoring task continuously records the memory utilization and triggers scaling activities accordingly.
+\end{enumerate} 
+
+The objective of scaling out is to maintain the \emph{stability} of each node.
+We define stability as the ability to keep up with incoming data rates while incurring a manageable memory pressure.  During the \textbf{analyze} phase, we use threshold-based rules \cite{lorido2012auto} to provide scale-out recommendations to \textsc{Synopsis} nodes, which are provided if either of the following rules are consistently satisfied for a certain number of observations:
+\begin{itemize}[leftmargin=*]  
+\item Backlog growth, which indicates that a portion of the load needs to be migrated to a different \textsc{Synopsis} node.
+\item High overall memory utilization above a threshold, which is usually set below the memory limits to allow a capacity buffer for the process to avoid oscillation.
+\end{itemize}
+Upon receiving a scaling out recommendation from the monitoring task, the \textsc{Synopsis} node executes the \textbf{planning} and \textbf{execution} phases.
+
+During the planning phase, the node chooses portion(s) of the region within its current purview to be handed over to another node.
+For this task, the node relies on metadata it maintains for each subregion (corresponding to longer Geohash strings) and a numeric value provided by the scale-out recommendation that measures how much load should be migrated.
+This metadata includes the data rate and the timestamp of the last processed message for each subregion.
+A \textsc{Synopsis} node updates these metadata records with each message it processes.
+Nodes often migrate several prefixes during a scale-out operation.
+
+Only a single scale-out operation takes place at a given time per node, which is controlled by a mutex lock.
+Further, every scaling operation is followed by a stabilization period where no scaling operation takes place and system does not enter the monitoring phase for the next MAPE cycle.
+The objective of these constraints is to avoid oscillations in scaling activities; for instance, repetitively scaling out in the presence of memory pressure could result in overprovisioning, which would then lead to recurring scale-in operations.
+%
+
+Figure~\ref{fig:scale-out-protocol} depicts the phases of the scale-out protocol with respect to our example in Figure~\ref{fig:stream-partitioning} when node A is scaling out to node D.
+Once the \textsc{Synopsis} node decides on subregions to scale, it initiates the scale-out protocol by contacting the \emph{deployer} node, which is responsible for launching tasks.
+In this message, it includes a list of preferred \textsc{Synopsis} nodes for the load migration as well as memory requirements and expected message rate for the load.
+The preferred node set includes the \textsc{Synopsis} nodes that already hold other subregions.
+The objective here is to minimize the number of nodes responsible for each geographical region to reduce communication during query evaluations.
+
+The \textsc{Synopsis} deployer component has an approximate view of the entire system gathered through gossip messages, which includes the memory pressure and cumulative backlog information for each node.
+Based on this view and the information present in the request, the deployer replies back with a set of target \textsc{Synopsis} nodes.
+Only if a suitable node cannot be found from the set of currently active nodes will a new node will be spawned.
+Upon receiving a response from the deployer, the node that is scaling out contacts the target node and tries to acquire the mutex.
+A lock will be granted if the target can accommodate the load and no other scaling operations are taking place.
+If the lock acquisition fails, another node from the list is attempted; otherwise, the original \textsc{Synopsis} node will create a pass-through channel and direct traffic towards the target node.
+Once this process is complete, the source node will initiate a state transfer asynchronously using a background channel to ensure the stream data flow is not affected, and update its memory utilization metrics to account for the pending state transfer.
+
+We captured how backlog length and throughput at an individual node vary with the input rate when dynamic scaling is enabled.
+The node that was considered for the experiment immediately received data from stream ingesters, hence the input rate observed at the node closely resembled the varying data ingestion rate.
+As shown in Figure~\ref{fig:stability-backlog}, scaling out helps a node to keep up with the variations in the workload which in turn causes the backlog to stay within a safe range.
+It also demonstrates infrequent, rapid scale-out and continuous, gradual scale-in as explained in \S\ref{subsec:scaling-out}.
+
+Figure~\ref{fig:stability-mem} demonstrates how memory consumption based threshold-based rules trigger scaling maneuvers to maintain the stability of an individual node.
+For this experiment, we have enabled only a single threshold-based rule (either backlog growth based or memory usage based) at a time to demonstrate its effectiveness.
+We have used a 0.45 of the total available memory for a JVM process as the upper threshold for triggering a scale-out operation.
+In certain occasions, it is required to perform multiple consecutive scaling out operations (interleaved with the cooling down periods) to bring the memory usage to the desired level due to the increased memory utilization caused by the data ingestion happening in the background.
+% system stability
+\begin{figure*}[h!]
+    \begin{subfigure}{0.48\textwidth}
+            \centering
+            \includegraphics[scale=0.42]{figures/stability_partial.pdf}
+            \caption{Dynamic scaling maneuvers triggered by backlog growth based threshold rules}
+            \label{fig:stability-backlog}
+    \end{subfigure}
+    \begin{subfigure}{0.48\textwidth}
+            \centering
+            \includegraphics[scale=0.42]{figures//mem_stability.pdf} 
+            \caption{Dynamic scaling maneuvers triggered by memory usage based threshold rules}
+            \label{fig:stability-mem}
+    \end{subfigure}
+    \caption{Scaling out enables maintaining stability at an individual node based on backlog growth and memory usage}
+    \label{fig:system-stability}
+\end{figure*}
+
+%Completing the scale-out protocol quickly is important because it can release mutual exclusive locks in both origin and target \textsc{Synopsis} nodes quickly and participate in other scaling activities soon after the stabilization period.
+%
+\subsection{Scaling In: Conserving Resources}
+\label{subsec:scaling-in}
+During scaling in, \textsc{Synopsis} nodes merge back some of the subregions scaled out previously.
+This ensures better resource utilization in the system in addition to efficient query evaluations by having to contact fewer nodes.
+Scaling in is also guarded by the same mutex lock used for scaling out (only one scale-out or scale-in operation takes place at a given time) and are followed by a stabilization period.
+
+Monitoring and analysis during scale-in operations proceeds similarly to scaling out, except for the obvious change to the threshold-based rules: now both memory pressure and backlog length metrics should consistently record values below a predefined lower threshold.
+When scaling in, we use a less aggressive scheme than scaling out; a single subregion is acquired during a single scale-in operation.
+Scaling in is more complex than scaling out because it involves more than one \textsc{Synopsis} node in most cases.
+At this point, it is possible that further scale-out operations have taken place in the scaled out subregion after the initial scale-out.
+For instance, if node A in Figure~\ref{fig:stream-partitioning} decides to scale-in the subregion \emph{DJK}, then it must communicate with nodes C and E.
+
+The scale-in protocol starts with a lock acquisition protocol similar to scaling out protocol, but locking the entire subtree is required.
+The steps are depicted in Figure~\ref{fig:scale-in-protocol} with respect to our example in Figure~\ref{fig:stream-partitioning} where node C is scaled in.
+As per our example, node A will have to acquire locks for nodes C and E.
+Locks are acquired in a top-to-bottom fashion where parent locks itself and then attempts to lock the child.
+If lock acquisition is failed in any part of the subtree, then the scale-in operation is aborted and the monitoring process will start the next iteration of the MAPE loop immediately.
+If the subtree is successfully locked, then data flow to the child nodes corresponding to this subregion is immediately terminated.
+
+The state acquisition phase begins next.
+To ensure that \textsc{Synopsis} does not lose any messages, the initiating node sends a \emph{termination point} control message to the child node.
+The termination point is the sequence number of the last message sent to the child node either by the parent itself or by the short circuit channel.
+%It may be possible that the child has already processed this message and updated its sketch by the time it receives the termination point control message, but in extreme cases the termination point control message may get processed before the actual stream packet with the same sequence number.
+%This is because control plane and data plane use separate channels and also due to the possibility of data plane messages are being queued before processing.
+Once the child node has processed every message up to the termination point, it sends out termination point messages to all relevant child nodes. In our example, node C sends a termination point control message to node E upon processing the stream packet corresponding to the termination point sent by node A.
+After the entire subtree has seen all messages up to the termination point, they acknowledge the initiator node and start transferring their states asynchronously.
+Once the parent node receives acknowledgments from the entire subtree, it starts propagating the protocol end messages to initiate lock releasing.
+Locks are released from the bottom to top in the subtree, with the parent releasing its lock after each child has released its lock.
+
+\begin{figure}[h!]
+    \centerline{\includegraphics[width=3.5in]{figures/dyn-scaling.pdf}}
+    \caption{Variation in the number of sketchlets as the data ingestion rate changes.}
+    \label{fig:dyn-scaling}
+\end{figure}
+We evaluated how \textsc{Synopsis} dynamically scales when the data ingestion rate is varied.
+The data ingestion rate was varied over time such that the peak data ingestion rate is less than the highest possible throughput that will create a backlog at \textsc{Synopsis} nodes.
+We used the number of sketchlets created in the system to quantify the scaling activities.
+If the system scales out, more sketchlets will be created in child nodes after the targeted load migration.
+We started with a single \textsc{Synopsis} node and allowed the system to dynamically scale.
+As can be observed in Figure~\ref{fig:dyn-scaling}, the number of sketchlets varies with the ingestion rate.
+Since we allow aggressive scale-out, it shows rapid scaling activity during high data ingestion rates whereas scaling in takes place gradually with one sub region (hence one sketch) at a time.
+
+\input{sections/queries.tex}
+
+\subsection{Coping with Failures in Synopsis}
+\input{sections/fault-tolerance}
+

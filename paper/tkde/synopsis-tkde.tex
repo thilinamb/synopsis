@@ -1,0 +1,48 @@
+\documentclass[10pt,journal,compsoc]{IEEEtran}
+\usepackage{graphicx}
+\usepackage{balance}  % for  \balance command ON LAST PAGE  (only there!)
+\usepackage{url}
+\usepackage{enumitem}
+\usepackage{hyperref}
+\usepackage{multirow}
+\usepackage{gensymb}
+\usepackage{subcaption}
+\usepackage[export]{adjustbox}
+\usepackage{tabularx, colortbl}
+\usepackage{array}
+
+\begin{document}
+
+\title{Synopsis: A Distributed Sketch over Voluminous Spatiotemporal Observational Streams \\ in Support of Real-Time Query Evaluations}
+
+\author{Thilina~Buddhika, Matthew Malensek, Sangmi Lee Pallickara and Shrideep Pallickara,~\IEEEmembership{Members,~IEEE}%
+\IEEEcompsocitemizethanks{\IEEEcompsocthanksitem T. Buddhika, M. Malensek, S.L. Pallickara and S. Pallickara  are with the Department
+of Computer Science, Colorado State University.
+E-mail: \{thilinab, malensek, sangmi, shrideep\}@cs.colostate.edu\protect\\}}
+
+\IEEEtitleabstractindextext{%
+\input{sections/abstract}
+\begin{IEEEkeywords}
+real-time stream processing; online scheduling; data intensive computing
+\end{IEEEkeywords}}
+
+\maketitle
+
+\IEEEdisplaynontitleabstractindextext
+
+\input{sections/introduction}
+\input{sections/system}
+\input{sections/methodology}
+\input{sections/applications.tex}
+%\input{sections/performance}
+\input{sections/related}
+\input{sections/conclusions}
+\input{sections/acknowledgments}
+
+% ensure same length columns on last page (might need two sub-sequent latex runs)
+% \balance
+
+\bibliographystyle{IEEEtran}
+\bibliography{references}
+
+\end{document}
