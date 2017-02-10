@@ -6,7 +6,7 @@ Our subject dataset was sourced from the NOAA North American Mesoscale (NAM) For
 Performance evaluations throughout the paper were carried out on a cluster of 40 HP DL160 servers (Xeon E5620, 12 GB RAM). For our application benchmarks on Apache Spark (version 2.0.1 with HDFS 2.6.0), we used our baseline cluster of 40 machines as well as 30 HP DL320e servers (Xeon E3-1220 V2, 8 GB RAM) and 30 HP DL60 servers (Xeon E5-2620, 16 GB RAM). The test cluster was configured to run Fedora 24, and \textsc{Synopsis} was executed under the OpenJDK Java runtime 1.8.0\_72.
 
 \subsection{Dynamic Scaling of the Distributed Sketch}
-\begin{figure}[h!]
+\begin{figure}
     \centerline{\includegraphics[width=3.5in]{figures/dyn-scaling.pdf}}
     \caption{Variation in the number of sketchlets as the data ingestion rate changes.}
     \label{fig:dyn-scaling}
@@ -21,7 +21,7 @@ Since we allow aggressive scale-out, it shows rapid scaling activity during high
 
 \subsection{Analyzing a Snapshot of the Distributed Sketch}
 % scale out graph
-\begin{figure*}[t!]
+\begin{figure*}
     \centerline{\includegraphics[width=\linewidth]{figures/scaleout_graph_analysis.pdf}}
     \caption{Analysis of a snapshot of the stream processing graph during data ingestion demonstrating the size and distribution of the information corresponding to different prefixes against the observed record count. If the information is dispersed over multiple sketchlets, it is likely to be a prefix with higher number of records and/or a wide range of observed values.}
     \label{fig:scaleout-graph-analysis}
@@ -40,7 +40,7 @@ Their observations spans across a smaller range, hence requires less memory but 
 
 \subsubsection{Distributed Sketch Memory Evaluation}
 %
-\begin{figure}[b]
+\begin{figure}
     \centerline{\includegraphics[width=\linewidth]{figures/ing-and-mem-usage.pdf}}
     \caption{Memory usage of the distributed sketch over time against the amount of ingested data. The rate of growth decreases over time due to the compact nature of our underlying sketchlet data structure.}
     \label{fig:dist-sketch-mem-usage}
