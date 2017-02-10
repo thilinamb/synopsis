@@ -75,13 +75,3 @@ Table~\ref{tbl:graph-stats} compares full-resolution and quantized sketchlets th
 While our quantization approach enables \textsc{Synopsis} to retain large volumes of data in main memory, we also offer a temporal \emph{accuracy gradient} to ensure the most relevant data points are prioritized for high accuracy. This is achieved by iteratively removing graph paths from the sketchlet hierarchy in the oldest subgraphs, eventually phasing out old records. A user-defined ``length of study'' (for instance, 12 months) informs the system when dimensionality reduction can begin. As data ages, this process results in the creation of temporal accuracy bands.
 
 Selective temporal dimensionality reduction proceeds in a bottom-up fashion, starting from the leaf nodes. Given a set of relevant vertices, neighboring bins are merged uniformly across the feature space. As the bins are merged, their respective metadata is also merged, reducing memory consumption. Given two metadata instances, merging results in half the memory footprint. However, it is worth noting that this process is irreversible; once metadata has been merged, it cannot be split at a later point in time. As time passes, entire portions of the feature hyperplane are compacted until a single metadata record is left for a particular temporal range. This allows users to still query the summary statistics and models for historical data, but at a lower level of accuracy.
-
-\subsubsection{Distributed Sketch Memory Evaluation}
-
-\begin{figure}[b]
-    \centerline{\includegraphics[width=\linewidth]{figures/ing-and-mem-usage.pdf}}
-    \caption{Memory usage of the distributed sketch over time against the amount of ingested data. The rate of growth decreases over time due to the compact nature of our underlying sketchlet data structure.}
-    \label{fig:dist-sketch-mem-usage}
-\end{figure}
-
-We monitored the growth in memory consumption of the entire distributed sketch over time with continuous data ingestion as shown in Figure~\ref{fig:dist-sketch-mem-usage}. This experiment included all 40 of the nodes in our test cluster.  As more data was streamed into the system, the growth rate of the distributed sketch decreased as the sketchlets at each node expanded to include vertices for their particular feature space.  At the end of our monitoring period, the total amount of ingested data was over three magnitudes higher ($\sim 1285$) than the in-memory sketch size, resulting in notable space savings.
