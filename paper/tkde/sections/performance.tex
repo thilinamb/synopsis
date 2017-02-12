@@ -52,7 +52,7 @@ We monitored the growth in memory consumption of the entire distributed sketch o
 Figure~\ref{fig:dist-query} demonstrates the end-to-end efficiency of the query evaluations over the distributed sketch.
 Cumulative query throughput and latencies were measured with varying numbers of concurrent query \emph{funnels}.
 A query \emph{funnel} continuously generates and dispatches random queries at their maximum possible rate to stress test the system and saturate its capacity; for instance, a query could request summary statistics or feature relationships when the temperature is between 20 to 30 degrees, humidity is above 80\%, and the wind is blowing at 16 km/h.
-These randomized queries fluctuated in both the ranges of values and spatial scope, resulting in high variability in the number of \textsc{Synopsis} nodes required to resolve the query as well as the depth and breadth of the required graph traversals.
+These randomized queries fluctuated in both the ranges of values and spatial scope, resulting in high variability in the number of \textsc{Synopsis} nodes required to resolve the query as well as the depth and breadth of the required tree traversals.
 
 \begin{figure*}
     \centerline{\includegraphics[width=\linewidth]{figures/query_benchmark_both.pdf}}
