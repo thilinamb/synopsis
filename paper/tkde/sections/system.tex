@@ -5,7 +5,7 @@ The system is composed of several hosts that form a cluster, with each participa
 Each node contains a \emph{sketchlet}, which maintains multidimensional data points falling within its assigned geospatial scope(s).
 The number of nodes that comprise the distributed sketch (made up of several sketchlets) varies dynamically as the system scales in or out to cope with data arrival rates and memory pressure.
 %Each sketchlet is responsible for one or more geographical scopes and is implemented as a stateful stream processing node that can build and retain state over time.
-A stream partitioning scheme, based on the Geohash algorithm (described in Section 3.2), is used to route packets to the appropriate sketchlet.
+A stream partitioning scheme, based on the Geohash algorithm (described in Section \ref{sec:geohash}), is used to route packets to the appropriate sketchlet.
 Sketchlets ingest stream packets and construct compact, in-memory representations of the observational data by extracting metadata from stream packets.
 During dynamic scaling operations, the geographical extents managed by a sketch varies.
 
