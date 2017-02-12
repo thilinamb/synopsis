@@ -2,15 +2,15 @@
 %
 \begin{figure}[h!]
     \centerline{\includegraphics[width=3.5in]{figures/stream-partitioning.png}}
-    \caption{An example of our stream partitioning approach based on the Geohash values of incoming packets.}
+    \caption{An example of our stream partitioning approach based on the geohash values of incoming packets.}
     \label{fig:stream-partitioning}
 \end{figure}
 %
 Figure~\ref{fig:stream-partitioning} depicts a possible arrangement of the distributed sketch and the associated stream partitioning scheme corresponding to our example region.
 The distributed sketch is arranged in a tree-like structure.
-Stream ingesters act as root nodes of the tree and partition the stream among \textsc{Synopsis} nodes using a Geohash-based partitioning function.
-Nodes closer to the root hold sketches corresponding to shorter Geohash strings, and therefore larger geographical regions.
-For instance, nodes A and B in Figure~\ref{fig:stream-partitioning} are responsible for regions represented by Geohashes \emph{DJ} and and \emph{DN} respectively.
+Stream ingesters act as root nodes of the tree and partition the stream among \textsc{Synopsis} nodes using a geohash-based partitioning function.
+Nodes closer to the root hold sketches corresponding to shorter geohash strings, and therefore larger geographical regions.
+For instance, nodes A and B in Figure~\ref{fig:stream-partitioning} are responsible for regions represented by geohashes \emph{DJ} and and \emph{DN} respectively.
 Node E, which is three edges deep from the stream ingester, is responsible for a smaller region, \emph{DJKJ}.
 
 \textsc{Synopsis} is designed to ensure that regions corresponding to larger portions of the input streams (hence, more frequent updates) are moved to dedicated or less crowded nodes.

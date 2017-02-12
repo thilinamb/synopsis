@@ -21,7 +21,7 @@ The state recreation protocol of StreamCloud is conceptually similar to our stat
 
 Gedik et al.~\cite{schneider2009elastic} also uses a threshold-based local scheme similar to \textsc{Synopsis}. Additionally, this approach keeps track of the past performance achieved at different operating conditions in order to avoid oscillations in scaling activities.
 The use of consistent hashing at the splitters (similar to stream partitioners in \textsc{Synopsis}) achieves both load balancing and monotonicity (elastic scaling does not move states between nodes that are present before and after the scaling activity).
-Similarly, our Geohash-based partitioner together with control algorithms in \textsc{Synopsis} balance the workload by alleviating hotspots and nodes with lower resource utilization.
+Similarly, our geohash-based partitioner together with control algorithms in \textsc{Synopsis} balance the workload by alleviating hotspots and nodes with lower resource utilization.
 Our state migration scheme doesn't require migrating states between nodes that do not participate in the scaling activity, unlike with a reconfiguration of a regular hash-based partitioner.
 Unlike in \textsc{Synopsis}, in their implementation, the stream data flow is paused until state migration is complete using vertical and horizontal barriers.
 Finally, \textsc{Synopsis}' scaling schemes are placement-aware, meaning certain nodes are preferred when performing scaling with the objective of reducing the span of the distributed sketch.

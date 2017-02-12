@@ -16,7 +16,7 @@ During dynamic scaling operations, the geographical extents managed by a sketch 
     It is decoupled from the generic data plane to ensure higher priority and low latency processing without being affected by buffering delays and backpressure during stream processing.
 
 	\item[Gossip subsystem:] While a majority of the \textsc{Synopsis} functionality relies on the local state constructed at a particular node, certain functionalities require approximate global knowledge.
-    For instance, each sketchlet maintains a Geohash prefix tree to assist in distributed query evaluations by forwarding queries to sketchlets that are responsible for particular geographical extents.
+    For instance, each sketchlet maintains a geohash prefix tree to assist in distributed query evaluations by forwarding queries to sketchlets that are responsible for particular geographical extents.
         In order to establish and maintain this global view of the entire system, sketchlets gossip about their state periodically (based on time intervals and the number of pending updates) as well as when a change in state occurs.
     \textsc{Synopsis} supports \emph{eventual consistency} with respect to these updates given their inherent propagation and convergence delays.
 
