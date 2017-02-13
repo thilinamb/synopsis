@@ -392,41 +392,37 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
             // perform the business logic: do this selectively. Send through the traffic we don't process.
             process(geoHashIndexedRecord);
             processedCount.incrementAndGet();
-        }
-        if (faultToleranceEnabled) {
-            if (checkpointId > 0) {
-                // send out a dummy state replication message for now
-                byte[] serializedState = new byte[100];
-                new Random().nextBytes(serializedState);
-                StateReplicationMessage stateReplicationMessage = new StateReplicationMessage(
-                        checkpointId, (byte) 1, serializedState, getInstanceIdentifier(),
-                        ctrlEndpoint);
-                if (logger.isDebugEnabled()) {
-                    logger.debug(String.format("[%s] state was replicated.", getInstanceIdentifier()));
-                }
-                GeoHashIndexedRecord recordToChildren = new GeoHashIndexedRecord(
-                        checkpointId, getInstanceIdentifier(), this.ctrlEndpoint);
-                List<String> outgoingStreams = scalingContext.getOutgoingStreams();
-                // keep track of the pending checkpoint
-                PendingCheckpoint pendingCheckpoint = new PendingCheckpoint(checkpointId,
-                        replicationStreamTopics.size(), outgoingStreams.size(), geoHashIndexedRecord.getParentId(),
-                        geoHashIndexedRecord.getParentEndpoint());
-                pendingCheckpoints.put(checkpointId, pendingCheckpoint);
-                checkpointMonitors.schedule(new CheckpointTimer(checkpointId), checkpointTimeoutPeriod,
-                        TimeUnit.MILLISECONDS);
+        } else if (checkpointId > 0 && faultToleranceEnabled && processedCount.get() > 0) {
+            // send out a dummy state replication message for now
+            //byte[] serializedState = new byte[100];
+            //new Random().nextBytes(serializedState);
+            byte[] sketchDiff = getSketchDiff();
+            StateReplicationMessage stateReplicationMessage = new StateReplicationMessage(
+                    checkpointId, (byte) 1, sketchDiff, getInstanceIdentifier(),
+                    ctrlEndpoint);
+            logger.info(String.format("[%s] state was replicated.", getInstanceIdentifier()) + ", " +
+                    "Diff. Size: " + sketchDiff.length);
+            GeoHashIndexedRecord recordToChildren = new GeoHashIndexedRecord(
+                    checkpointId, getInstanceIdentifier(), this.ctrlEndpoint);
+            List<String> outgoingStreams = scalingContext.getOutgoingStreams();
+            // keep track of the pending checkpoint
+            PendingCheckpoint pendingCheckpoint = new PendingCheckpoint(checkpointId,
+                    replicationStreamTopics.size(), outgoingStreams.size(), geoHashIndexedRecord.getParentId(),
+                    geoHashIndexedRecord.getParentEndpoint());
+            pendingCheckpoints.put(checkpointId, pendingCheckpoint);
+            checkpointMonitors.schedule(new CheckpointTimer(checkpointId), checkpointTimeoutPeriod,
+                    TimeUnit.MILLISECONDS);
 
-                // write to replication streams
-                writeToStream(Constants.Streams.STATE_REPLICA_STREAM, stateReplicationMessage);
-                // propagate the request to child nodes
-                for (String outgoingStream : outgoingStreams) {
-                    writeToStream(outgoingStream, recordToChildren);
-                }
-                if (logger.isDebugEnabled()) {
-                    logger.debug(String.format("[%s] Propagated checkpoint trigger to child nodes. " +
-                                    "Checkpoint Id: %d Number of children: %d", getInstanceIdentifier(),
-                            checkpointId, outgoingStreams.size()));
-                }
+            // write to replication streams
+            writeToStream(Constants.Streams.STATE_REPLICA_STREAM, stateReplicationMessage);
+            // propagate the request to child nodes
+            for (String outgoingStream : outgoingStreams) {
+                writeToStream(outgoingStream, recordToChildren);
             }
+            logger.info(String.format("[%s] Propagated checkpoint trigger to child nodes. " +
+                            "Checkpoint Id: %d Number of children: %d", getInstanceIdentifier(),
+                    checkpointId, outgoingStreams.size()));
+
         }
     }
 
