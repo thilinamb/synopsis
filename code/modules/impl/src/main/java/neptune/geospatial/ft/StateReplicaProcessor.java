@@ -14,7 +14,7 @@ import neptune.geospatial.ft.protocol.CheckpointAck;
 import neptune.geospatial.graph.Constants;
 import org.apache.log4j.Logger;
 
-import java.io.IOException;
+import java.io.*;
 import java.util.Properties;
 
 /**
@@ -26,12 +26,15 @@ import java.util.Properties;
 public class StateReplicaProcessor extends StreamProcessor {
 
     private Logger logger = Logger.getLogger(StateReplicaProcessor.class);
+    public static String CHECK_PT_STORAGE_LOC = File.pathSeparator + "tmp" + File.pathSeparator + "states";
 
     @Override
     public void onEvent(StreamEvent streamEvent) throws StreamingDatasetException {
         StateReplicationMessage stateReplicationMsg = (StateReplicationMessage) streamEvent;
-        if (logger.isDebugEnabled()) {
-            logger.debug(String.format("Received a state replication message. Primary: %s, Checkpoint: %s",
+        byte[] bytes = stateReplicationMsg.getSerializedState();
+        storeReplicatedState(bytes, stateReplicationMsg.getCheckpointId());
+        if (logger.isInfoEnabled()) {
+            logger.info(String.format("Received a state replication message. Primary: %s, Checkpoint: %s",
                     stateReplicationMsg.getPrimaryComp(), stateReplicationMsg.getCheckpointId()));
         }
         // acknowledge the primary
@@ -71,5 +74,33 @@ public class StateReplicaProcessor extends StreamProcessor {
         initProps.setProperty(ds.granules.util.Constants.STREAM_PROP_JOB_ID, jobId);
         initProps.setProperty(ds.granules.util.Constants.STREAM_PROP_STREAM_BASE_ID, streamBaseName);
         return initProps;
+    }
+
+    private void storeReplicatedState(byte[] bytes, long checkPointId) {
+        File storageDir = new File(CHECK_PT_STORAGE_LOC);
+        if (!storageDir.exists()) {
+            boolean success = storageDir.mkdir();
+            if (!success) {
+                logger.error("Error when creating a dir for storing checkpoints.");
+                return;
+            }
+            FileOutputStream fos = null;
+            try {
+                fos = new FileOutputStream(CHECK_PT_STORAGE_LOC + File.pathSeparator + checkPointId);
+                fos.write(bytes);
+                fos.flush();
+                logger.info("Successfully written the received state checkpoint to the disk.");
+            } catch (IOException e) {
+                logger.error("Error writing the replicated state!", e);
+            } finally {
+                try {
+                    if (fos != null) {
+                        fos.close();
+                    }
+                } catch (IOException e) {
+                   logger.error("Error closing file streams.", e);
+                }
+            }
+        }
     }
 }
