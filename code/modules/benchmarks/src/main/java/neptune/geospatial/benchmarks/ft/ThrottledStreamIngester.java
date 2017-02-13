@@ -7,7 +7,6 @@ import ds.granules.exception.CommunicationsException;
 import ds.granules.exception.GranulesConfigurationException;
 import ds.granules.neptune.interfere.core.NIException;
 import ds.granules.streaming.core.exception.StreamingDatasetException;
-import neptune.geospatial.benchmarks.util.SineCurveLoadProfiler;
 import neptune.geospatial.core.resource.ManagedResource;
 import neptune.geospatial.ft.BackupTopicInfo;
 import neptune.geospatial.ft.FaultTolerantStreamBase;
@@ -64,7 +63,7 @@ public class ThrottledStreamIngester extends NOAADataIngester implements FaultTo
 
     private Logger logger = Logger.getLogger(ThrottledStreamIngester.class);
 
-    private final SineCurveLoadProfiler loadProfiler;
+    //private final SineCurveLoadProfiler loadProfiler;
     private AtomicLong counter = new AtomicLong(0);
     private long tsLastEmitted = -1;
     private BufferedWriter bufferedWriter;
@@ -82,7 +81,7 @@ public class ThrottledStreamIngester extends NOAADataIngester implements FaultTo
 
     public ThrottledStreamIngester() {
         super();
-        loadProfiler = new SineCurveLoadProfiler(5000);
+        //loadProfiler = new SineCurveLoadProfiler(5000);
         try {
             bufferedWriter = new BufferedWriter(new FileWriter("/tmp/throughput-profile.stat"));
         } catch (IOException e) {
@@ -185,11 +184,11 @@ public class ThrottledStreamIngester extends NOAADataIngester implements FaultTo
                     logger.error("Error writing stats.", e);
                 }
             }
-            try {
+            /*try {
                 Thread.sleep(loadProfiler.nextSleepInterval());
             } catch (InterruptedException ignore) {
 
-            }
+            }*/
         }
     }
 
@@ -197,7 +196,7 @@ public class ThrottledStreamIngester extends NOAADataIngester implements FaultTo
         try {
             IQueue<Integer> scalingMonitorQueue = HazelcastClientInstanceHolder.getInstance().
                     getHazelcastClientInstance().getQueue("scaling-monitor");
-            scalingMonitorQueue.addItemListener(new DynamicScalingMonitor(DynamicScalingGraph.INITIAL_PROCESSOR_COUNT),
+            scalingMonitorQueue.addItemListener(new DynamicScalingMonitor(FaultTolerantJob.INITIAL_PROCESSOR_COUNT),
                     true);
         } catch (HazelcastException e) {
             e.printStackTrace();
