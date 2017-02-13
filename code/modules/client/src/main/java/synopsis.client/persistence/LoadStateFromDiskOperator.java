@@ -7,10 +7,7 @@ import neptune.geospatial.benchmarks.sketch.ExtendedSketchProcessorWithLogging;
 import neptune.geospatial.core.resource.ManagedResource;
 import org.apache.log4j.Logger;
 
-import java.io.DataInputStream;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.IOException;
+import java.io.*;
 
 /**
  * @author Thilina Buddhika
@@ -49,7 +46,10 @@ public class LoadStateFromDiskOperator extends ExtendedSketchProcessorWithLoggin
             long t1 = System.currentTimeMillis();
             deserialize(dis);
             long t2 = System.currentTimeMillis();
-            logger.info("Successfully deserialized state from disk. Time Elapsed (seconds): " + (t2 - t1) / 1000.0);
+            File f = new File(this.serializedStateLocation);
+            long fileSize = f.length();
+            logger.info("Successfully deserialized state from disk. Time Elapsed (seconds): " + (t2 - t1) / 1000.0 +
+                    ", file Size: " + fileSize);
         } catch (FileNotFoundException e) {
             logger.error("File not found. File: " + this.serializedStateLocation, e);
         } finally {
