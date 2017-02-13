@@ -15,9 +15,9 @@ import java.util.Properties;
 /**
  * @author Thilina Buddhika
  */
-public class DynamicScalingGraph {
+public class FaultTolerantJob {
 
-    private static final Logger logger = Logger.getLogger(DynamicScalingGraph.class);
+    private static final Logger logger = Logger.getLogger(FaultTolerantJob.class);
     public static final int INITIAL_PROCESSOR_COUNT = 1;
 
     public static void main(String[] args) {
@@ -43,11 +43,11 @@ public class DynamicScalingGraph {
             // vertices
             Properties senderProps = new Properties();
             senderProps.put(ds.granules.util.Constants.StreamBaseProperties.BUFFER_SIZE, Integer.toString(1800));
-            job.addStreamSource("ingester", ThrottledStreamIngester.class, 1, senderProps);
+            job.addStreamSource("ingester", ThrottledStreamIngester.class, 12, senderProps);
 
             Properties processorProps = new Properties();
             processorProps.put(ds.granules.util.Constants.StreamBaseProperties.BUFFER_SIZE, Integer.toString(0));
-            job.addStreamProcessor("stream-processor", StreamProcessor.class, INITIAL_PROCESSOR_COUNT, processorProps);
+            job.addStreamProcessor("stream-processor", FTStreamProcessor.class, INITIAL_PROCESSOR_COUNT, processorProps);
 
             // edges
             job.addLink("ingester", "stream-processor", Constants.Streams.NOAA_DATA_STREAM,
