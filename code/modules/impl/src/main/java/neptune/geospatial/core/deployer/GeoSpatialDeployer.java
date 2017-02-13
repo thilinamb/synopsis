@@ -180,7 +180,8 @@ public class GeoSpatialDeployer extends JobDeployer implements MembershipChangeL
                     // configure state replication
                     if (faultToleranceEnabled && op instanceof AbstractGeoSpatialStreamProcessor) {
                         AbstractGeoSpatialStreamProcessor geoSpatialStreamProcessor = (AbstractGeoSpatialStreamProcessor) op;
-                        configureReplicationStreams(geoSpatialStreamProcessor, lastAssigned - 1);
+                        configureReplicationStreams(geoSpatialStreamProcessor, lastAssigned == 0 ? resourceEndpoints.size() - 1 :
+                                lastAssigned - 1);
                         resourceEndpointToDefaultTopicMap.put(resourceEndpoint.getDataEndpoint(),
                                 geoSpatialStreamProcessor.getDefaultGeoSpatialStream());
                         if (original == null) {
@@ -344,10 +345,12 @@ public class GeoSpatialDeployer extends JobDeployer implements MembershipChangeL
         }
         logger.info("Fault Tolerance Enabled: " + faultToleranceEnabled);
         if (faultToleranceEnabled) {
+            // clear the zookeeper assignments
             MembershipTracker.getInstance().registerListener(this);
         }
         RivuletUtil.initializeHazelcast(streamingProperties);
         super.initialize(streamingProperties);
+        ZooKeeperUtils.deleteDirIfExists(this.zk, neptune.geospatial.graph.Constants.ZNodes.ZNODE_BACKUP_TOPICS);
         initializationCompleted();
     }
 
