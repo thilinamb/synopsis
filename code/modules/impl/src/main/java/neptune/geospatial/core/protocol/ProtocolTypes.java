@@ -37,4 +37,6 @@ public final class ProtocolTypes {
     public static final int PERSIST_STATE_ACK = 12506;
     public static final int PERSIST_STATE_RESP = 12507;
     public static final int UPDATE_PREFIX_TREE = 12508;
+    // terminate node
+    public static final int TERMINATE_NODE = 12600;
 }

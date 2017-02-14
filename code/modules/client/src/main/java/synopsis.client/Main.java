@@ -57,6 +57,10 @@ public class Main {
                     String fileName = args[3];
                     String[] prefixes = readPrefixList(fileName);
                     client.getMemConsumptionInfo(prefixes);
+                    break;
+                case "terminate":
+                    client.terminateNodes();
+                    break;
                 default:
                     System.err.println("Unsupported mode!");
             }

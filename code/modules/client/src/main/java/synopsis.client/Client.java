@@ -9,12 +9,14 @@ import ds.granules.util.Constants;
 import ds.granules.util.NeptuneRuntime;
 import ds.granules.util.ZooKeeperUtils;
 import neptune.geospatial.core.protocol.msg.client.PersistStateRequest;
+import neptune.geospatial.ft.zk.MembershipTracker;
 import neptune.geospatial.graph.operators.QueryCreator;
 import neptune.geospatial.graph.operators.QueryWrapper;
 import neptune.geospatial.util.RivuletUtil;
 import org.apache.log4j.Logger;
 import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.ZooKeeper;
+import synopsis.client.failuredetection.FailureMonitor;
 import synopsis.client.messaging.ClientProtocolHandler;
 import synopsis.client.messaging.Transport;
 import synopsis.client.persistence.PersistenceCompletionCallback;
@@ -41,6 +43,7 @@ public class Client {
     private final int clientPort;
     private final String hostname;
     private final QueryManager queryManager;
+    private FailureMonitor failureMonitor;
     private final Random random = new Random();
 
     public Client(Properties properties, int clientPort) throws ClientException {
@@ -77,6 +80,14 @@ public class Client {
         }
         // discover resources
         discoverSynopsisNodes();
+        try {
+            failureMonitor = new FailureMonitor(endpoints);
+            MembershipTracker.getInstance().registerListener(failureMonitor);
+        } catch (IOException e) {
+            logger.error("Error instantiating the failure monitor.", e);
+        } catch (CommunicationsException e) {
+            logger.error(e.getMessage(), e);
+        }
         logger.info("Client initialization is complete.");
     }
 
@@ -89,7 +100,7 @@ public class Client {
                 byte[] endpointData = ZooKeeperUtils.readZNodeData(this.zk, "/granules-cluster/" + resource);
                 if (endpointData != null) {
                     String[] segments = (new String(endpointData)).split(":");
-                    this.endpoints.add(new SynopsisEndpoint(segments[0], Integer.parseInt(segments[2])));
+                    this.endpoints.add(new SynopsisEndpoint(segments[0], Integer.parseInt(segments[1]), Integer.parseInt(segments[2])));
                 }
             }
         } catch (KeeperException | InterruptedException e) {
@@ -190,6 +201,10 @@ public class Client {
             PersistenceManager.getInstance().forceCompletion(checkpointId);
         }
         Main.notifyOperationComplete();
+    }
+
+    void terminateNodes(){
+        failureMonitor.triggerFailures();
     }
 
     private String getRandomSynopsisNode() {

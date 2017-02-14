@@ -186,6 +186,9 @@ public class ResourceProtocolHandler extends AbstractProtocolHandler {
                 logger.info("Received a update prefix tree request.");
                 managedResource.dispatchToAll(ctrlMsg);
                 break;
+            case ProtocolTypes.TERMINATE_NODE:
+                logger.info("Received a terminate node request. Terminating!");
+                System.exit(0);
             default:
                 logger.warn("Unsupported message type: " + type);
         }

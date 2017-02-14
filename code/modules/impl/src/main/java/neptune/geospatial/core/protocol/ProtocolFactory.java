@@ -128,6 +128,9 @@ public class ProtocolFactory {
                 case ProtocolTypes.UPDATE_PREFIX_TREE:
                     message = new UpdatePrefixTreeReq();
                     break;
+                case ProtocolTypes.TERMINATE_NODE:
+                    message = new TerminateNode();
+                    break;
                 default:
                     String errorMsg = "Unsupported message type: " + messageType;
                     throw new ProtocolException(errorMsg);
