@@ -1,37 +1,37 @@
 \textsc{Synopsis} relies on passive replication to recover from sketchlet failures.
-Other techniques such as active replication increase the resource consumption significantly and it is infeasible to use upstream backups because the state of a \textsc{Synopsis} node depends on the entire set of stream packets it has processed previously \cite{castro2013integrating}.
+Other techniques such as active replication increase the resource consumption significantly and it is infeasible to use upstream backups because the state of a Sketchlet depends on the entire set of stream packets it has processed previously \cite{castro2013integrating}.
 
-Support for fault tolerance is implemented by augmenting the data processing graph (which is responsible for updating the distributed sketch) 	with a set of state replication graphs each attached to a \textsc{Synopsis} node.
-The state replication graph is a two-stage graph where the first stage (\textit{state replication source}) periodically sends changes to the state of its associated \textsc{Synopsis} node since its last message to the stage two operator.
-This incremental check-pointing scheme forms an edit stream between the two stages.
-This consumes a less bandwidth compared to a periodic check-pointing scheme that replicates the entire state every time \cite{castro2013integrating}.
-The stage two operator, which is also known as the \textit{state replication sink}, serializes the messages received via the edit stream to persistent storage.
-By default, \textsc{Synopsis} uses the disk of the machine which hosts the state replication sink operator for persistent storage, but necessary API level provisions are included to support highly available storage implementations such as HDFS~\cite{borthakur2008hdfs}.
-The state replication sink operator can fan out to more instances to support higher replication levels.
-For instance, if the required replication level is three then there will be three instances of the state replication sink running.
-Having a fixed number of state replication sinks and not using any additional memory to maintain state replicas contribute to a smaller resource footprint required for fault tolerance.
+Support for fault tolerance is implemented by augmenting the distributed sketch) with a set of secondary sketchlets.
+Each sketchlet is assigned with a set of $n$ secondary sketchlets each running on different machines, so that Synopsis can withstand up to $n$ concurrent machine failures.
+In our implementation, we used two secondary sketchlets assigned to each sketchlet.
+The primary sketchlet periodically sends the changes to its in-memory state to the secondary nodes creating an stream of edits to the sketchlet between the primary and secondary sketchlets.
+This incremental check-pointing scheme consumes a less bandwidth compared to a periodic check-pointing scheme that replicates the entire state every time \cite{castro2013integrating}.
+The secondary sketchlets, which acts as the sink to the edit stream serializes the messages received via the edit stream to persistent storage.
+By default, \textsc{Synopsis} uses the disk of the machine which hosts the secondary sketchlet for persistent storage, but necessary API level provisions are included to support highly available storage implementations such as HDFS~\cite{borthakur2008hdfs}.
+To reduce the overhead caused by secondary sketchlets, they do not load this serialized state into its memory unless there is a failure to the primary and consequently it gets appointed as the primary sketchlet using the leader election protocol implemented using Zookeeper~\cite{hunt2010zookeeper}.
 
 Incremental checkpoints are performed based on a special control message emitted by the stream ingesters.
 These messages help to orchestrate a system-wide incremental checkpoint.
 \textsc{Synopsis} uses upstream backups at stream ingesters to keep a copy of the messages that entered the system since the last successful checkpoint.
 In case of a failure, all messages since the last checkpoint will be replayed.
 
-\textsc{Synopsis} nodes are implemented as idempotent operators using message sequence numbers, hence they will process the replayed messages only if necessary.
-Users can apply their own policy for defining the interval between the incremental checkpoints based on time or number of emitted messages.
+A sketchlet is implemented as an idempotent data structure using message sequence numbers, hence it will process a replayed message only if the message is not processed before.
+Users can apply their own policy for defining the interval between the incremental checkpoints based on time or the number of emitted messages.
 Frequent checkpoints can incur high overhead whereas longer periods between successive checkpoints may consume more resources for upstream backups as well as for replaying messages in case of a failure.
 
-Membership management is implemented using Zookeeper \cite{hunt2010zookeeper}, which is leveraged to detect failed nodes.
-Upon receiving node failure notifications, an upstream node switches to a secondary child node if necessary. The secondary child node is a \textsc{Synopsis} node running on the process where a state replication sink was running, allowing it access to the persisted replicated state.
+Membership management is implemented using Zookeeper, which is leveraged to detect failed nodes.
+Upon receiving node failure notifications, a secondary sketchlet is assumed the role of the primary.
 The secondary will start processing messages immediately and start populating its state from the persistent storage in the background.
 Given this mode of operation, there may be a small window of time during which the correctness of queries are impacted.
 This is rectified once the stored state is loaded to memory and replay of the upstream backup is completed.
 The sketch's ability to correctly process out of order messages and support for merging with other sketches is useful during this failure recovery process.
 
-As per our fault tolerance model, the time to recover from the failure ($T_{total}$) can be modeled by the following equation.
+As per our fault tolerance model, the \textit{total time to recover from the failure} ($T_{total}$) can be modeled by the following equation.
 \begin{align*}
-    T_{total} &= T_{d} + \max{(T_{l}, T_{r})} \\      \text{where}~T_{d} &= \text{Time to Detect Failure,} \\      T_{l} &= \text{Time to Load Persisted State,}\\      T_{r} &= \text{Replay Time for Messages at the Upstream Node}
+    T_{total} &= T_{d} + \max{(T_{l}, T_{r})}      
 \end{align*}
+where $T_{d}$ = \textit{time to detect a failure}, $T_{l}$ = \textit{time to load persisted state} and $T_{r}$ = \textit{replay time for messages at the upstream node}.
 
-Time to Detect Failure mainly depends on the session timeout value used by the Zookeeper to detect lost nodes and delay in propagating the notification about the lost node to the upstream node from the Zookeeper cluster. With a $5s$ session timeout in an active cluster, we observed a mean notification propagation delay of $5.500s$ (std. deviation = $0.911s$, $95^{th}$ Percentile = $6.000s$). Configuring a lower session timeout will increase the chance of false negatives if the node becomes non responsive for a while due to increased load or system activities such as garbage collection. Using a higher session timeout will increase the time to detect failures. Time required to load the persisted storage depends on the size of the sketch being populated. We benchmarked the time it takes to repopulate the state in all sketchlets after ingesting NOAA data for year 2014. The mean state re-population time was recorded as $16.602s$ with a std. deviation of $23.215s$ and a $95^{th}$ percentile of $70.877s$. Replay time mainly depends on the check-pointing interval as well as the message ingestion rate. With a check-pointing interval of 10000 messages, we experienced a mean value of $0.447s$ (std. deviation = $0.036s$, $95^{th}$ Percentile = $0.484s$) to replay the buffered messages at the upstream node.  														
+Time to detect failure mainly depends on the session timeout value used by the Zookeeper to detect lost nodes and the delay in propagating the notification about the lost cluster-node to other members. With a $5s$ session timeout in an active cluster, we observed a mean notification propagation delay of $5.500s$ (std. deviation = $0.911s$, $95^{th}$ Percentile = $6.000s$). Configuring a lower session timeout will increase the chance of false negatives if cluster-nodes become non responsive for a while due to increased load or system activities such as garbage collection. Using a higher session timeout will increase the time to detect failures. Time required to load the persisted storage depends on the size of the serialized sketchlet. We benchmarked the time it takes to repopulate the state in all sketchlets after ingesting NOAA data for year 2014. The mean state re-population time was recorded as $16.602s$ with a std. deviation of $23.215s$ and a $95^{th}$ percentile of $70.877s$. Replay time mainly depends on the check-pointing interval as well as the message ingestion rate. With a check-pointing interval of 10000 messages, we experienced a mean value of $0.447s$ (std. deviation = $0.036s$, $95^{th}$ Percentile = $0.484s$) to replay the buffered messages from stream ingesters.  														
 
 
