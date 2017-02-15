@@ -7,7 +7,7 @@ Our subject dataset was sourced from the NOAA North American Mesoscale (NAM) For
 Performance evaluations reported here were carried out on a cluster of 40 HP DL160 servers (Xeon E5620, 12 GB RAM). The test cluster was configured to run Fedora 24, and \textsc{Synopsis} was executed under the OpenJDK Java runtime 1.8.0\_72.
 
 \subsection{Dynamic Scaling of the Distributed Sketch}
-\begin{figure}
+\begin{figure}[b!]
     \centerline{\includegraphics[width=3.5in]{figures/dyn-scaling.pdf}}
     \caption{Variation in the number of sketchlets as the data ingestion rate changes.}
     \label{fig:dyn-scaling}
@@ -22,7 +22,7 @@ Since we allow aggressive scale-out, it shows rapid scaling activity during high
 
 \subsection{Analyzing a Snapshot of the Distributed Sketch}
 % scale out graph
-\begin{figure*}[h!]
+\begin{figure*}[t!]
     \centerline{\includegraphics[width=\linewidth]{figures/scaleout_graph_analysis.pdf}}
     \caption{Analysis of a snapshot of the stream processing graph during data ingestion demonstrating the size and distribution of the information corresponding to different prefixes against the observed record count. If the information is dispersed over multiple sketchlets, it is likely to be a prefix with higher number of records and/or a wide range of observed values.}
     \label{fig:scaleout-graph-analysis}
