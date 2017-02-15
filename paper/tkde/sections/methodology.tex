@@ -8,7 +8,7 @@ Enabling real-time query evaluations over voluminous spatiotemporal data streams
 
 \input{sections/sketchlet}
 
-\input{sections/stream-paritioning}
+%\input{sections/stream-paritioning}
 
 \subsection{Coping with High Data Rates: Scaling out}
 \label{subsec:scaling-out}
@@ -80,6 +80,11 @@ Upon receiving a response from the deployer, the node that is scaling out contac
 A lock will be granted if the target can accommodate the load and no other scaling operations are taking place.
 If the lock acquisition fails, another node from the list is attempted; otherwise, the original \textsc{Synopsis} node will create a pass-through channel and direct traffic towards the target node.
 Once this process is complete, the source node will initiate a state transfer asynchronously using a background channel to ensure the stream data flow is not affected, and update its memory utilization metrics to account for the pending state transfer.
+
+As the data flow tree grows with scaling out operations, having parent nodes pass traffic through to their children becomes inefficient because of higher bandwidth consumption as well as increased latency due to additional network hops the packets have to travel through.
+To circumvent this, we allow \emph{short circuiting}, which directs traffic from stream ingesters straight to child nodes.
+For instance, stream ingesters will send data directly to node D using the short circuited route bypassing nodes A and C in Figure~\ref{fig:dist-sketch}. 
+We use our gossiping subsystem to update parent nodes on child state information, which is useful for scaling in as explained in Section~\ref{subsec:scaling-in}.
 
 We captured how backlog length and throughput at an individual node vary with the input rate when dynamic scaling is enabled.
 The node that was considered for the experiment immediately received data from stream ingesters, hence the input rate observed at the node closely resembled the varying data ingestion rate.
