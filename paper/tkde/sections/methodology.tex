@@ -1,6 +1,6 @@
 \section{Methodology}
 \label{sec:methodology}
-Enabling real-time query evaluations over voluminous spatiotemporal data streams requires several components that must coordinate processing and scaling activities over a cluster of heterogeneous resources. This includes our distributed sketch, partitioning scheme, scaling logic, and query support. In each of those subsections, we present microbenchmarks which were run using a single machine (HP DL160 server with Xeon E5620 processor and 12 GB RAM) demonstrating the efficacy of individual aspects of the system. Our input data was sourced from NOAA North American Mesoscale (NAM) Forecast System \cite{noaa_nam}.
+Enabling real-time query evaluations over voluminous spatiotemporal data streams requires several components that must coordinate processing and scaling activities over a cluster of heterogeneous resources. This includes our distributed sketch, sketchlet data structure, scaling logic, and query support. In each of those subsections, we present microbenchmarks which were run using a single machine (HP DL160 server with Xeon E5620 processor and 12 GB RAM) demonstrating the efficacy of individual aspects of the system. Our input data was sourced from NOAA North American Mesoscale (NAM) Forecast System \cite{noaa_nam}.
 
 \input{sections/sketch}
 
@@ -96,7 +96,7 @@ For this experiment, we have enabled only a single threshold-based rule (either 
 We have used a 0.45 of the total available memory for a JVM process as the upper threshold for triggering a scale-out operation.
 In certain occasions, it is required to perform multiple consecutive scaling out operations (interleaved with the cooling down periods) to bring the memory usage to the desired level due to the increased memory utilization caused by the data ingestion happening in the background.
 % system stability
-\begin{figure*}[h!]
+\begin{figure*}[h]
     \begin{subfigure}{0.48\textwidth}
             \centering
             \includegraphics[scale=0.42]{figures/stability_partial.pdf}

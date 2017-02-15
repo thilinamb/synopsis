@@ -22,7 +22,7 @@ Since we allow aggressive scale-out, it shows rapid scaling activity during high
 
 \subsection{Analyzing a Snapshot of the Distributed Sketch}
 % scale out graph
-\begin{figure*}
+\begin{figure*}[h!]
     \centerline{\includegraphics[width=\linewidth]{figures/scaleout_graph_analysis.pdf}}
     \caption{Analysis of a snapshot of the stream processing graph during data ingestion demonstrating the size and distribution of the information corresponding to different prefixes against the observed record count. If the information is dispersed over multiple sketchlets, it is likely to be a prefix with higher number of records and/or a wide range of observed values.}
     \label{fig:scaleout-graph-analysis}
@@ -40,15 +40,14 @@ A few prefixes with high number of records can be observed with a low memory con
 Their observations spans across a smaller range, hence requires less memory but they were chosen for scaling out operations due to their high message rates. 
 
 \subsubsection{Distributed Sketch Memory Evaluation}
+We monitored the growth in memory consumption of the entire distributed sketch over time with continuous data ingestion as shown in Figure~\ref{fig:dist-sketch-mem-usage}. This experiment included all 40 of the nodes in our test cluster.  As more data was streamed into the system, the growth rate of the distributed sketch decreased as the sketchlets at each node expanded to include vertices for their particular feature space.  At the end of our monitoring period, the total amount of ingested data was over three orders of magnitudes higher ($\sim 1285$) than the in-memory sketch size, resulting in notable space savings.
 %
-\begin{figure}
+\begin{figure}[b!]
     \centerline{\includegraphics[width=\linewidth]{figures/ing-and-mem-usage.pdf}}
     \caption{Memory usage of the distributed sketch over time against the amount of ingested data. The rate of growth decreases over time due to the compact nature of our underlying sketchlet data structure.}
     \label{fig:dist-sketch-mem-usage}
 \end{figure}
-
-We monitored the growth in memory consumption of the entire distributed sketch over time with continuous data ingestion as shown in Figure~\ref{fig:dist-sketch-mem-usage}. This experiment included all 40 of the nodes in our test cluster.  As more data was streamed into the system, the growth rate of the distributed sketch decreased as the sketchlets at each node expanded to include vertices for their particular feature space.  At the end of our monitoring period, the total amount of ingested data was over three orders of magnitudes higher ($\sim 1285$) than the in-memory sketch size, resulting in notable space savings.
-
+%
 \subsection{Query Evaluation Performance}
 Figure~\ref{fig:dist-query} demonstrates the end-to-end efficiency of the query evaluations over the distributed sketch.
 Cumulative query throughput and latencies were measured with varying numbers of concurrent query \emph{funnels}.
