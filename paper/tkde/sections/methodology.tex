@@ -90,13 +90,8 @@ We captured how backlog length and throughput at an individual node vary with th
 The node that was considered for the experiment immediately received data from stream ingesters, hence the input rate observed at the node closely resembled the varying data ingestion rate.
 As shown in Figure~\ref{fig:stability-backlog}, scaling out helps a node to keep up with the variations in the workload which in turn causes the backlog to stay within a safe range.
 It also demonstrates infrequent, rapid scale-out and continuous, gradual scale-in as explained in \S\ref{subsec:scaling-out}.
-
-Figure~\ref{fig:stability-mem} demonstrates how memory consumption based threshold-based rules trigger scaling maneuvers to maintain the stability of an individual node.
-For this experiment, we have enabled only a single threshold-based rule (either backlog growth based or memory usage based) at a time to demonstrate its effectiveness.
-We have used a 0.45 of the total available memory for a JVM process as the upper threshold for triggering a scale-out operation.
-In certain occasions, it is required to perform multiple consecutive scaling out operations (interleaved with the cooling down periods) to bring the memory usage to the desired level due to the increased memory utilization caused by the data ingestion happening in the background.
 % system stability
-\begin{figure*}[h]
+\begin{figure*}[h!]
     \begin{subfigure}{0.48\textwidth}
             \centering
             \includegraphics[scale=0.42]{figures/stability_partial.pdf}
@@ -112,6 +107,11 @@ In certain occasions, it is required to perform multiple consecutive scaling out
     \caption{Scaling out enables maintaining stability at an individual node based on backlog growth and memory usage}
     \label{fig:system-stability}
 \end{figure*}
+%
+Figure~\ref{fig:stability-mem} demonstrates how memory consumption based threshold-based rules trigger scaling maneuvers to maintain the stability of an individual node.
+For this experiment, we have enabled only a single threshold-based rule (either backlog growth based or memory usage based) at a time to demonstrate its effectiveness.
+We have used a 0.45 of the total available memory for a JVM process as the upper threshold for triggering a scale-out operation.
+In certain occasions, it is required to perform multiple consecutive scaling out operations (interleaved with the cooling down periods) to bring the memory usage to the desired level due to the increased memory utilization caused by the data ingestion happening in the background.
 
 %Completing the scale-out protocol quickly is important because it can release mutual exclusive locks in both origin and target \textsc{Synopsis} nodes quickly and participate in other scaling activities soon after the stabilization period.
 %
