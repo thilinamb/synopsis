@@ -1,4 +1,4 @@
-\textsc{Synopsis} relies on passive replication to recover from node failures.
+\textsc{Synopsis} relies on passive replication to recover from sketchlet failures.
 Other techniques such as active replication increase the resource consumption significantly and it is infeasible to use upstream backups because the state of a \textsc{Synopsis} node depends on the entire set of stream packets it has processed previously \cite{castro2013integrating}.
 
 Support for fault tolerance is implemented by augmenting the data processing graph (which is responsible for updating the distributed sketch) 	with a set of state replication graphs each attached to a \textsc{Synopsis} node.

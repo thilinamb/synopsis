@@ -1,4 +1,4 @@
-\subsection{Sketch Construction}
+\subsection{Sketchlet}
 \label{sec:sketch}
 The distributed sketch maintained by \textsc{Synopsis} is composed of many \emph{sketchlets} dispersed over a cluster of machines. Sketchlets maintain compact, multidimensional, tree-based representations of incoming data streams in a data structure called SIFT (Summarization Involving a Forest of Trees). Each in-memory SIFT can be queried to retrieve statistical properties about the underlying data or discover how features interact. Due to the voluminous nature of these data streams, storing each individual record in main memory is not practical. Therefore, the queries supported by our framework are facilitated by compact, online metadata collection and quantization methods. These techniques ensure high accuracy while also conforming to the memory requirements of the system. To further improve accuracy, we bias our algorithms toward the most recent data points while reducing the resolution of the oldest.
 

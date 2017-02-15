@@ -1,6 +1,6 @@
 \section{Methodology}
 \label{sec:methodology}
-Enabling real-time query evaluations over voluminous spatiotemporal data streams requires several components that must coordinate processing and scaling activities over a cluster of heterogeneous resources. This includes our distributed sketch, partitioning scheme, scaling logic, and query support. In each of those subsections, we present microbenchmarks which were run using a single machine demonstrating the efficacy of individual aspects of the system.
+Enabling real-time query evaluations over voluminous spatiotemporal data streams requires several components that must coordinate processing and scaling activities over a cluster of heterogeneous resources. This includes our distributed sketch, partitioning scheme, scaling logic, and query support. In each of those subsections, we present microbenchmarks which were run using a single machine (HP DL160 server with Xeon E5620 processor and 12 GB RAM) demonstrating the efficacy of individual aspects of the system. Our input data was sourced from NOAA North American Mesoscale (NAM) Forecast System \cite{noaa_nam}.
 
 \input{sections/sketch}
 
@@ -38,7 +38,7 @@ In targeted load migration, particular geospatial scopes are evicted from the or
 \end{figure*}
 
 In \textsc{Synopsis}, we use targeted load migration for scaling out.
-Our implementation closely follows the MAPE loop~\cite{maurer2011revealing} which is comprised of four phases: monitor (M), analyze (A), planning (P) and execution (E).
+Our implementation closely follows the MAPE loop~\cite{maurer2011revealing} which comprises four phases: monitor (M), analyze (A), planning (P) and execution (E).
 %The monitoring task as shown in Figure~\ref{fig:process-monitor} periodically probes every \textsc{Synopsis} task to gather two performance metrics as part of monitoring phase.
 A \textbf{monitoring} task periodically probes every node to gather two performance metrics:
 \begin{enumerate}[leftmargin=*]

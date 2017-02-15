@@ -1,6 +1,6 @@
 \subsection{Query Evaluations}
 \label{subsec:query-eval}
-\textsc{Synopsis} incorporates support for user-defined queries that are evaluated over the distributed sketch.  Queries can be specified by the user in a SQL-like format or with JSON-based key-value descriptions similar to GraphQL~\cite{graphql}. Exact-match, range-based, and summarization queries are all supported over spatiotemporal bounds and individual feature values. The following example demonstrates our SQL-like format and some of the query types supported by \textsc{Synopsis}:
+\textsc{Synopsis} incorporates support for user-defined queries that are evaluated over the distributed sketch.  Queries can be specified by the user in a SQL-like format or with JSON-based key-value descriptions similar to GraphQL~\cite{graphql}. Exact-match, range-based, and summarization queries are all supported over spatiotemporal bounds and individual feature values. The following example depicts how SQL-like queries can be formulated for evaluation over the sketch.
 
 \begin{verbatim}
 SELECT MEAN(precipitation), MAX(wind_speed)
@@ -22,7 +22,7 @@ Our distributed prefix tree enables query evaluations during both scaling in and
     \item[Relational Queries] describe the feature space in the context of the hierarchical trees within our SIFT data structure and may target ranges of values under certain conditions. For example, ``What is the relationship between temperature and humidity during July in Alaska, USA, when precipitation was greater than 1 centimeter?'' These queries return a subset of the overall sketch that includes other matching feature values as well.
     % Subsketches may be manipulated and inspected on the client side, and then reused in subsequent queries to request more detail or broaden the query scope. Relational queries can optionally return statistical metadata stored in the leaf nodes of the tree; this is also supported by our statistical query functionality.
 
-    \item[Statistical Queries] allow users to explore statistical properties of the observational space by retrieving portions of the metadata stored in the leaf nodes of the sketch. For example, users can retrieve and contrast correlations between any two features at different geographic locations at the same time. Alternatively, queries may contrast correlations between different features at different time ranges at the same geographic location. Statistical queries also support retrieval of the mean, standard deviation, and feature outliers based on Chebyshev's inequality \cite{knuth1968art}.
+    \item[Statistical Queries] allow users to explore statistical properties of the observational space by retrieving portions of the metadata stored in the leaf nodes of the sketch. For example, users can retrieve and contrast correlations between any two features at different geographic locations at the same time. Alternatively, queries may contrast correlations between different features at different time ranges at the same geographic location. These queries also support retrieval of the mean, standard deviation, and feature outliers based on Chebyshev's inequality \cite{knuth1968art}.
 
     \item[Density Queries] support analysis of the distribution of values associated with a feature over a particular spatiotemporal scope. These include kernel density estimations, estimating the probability of observing a particular value for an observation, and determining the deciles and quartiles for the observed feature.% Kernel density estimations can request the function itself, an integral over a range of values, or the probability of a single value.
 
@@ -60,7 +60,7 @@ Table~\ref{tbl:query-times} outlines the local sketchlet traversal times for bot
             \hline
             Set Membership           & 0.015                    & 0.009 \\
             \hline
-            Statistics               & 0.002                    & 0.001 \\
+            Statistical               & 0.002                    & 0.001 \\
             \hline
             \hline
             Tree Only (5 km)        & 46.357                   & 1.287 \\
