@@ -2,18 +2,6 @@
 \label{sec:methodology}
 Enabling real-time query evaluations over voluminous spatiotemporal data streams requires several components that must coordinate processing and scaling activities over a cluster of heterogeneous resources. This includes our distributed sketch, partitioning scheme, scaling logic, and query support. In each of those subsections, we present microbenchmarks which were run using a single machine demonstrating the efficacy of individual aspects of the system.
 
-\subsection{Geohash Algorithm}
-\label{sec:geohash}
-We use the Geohash~algorithm~\cite{geohash} to balance load and partition incoming data streams across processing resources. Geohash divides the earth into a hierarchy of bounding boxes identified by Base 32 strings; the longer the geohash string, the more precise the bounding box. Figure~\ref{fig:geohash} illustrates this hierarchy. Most of the eastern United States is contained within the bounding box described by geohash \emph{D}, while \emph{DJ} encompasses substantial parts of Florida, Georgia, and Alabama. The bounding box \emph{DJKJ} (highlighted in red) contains Tallahassee, Florida. This hierarchical representation enables \textsc{Synopsis} to cope with both low- and high-density regions: several resources may be tasked with managing streams originating in and around large cities, while rural areas fall under the purview of a single node.
-
-\begin{figure}[b!]
-    \centerline{\includegraphics[width=2.75in]{figures/geohash.pdf}}
-    \caption{A demonstration of the Geohash algorithm. Each additional character in a geohash describes a finer-grained region; geohash \emph{DJ} contains substantial parts of Florida, Georgia, and Alabama, USA, while \emph{DJKJ} (highlighted in red) encompasses Tallahassee.}
-    \label{fig:geohash}
-\end{figure}
-
-To achieve fine-grained control over our geohash partitions, we operate at the bit level rather than Base 32 character level when routing streams. Each bit added to a geohash string reduces its scope by half, with each character represented by five bits ($2^5 = 32$). In other words, a four-character geohash string represents 20 spatial subdivisions applied recursively to each resulting region. This property allows us to manage and allocate resources across a wide variety of observational densities.
-
 \input{sections/sketch}
 
 \input{sections/data-model}
