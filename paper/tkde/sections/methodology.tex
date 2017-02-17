@@ -129,7 +129,7 @@ At this point, it is possible that further scale-out operations have taken place
 For instance, if sketchlet A in Figure~\ref{fig:dist-sketch} decides to scale-in the subregion \emph{DN}, then it must communicate with sketchlets C and D.
 
 The scale-in protocol starts with a lock acquisition protocol similar to scaling out protocol, but locking the entire subtree is required.
-The steps are depicted in Figure~\ref{fig:scale-in-protocol} with respect to our example in Figure~\ref{fig:stream-partitioning} where sketchlet C is scaled in.
+The steps are depicted in Figure~\ref{fig:scale-in-protocol} with respect to our example in Figure~\ref{fig:dist-sketch} where sketchlet C is scaled in.
 As per our example, sketchlet A will have to acquire locks for both sketchlets C and E.
 Locks are acquired in a top-to-bottom fashion where parent locks itself and then attempts to lock the child.
 If lock acquisition is failed in any part of the subtree, then the scale-in operation is aborted and the monitoring process will start the next iteration of the MAPE loop immediately.
