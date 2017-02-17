@@ -1,6 +1,6 @@
 \section{Methodology}
 \label{sec:methodology}
-Enabling real-time query evaluations over voluminous spatiotemporal data streams requires several components that must coordinate processing and scaling activities over a cluster of heterogeneous resources. This includes our distributed sketch, sketchlet data structure, scaling logic, and query support. In each of those subsections, we present microbenchmarks which were run using a single machine (HP DL160 server with Xeon E5620 processor and 12 GB RAM) demonstrating the efficacy of individual aspects of the system. Our input data was sourced from NOAA North American Mesoscale (NAM) Forecast System \cite{noaa_nam}.
+Enabling real-time query evaluations over voluminous spatiotemporal data streams requires several components that must coordinate processing and scaling activities over a cluster of heterogeneous resources. This includes our distributed sketch, sketchlet data structure, scaling logic, and query support. In most of those subsections, we present microbenchmarks which were run using a single machine (HP DL160 server with Xeon E5620 processor and 12 GB RAM) demonstrating the efficacy of individual aspects of the system. Our input data was sourced from NOAA North American Mesoscale (NAM) Forecast System \cite{noaa_nam}.
 
 \input{sections/sketch}
 
@@ -13,9 +13,10 @@ Enabling real-time query evaluations over voluminous spatiotemporal data streams
 \subsection{Coping with High Data Rates: Scaling out}
 \label{subsec:scaling-out}
 %
-There are two primary approaches to scaling a node that is experiencing high traffic: \emph{replication} and \emph{load migration}. In replication-based scaling, new nodes are spawned during high data arrival rates that are responsible for identical spatial scopes as their originating node. Assimilation of the newly-created node involves partitioning inbound streams directed to the original node. The upstream node is responsible for this partitioning, which may be performed in a skewed fashion with the new node receiving a larger portion of the inbound stream.  Alternatively, inbound streams to the original node may also be partitioned in a round-robin fashion between the original and the newly-created node.
+There are two primary approaches to scaling a sketchlet that is experiencing high traffic: \emph{replication} and \emph{load migration}. In replication-based scaling, new sketchlets are spawned during high data arrival rates that are responsible for identical spatial scopes as their originating sketchlet. Assimilation of the newly-created sketchlet involves partitioning inbound streams directed to the original sketchlet. The upstream node (e.g.: stream ingester) is responsible for this partitioning, which may be performed in a skewed fashion with the new sketchlet receiving a larger portion of the inbound stream. Alternatively, inbound streams to the original node may also be partitioned in a round-robin fashion between the original and the newly-created sketchlet.
+Using a replication-based scaling with a round-robin style stream partitioning is inefficient with respect to memory consumption because of the possibility of multiple SIFT trees with significantly overlapping sets of vertices and edges.
 
-In targeted load migration, particular geospatial scopes are evicted from the original node to the newly created node during heavy traffic. Deciding which spatial scopes to migrate is based on data arrival rates and the rates at which particular portions of the sketch are being updated.
+In targeted load migration, particular geospatial scopes, i.e. SIFT trees are evicted from the original sketchlet to the newly created sketchlet during heavy traffic. Deciding which SIFT trees to migrate is based on data arrival rates and the rates at which particular SIFT trees are being updated.
 
 %[malensek] NOTE: I removed this because it contradicts our discussion on the ability of the sketch to merge arbitrary states (even duplicated state -- in fact, that makes things easier). I think there are plenty of other reasons why replication-based scaling is weaker anyway.
 %Replication-based scaling introduces a challenge during query evaluations in that the query must be forwarded to all nodes responsible for a particular scope and the results merged; depending on the nature of these queries (for e.g., correlation analysis and inferential queries) merging of results may be difficult to accomplish without extensive state synchronizations.
@@ -40,15 +41,15 @@ In targeted load migration, particular geospatial scopes are evicted from the or
 In \textsc{Synopsis}, we use targeted load migration for scaling out.
 Our implementation closely follows the MAPE loop~\cite{maurer2011revealing} which comprises four phases: monitor (M), analyze (A), planning (P) and execution (E).
 %The monitoring task as shown in Figure~\ref{fig:process-monitor} periodically probes every \textsc{Synopsis} task to gather two performance metrics as part of monitoring phase.
-A \textbf{monitoring} task periodically probes every node to gather two performance metrics:
+A \textbf{monitoring} task within every sketchlet periodically gathers two performance metrics:
 \begin{enumerate}[leftmargin=*]
-	\item \textbf{Length of the backlog:} This represents the number of unprocessed messages in the queue. If the \textsc{Synopsis} task cannot keep up with the incoming data rate, then the backlog will grow over time.
-	\item \textbf{Memory pressure:} Each node is allocated a fixed amount of memory. 
+	\item \textbf{Length of the backlog:} This represents the number of unprocessed messages in the queue. If the sketchlet cannot keep up with the incoming data rate, then the backlog will grow over time.
+	\item \textbf{Memory pressure:} Each sketchlet is allocated a fixed amount of memory. 
 	Exceeding these memory limits creates memory pressure, which may cause extended garbage collection cycles, increased paging activity, and will eventually lead to reduced performance.
 	The monitoring task continuously records the memory utilization and triggers scaling activities accordingly.
 \end{enumerate} 
 
-The objective of scaling out is to maintain the \emph{stability} of each node.
+The objective of scaling out is to maintain the \emph{stability} of each sketchlet.
 We define stability as the ability to keep up with incoming data rates while incurring a manageable memory pressure.  During the \textbf{analyze} phase, we use threshold-based rules \cite{lorido2012auto} to provide scale-out recommendations to \textsc{Synopsis} nodes, which are provided if either of the following rules are consistently satisfied for a certain number of observations:
 \begin{itemize}[leftmargin=*]  
 \item Backlog growth, which indicates that a portion of the load needs to be migrated to a different \textsc{Synopsis} node.
