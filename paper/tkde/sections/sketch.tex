@@ -1,9 +1,9 @@
 \subsection{Sketch}
-\begin{figure*}
-    \centerline{\includegraphics[width=0.7\textwidth]{figures/dist-sketch.pdf}}
+\begin{figure}
+    \centerline{\includegraphics[width=0.5\textwidth]{figures/dist-sketch.pdf}}
     \caption{Demonstration of the distributed sketch for geospatial region with the geohash prefix D. The sketchlets for geohash prefixes DJ and DN have scaled out due to high volume of observations. Each sketchlet maintains a SIFT data structure, which is a forest of trees where each tree is responsible for a more specific geospatial region.}
     \label{fig:dist-sketch}
-\end{figure*}
+\end{figure}
 
 The macroscopic view of the distributed sketch is one that comprises multiple sketchlets; each sketchlet executes on a different machine and is responsible for organizing data for a particular geospatial scope. The sketch is organized as a distributed prefix tree. All the descendant nodes -- the sketchlets -- share a common prefix associated with the parent. Within a sketchlet all observations share the prefix associated with that sketchlet.
 
