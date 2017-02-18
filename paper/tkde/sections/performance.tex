@@ -6,8 +6,23 @@ Our subject dataset was sourced from the NOAA North American Mesoscale (NAM) For
 
 Performance evaluations reported here were carried out on a cluster of 40 HP DL160 servers (Xeon E5620, 12 GB RAM). The test cluster was configured to run Fedora 24, and \textsc{Synopsis} was executed under the OpenJDK Java runtime 1.8.0\_72.
 
-\subsection{Dynamic Scaling of the Distributed Sketch}
+\subsection{Sketch Ingestion Rate}
+In this experiment, we assessed the ability of the sketch to keep pace with the high rates of incoming observational streams.
+A single sketchlet can support xxxx updates/s.
+To evaluate the cumulative throughput of the distributed sketch, we started the sketch with a single sketchlet and allowed it to dynamically scale as more data is ingested.
+We gradually increased the number of stream ingesters 
+
+\subsection{Distributed Sketch Memory Evaluation}
+We monitored the growth in memory consumption of the entire distributed sketch over time with continuous data ingestion as shown in Figure~\ref{fig:dist-sketch-mem-usage}. As more data was streamed into the system, the growth rate of the distributed sketch decreased as the sketchlets expanded to include vertices for their particular feature space.  At the end of our monitoring period, the total amount of ingested data was over three orders of magnitudes higher ($\sim 1285$) than the in-memory sketch size, resulting in notable space savings.
+%
 \begin{figure}[h!]
+    \centerline{\includegraphics[width=\linewidth]{figures/ing-and-mem-usage.pdf}}
+    \caption{Memory usage of the distributed sketch over time against the amount of ingested data. The rate of growth decreases over time due to the compact nature of sketchlet data structure.}
+    \label{fig:dist-sketch-mem-usage}
+\end{figure}
+%
+\subsection{Dynamic Scaling: Responding to Variable Load}
+\begin{figure}[b!]
     \centerline{\includegraphics[width=3.5in]{figures/dyn-scaling.pdf}}
     \caption{Variation in the number of sketchlets as the data ingestion rate changes.}
     \label{fig:dyn-scaling}
@@ -39,15 +54,7 @@ In such cases, some of these sketchlets are created in multiple iterations of sc
 A few prefixes with high number of records can be observed with a low memory consumption and are distributed across multiple sketchlets.
 Their observations spans across a smaller range, hence requires less memory but they were chosen for scaling out operations due to their high message rates. 
 
-\subsubsection{Distributed Sketch Memory Evaluation}
-We monitored the growth in memory consumption of the entire distributed sketch over time with continuous data ingestion as shown in Figure~\ref{fig:dist-sketch-mem-usage}. As more data was streamed into the system, the growth rate of the distributed sketch decreased as the sketchlets expanded to include vertices for their particular feature space.  At the end of our monitoring period, the total amount of ingested data was over three orders of magnitudes higher ($\sim 1285$) than the in-memory sketch size, resulting in notable space savings.
-%
-\begin{figure}[b!]
-    \centerline{\includegraphics[width=\linewidth]{figures/ing-and-mem-usage.pdf}}
-    \caption{Memory usage of the distributed sketch over time against the amount of ingested data. The rate of growth decreases over time due to the compact nature of sketchlet data structure.}
-    \label{fig:dist-sketch-mem-usage}
-\end{figure}
-%
+
 \subsection{Query Evaluation Performance}
 To evaluate distributed query performance, we executed several representative workloads across a variety of sketchlet sizes. These queries were separated into two groups: conventional lookups and tree retrievals. Conventional lookups include density queries, set queries, and statistical queries, while tree retrievals request targeted portions of the overall feature space as a tree.  Note that while conventional lookups do not return a tree structure to the client, they still require a tree traversal to resolve. In general, tree retrievals consume more processing time due to their serialization and I/O costs.
 
