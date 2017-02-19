@@ -107,6 +107,13 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
                 if (previousThroughputTS != -1) {
                     throughput = (currentCount - previousThroughput) * 1000.0 / (now - previousThroughputTS);
                 }
+                // atomic latency
+                double meanLatency;
+                synchronized (sumLatency) {
+                    meanLatency = sumLatency.get() / (currentCount - previousThroughput);
+                    sumLatency.set(0);
+                }
+
                 previousThroughput = currentCount;
 
                 // query throughput
@@ -132,7 +139,8 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
                 }*/
                 PeriodicInstanceMetrics periodicInstanceMetrics = new PeriodicInstanceMetrics(instanceId,
                         StatConstants.ProcessorTypes.PROCESSOR,
-                        new double[]{backlog, memUsage, locallyProcessedPrefCount, throughput, prefixLength, queryThroughput});
+                        new double[]{backlog, memUsage, meanLatency, throughput, prefixLength, queryThroughput});
+                // was: new double[]{backlog, memUsage, locallyProcessedPrefCount, throughput, prefixLength, queryThroughput});
                 statClient.publish(periodicInstanceMetrics);
             }
         }
@@ -207,6 +215,7 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
     private ScheduledExecutorService checkpointMonitors = Executors.newScheduledThreadPool(1);
 
     private AtomicLong processedCount = new AtomicLong(0);
+    private AtomicLong sumLatency = new AtomicLong(0);
     private ScheduledExecutorService statPublisher = Executors.newScheduledThreadPool(1);
     private Map<Integer, FullQualifiedComputationAddr> pendingPrefixOnlyScaleOutOps = Collections.synchronizedMap(
             new HashMap<Integer, FullQualifiedComputationAddr>());
@@ -390,8 +399,13 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
         long checkpointId = geoHashIndexedRecord.getCheckpointId();
         if (checkpointId <= 0 && preprocess(geoHashIndexedRecord)) {
             // perform the business logic: do this selectively. Send through the traffic we don't process.
-            process(geoHashIndexedRecord);
-            processedCount.incrementAndGet();
+            long t1 = System.nanoTime();
+            //process(geoHashIndexedRecord);
+            long t2 = System.nanoTime();
+            synchronized (sumLatency) {
+                sumLatency.addAndGet((t2 - t1));
+                processedCount.incrementAndGet();
+            }
         } else if (checkpointId > 0 && faultToleranceEnabled && processedCount.get() > 0) {
             // send out a dummy state replication message for now
             //byte[] serializedState = new byte[100];

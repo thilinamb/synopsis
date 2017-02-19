@@ -90,7 +90,8 @@ public class StatsServer {
             StatRegistry.getInstance().registerProcessor(new CumulThroughputProcessor());
             StatRegistry.getInstance().registerProcessor(new SketchletCounter());
             StatRegistry.getInstance().registerProcessor(new BacklogCounter());
-            StatRegistry.getInstance().registerProcessor(new InstanceSnapshotProcessor());
+            //StatRegistry.getInstance().registerProcessor(new InstanceSnapshotProcessor());
+            StatRegistry.getInstance().registerProcessor(new LatencyProcessor());
             StatRegistry.getInstance().registerProcessor(new QueryThroughputProcessor());
 
             // start the dispatcher
