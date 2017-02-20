@@ -16,7 +16,7 @@ The entry point for these queries, called the \emph{conduit}, may be any of the 
 Our distributed prefix tree enables query evaluations during both scaling in and out. For instance, when a conduit attempts to forward a query to a child sketchlet that is undergoing a scale-in operation, the request will be redirected to the its parent sketchlet. This process can continue recursively up through the network, ensuring queries will reach their destination.
 
 \subsubsection{Query Types}
-\textsc{Synopsis} queries can be discrete or continuous. Unlike discrete queries that are evaluated once, continuous queries are evaluated periodically or when observations become available. Queries supported by \textsc{Synopsis} fall into six categories:
+Queries supported by \textsc{Synopsis} fall into six categories:
 
 \begin{description}[leftmargin=*]
     \item[Relational Queries] describe the feature space in the context of the hierarchical trees within our SIFT data structure and may target ranges of values under certain conditions. For example, ``What is the relationship between temperature and humidity during July in Alaska, USA, when precipitation was greater than 1 centimeter?'' These queries return a subset of the overall sketch that includes other matching feature values as well.
