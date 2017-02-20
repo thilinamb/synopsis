@@ -13,11 +13,11 @@ We use the Geohash~algorithm~\cite{geohash} to balance load and partition incomi
 
 \begin{figure}[b!]
     \centerline{\includegraphics[width=2.5in]{figures/geohash.pdf}}
-    \caption{A demonstration of the Geohash algorithm. Each additional character in a geohash describes a finer-grained region; geohash \emph{DJ} contains substantial parts of Florida, Georgia, and Alabama, USA, while \emph{DJKJ} (highlighted in red) encompasses Tallahassee.}
+    \caption{Demonstrating the Geohash algorithm. Each additional character in a geohash describes a finer-grained region; geohash \emph{DJ} contains substantial parts of Florida, Georgia, and Alabama, while \emph{DJKJ} (highlighted in red) encompasses Tallahassee.}
     \label{fig:geohash}
 \end{figure}
 
-To achieve fine-grained control over our geohash partitions, we operate at the bit level rather than Base 32 character level when routing streams. Each bit added to a geohash string reduces its scope by half, with each character represented by five bits ($2^5 = 32$). In other words, a four-character geohash string represents 20 spatial subdivisions applied recursively to each resulting region. This property allows us to manage and allocate resources across a wide variety of observational densities.
+To achieve fine-grained control over our geohash partitions, we operate at the bit level rather than Base 32 character level when routing streams. Each bit added to a geohash string reduces its scope by half, with each character represented by five bits ($2^5 = 32$). In other words, a four-character geohash string represents 20 spatial subdivisions applied recursively to each resulting region. This property allows us to manage and allocate resources across a variety of observational densities.
 
 \textsc{Synopsis} relies on a set of auxiliary services that are needed to construct, update, and maintain the sketch and also to adapt to changing system conditions:
 

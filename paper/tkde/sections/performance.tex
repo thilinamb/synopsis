@@ -60,19 +60,19 @@ When there is a single ingester, the throughput was constrained by the bandwidth
 With multiple ingesters, due to the way the stream is (intentionally) constructed, the load is not evenly partitioned across the cluster at a given time --- only a subset of sketchlets were processing the stream.
 %
 \subsection{Dynamic Scaling: Responding to Variable Load}
-\begin{figure}[b!]
+\begin{figure}[t!]
     \centerline{\includegraphics[width=3.5in]{figures/dyn-scaling.pdf}}
     \caption{Variation in the number of sketchlets as the data ingestion rate changes.}
     \label{fig:dyn-scaling}
 \end{figure}
 We evaluated how \textsc{Synopsis} dynamically scales when the data ingestion rate is varied.
-The data ingestion rate was varied over time such that the peak data ingestion rate is higher than the highest possible cumulative throughput that will create a backlog at sketchlets.
-We augmented the sketch update code with additional computations to match the relatively low ingestion rates used for better control.
-We used the number of sketchlets created in the system to quantify the scaling activities.
+The data ingestion rate was varied over time such that the peak data ingestion rate is higher than the highest possible cumulative throughput to create a backlog at sketchlets.
+We augmented the sketch update code with additional operations to match the relatively low ingestion rates used for better control.
+We used the number of sketchlets within the system to quantify the scaling activities.
 If the system scales out, more sketchlets will be created as a result of targeted load migration.
 We started with a single sketchlet and allowed the system to dynamically scale.
 As can be observed in Figure~\ref{fig:dyn-scaling}, the number of sketchlets varies with the ingestion rate.
-Since we allow aggressive scale-out, it shows rapid scaling activity during high data ingestion rates whereas scaling in takes place gradually with one sub region (hence one sketchlet) at a time.
+Since we allow aggressive scale-out, rapid scaling out is observed during high data ingestion rates whereas scaling in takes place gradually with one subregion (one sketchlet) at a time.
 
 \subsection{Analyzing a Snapshot of the Distributed Sketch}
 % scale out graph
@@ -82,12 +82,12 @@ Since we allow aggressive scale-out, it shows rapid scaling activity during high
     \label{fig:scaleout-graph-analysis}
 \end{figure*}
 %
-Figure~\ref{fig:scaleout-graph-analysis} visualizes a snapshot of the distributed sketch which demonstrates the organization of sketchlets in runtime as described in Section~\ref{sec:methodology}. 
-This represents the state of the system after consuming the complete NOAA dataset for 2014 and the graph contained 48 sketchlets. 
+Figure~\ref{fig:scaleout-graph-analysis} visualizes a snapshot of the distributed sketch which demonstrates the organization of sketchlets in runtime as described in \S\ref{sec:methodology}. 
+This represents the state of the system after consuming the complete 2014 NOAA dataset and the sketch contained 48 sketchlets. 
 It shows the distribution and size of the information maintained across sketchlets for each geohash prefix of length 3 against the number of records processed for that particular prefix.
 The memory requirement for a particular geohash prefix depends on the number of records as well as the range of the observed values for different features.
-The space requirement is measured in terms of the number of leaf nodes in the corresponding sketchlets.
-For the majority of the prefixes, the space requirement increases with the number of records processed for a particular prefix.
+The space requirement is measured by the number of leaf nodes in the corresponding sketchlets.
+For the majority of the prefixes, the space requirement increases with the number of records processed.
 If the data for a particular prefix is distributed across multiple sketchlets, then it is more likely to be a prefix with a high number of records as shown in the first subplot.
 In such cases, some of these sketchlets are created in multiple iterations of scaling out operations from their original sketchlets which results in a higher distance from the root of the prefix tree. This is depicted in the second sub figure of Figure~\ref{fig:scaleout-graph-analysis}.
 A few prefixes with high number of records can be observed with a low memory consumption and are distributed across multiple sketchlets.
@@ -95,14 +95,14 @@ Their observations spans across a smaller range, hence requires less memory but 
 
 
 \subsection{Query Evaluation Performance}
-\begin{figure*}[h!]
+\begin{figure*}[t!]
     \centerline{\includegraphics[width=\linewidth]{figures/query_benchmark_both.pdf}}
     \caption{Distributed query evaluation performance --- cumulative throughput and latency in a 40 node \textsc{Synopsis} cluster.}
     \label{fig:dist-query}
 \end{figure*}
-To evaluate distributed query performance, we executed several representative workloads across a variety of sketchlet sizes. These queries were separated into two groups: conventional lookups and tree retrievals.  Figure~\ref{fig:dist-query} demonstrates the end-to-end efficiency of the query evaluations over the distributed sketch.
-Cumulative query throughput and latencies were measured with varying numbers of concurrent query \emph{funnels}.
-A query \emph{funnel} continuously generates and dispatches random queries at their maximum possible rate to stress test the system and saturate its capacity; for instance, a query could request summary statistics or feature relationships when the temperature is between 20 to 30 degrees, humidity is above 80\%, and the wind is blowing at 16 km/h.
+To evaluate distributed query performance, we executed several representative workloads across a variety of sketchlet sizes. These queries were separated into two groups: conventional lookups and tree retrievals.  Figure~\ref{fig:dist-query} depicts the end-to-end efficiency of the query evaluations over the distributed sketch.
+Cumulative query throughput and latencies were measured with varying numbers of \emph{concurrent query funnels}.
+A query funnel continuously generates and dispatches random queries at its maximum possible rate to stress test the system and saturate its capacity; for example, a query could request summary statistics or feature relationships when the temperature is between 20 to 30 degrees, humidity is above 80\%, and the wind is blowing at 16 km/h.
 These randomized queries fluctuated in both the ranges of values and spatial scope, resulting in high variability in the number of sketchlets required to resolve the query as well as the depth and breadth of the required tree traversals.
 
 

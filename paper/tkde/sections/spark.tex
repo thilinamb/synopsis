@@ -32,7 +32,7 @@ For this benchmark, we used Apache Spark version 2.0.1 with HDFS 2.6.0 with a 10
 
 We evaluated the efficacy of our approach based on the on-disk and in-memory storage requirements, data loading time, training time and the accuracy of the model.
 Our observations are summarized in Table~\ref{tab:spark-rf}.
-The accuracy of the models generated based on synthetic data is comparable to the accuracy of the models generated using actual data, while requiring less space and training time.
+The accuracy of the models generated based on synthetic data is comparable to those of models generated using actual data, while requiring less space and training time.
 For instance, our 10\% synthetic dataset produces a model with similar accuracy incurring 53\% less training time while reducing space requirements by 90\%. Additionally, based on the number of RDD partitions used, the synthetic datasets require substantially less computing resources.
 
 

@@ -20,7 +20,7 @@ In this section, we discuss the construction of the distributed sketch, sketchle
     \label{fig:scale-out-protocol}    
 \end{figure}
 There are two primary approaches to scaling a sketchlet that is experiencing high traffic: \emph{replication} and \emph{load migration}. In replication-based scaling, new sketchlets are spawned during high data arrival rates that are responsible for identical spatial scopes as their originating sketchlet. Assimilation of the newly-created sketchlet involves partitioning inbound streams directed to the original sketchlet. The upstream node (e.g.: stream ingester) is responsible for this partitioning, which may be performed in a skewed fashion with the new sketchlet receiving a larger portion of the inbound stream. Alternatively, inbound streams to the original sketchlet may also be partitioned in a round-robin fashion between the original and the newly-created sketchlet.
-Using a replication-based scaling with a round-robin style stream partitioning is inefficient with respect to memory consumption because of the possibility of multiple SIFT trees with significantly overlapping sets of vertices and edges.
+Using a replication-based scaling with a round-robin style stream partitioning is memory inefficient because of the possibility of multiple SIFT trees with significantly overlapping sets of vertices and edges.
 
 In targeted load migration, particular geospatial scopes, i.e. SIFT trees are evicted from the original sketchlet to the newly created sketchlet during heavy traffic. Deciding which SIFT trees to migrate is based on data arrival rates and the rates at which particular SIFT trees are being updated.
 
@@ -35,7 +35,7 @@ A \textbf{monitoring} task within every sketchlet periodically gathers two perfo
 	\item \textbf{Length of the backlog:} This represents the number of unprocessed messages in the queue. If the sketchlet cannot keep up with the incoming data rate, then the backlog will grow over time.
 	\item \textbf{Memory pressure:} Each sketchlet is allocated a fixed amount of memory. 
 	Exceeding these memory limits creates memory pressure, which may cause extended garbage collection cycles, increased paging activity, and will eventually lead to reduced performance.
-	The monitoring task continuously records the memory utilization and triggers scaling activities accordingly.
+	The monitoring task continuously records the memory utilization and triggers scaling activities.
 \end{enumerate} 
 
 The objective of scaling out is to maintain the \emph{stability} at each sketchlet.
@@ -44,7 +44,7 @@ We define stability as the ability to keep up with incoming data rates while inc
 \item Backlog growth, which indicates that a portion of the load needs to be migrated to a different cluster-node.
 \item High overall memory utilization above a threshold, which is usually set below the memory limits to allow a capacity buffer for the process to avoid oscillation.
 \end{itemize}
-Upon receiving a scaling out recommendation from the monitoring task, the sketchlet executes the \textbf{planning} and \textbf{execution} phases.
+Upon receiving a scale out recommendation during monitoring, the sketchlet executes the \textbf{planning} and \textbf{execution} phases.
 
 During the planning phase, the sketchlet chooses portion(s) of the region within its current purview, i.e. a set of SIFT trees, to be handed over to another sketchlet.
 For this task, it relies on performance metrics it maintains for each subregion and a numeric value provided by the scale-out recommendation that measures how much load should be migrated.
@@ -86,16 +86,16 @@ Only if a suitable candidate cannot be found from the set of current sketchlets 
 Upon receiving a response from the deployer, the sketchlet (parent) contacts the target sketchlet (child) and tries to acquire the mutex.
 A lock will be granted only if the target can accommodate the load and no other scaling operations are taking place.
 If the lock acquisition fails, another candidate from the list is attempted; otherwise, the parent sketchlet will create a pass-through channel and direct traffic corresponding to migrated regions towards the child sketchlet.
-Once this process is complete, the parent sketchlet will initiate a state transfer asynchronously using a background channel to ensure the stream data flow is not affected, and update child sketchlet's memory utilization metrics to account for the pending state transfer.
+Once this process is complete, the parent sketchlet will initiate a state transfer asynchronously using a background channel to ensure the stream data flow is not affected, and update the child sketchlet's memory utilization metrics to account for the pending state transfer.
 
 As the data flow tree grows with scaling out operations, having parent sketchlets pass traffic through to their children becomes inefficient because of higher bandwidth consumption as well as increased latency due to the additional network hops the packets have to traverse through.
 To circumvent this, we allow \emph{short circuiting}, which redirects traffic from stream ingesters straight the downstream sketchlets.
 For instance, stream ingesters will send data directly to sketchlet D using the short circuited route bypassing sketchlets A and C in Figure~\ref{fig:dist-sketch}. 
-We use our gossiping subsystem to update parent sketchlets about the child's performance metrics, which is useful for scaling in as explained in \S\ref{subsec:scaling-in}.
+We use our gossiping subsystem to update parent sketchlets about the child's performance metrics, which is useful for scale in (\S\ref{subsec:scaling-in}).
 
 We captured how backlog length and throughput at an individual sketchlet varies with the input rate when dynamic scaling is enabled.
-The sketchlet that was considered for the experiment immediately received data from stream ingesters, hence the input rate observed at the sketchlet closely resembled the varying data ingestion rate.
-As shown in Figure~\ref{fig:stability-backlog}, scaling out helps a sketchlet to keep pace with the variations in the workload which in turn causes the backlog to stay within a safe range.
+The sketchlet immediately received data from stream ingesters, hence the input rate observed at the sketchlet closely resembled the varying data ingestion rate.
+As shown in Figure~\ref{fig:stability-backlog}, scaling out helps a sketchlet to keep pace with the variations in the workload, which in turn, causes the backlog to stay within a safe range.
 This microbenchmark also demonstrates infrequent, rapid scale-out and continuous, gradual scale-in as explained in \S\ref{subsec:scaling-out}.
 
 Figure~\ref{fig:stability-mem} demonstrates how memory consumption based threshold-based rules trigger scaling maneuvers to maintain the stability of an individual sketchlet.
