@@ -1,9 +1,9 @@
 \subsection{Visualization}
 To demonstrate the potential applications of \textsc{Synopsis}, we created two visualizations. Our first visualization generated a climate chart by issuing statistical queries to retrieve high, low, and mean temperature values as well as precipitation information for a given spatial region. Climate charts are often used to provide a quick overview of the weather for a location; Figure~\ref{fig:climate} summarizes the temperature and precipitation in Snowmass Village, Colorado during 2014. While a standard approach for producing these visualizations over voluminous atmospheric data would likely involve several MapReduce computations, our sketchlets make all the necessary information readily available through queries, avoiding distributed computations altogether. Furthermore, retrieving the data for this evaluation consumed considerably less time (1.5 ms) than rendering the image on the client side (127.1 ms).
 
-\begin{figure}[h]
+\begin{figure}[t]
     \centerline{\includegraphics[width=0.9\linewidth]{figures/climate-snowmass.pdf}}
-    \caption{A climate chart generated with our statistical query functionality.}
+    \caption{A climate chart generated using a statistical query.}
     \label{fig:climate}
 \end{figure}
 

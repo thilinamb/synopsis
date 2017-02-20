@@ -4,8 +4,10 @@ The proliferation of remote sensing equipment (such as radars and satellites), n
 The sketch must also be an effective surrogate for the data that it snapshots and serve as input for computations.
 
 Spatiotemporal datasets are naturally multidimensional with multiple features of interest being reported/recorded continuously for a particular timestamp and geolocation. The values associated with these features are continually changing; in other words, the dataset \emph{feature space} is always evolving.  Queries specified over these datasets may have a wide range of characteristics encompassing the frequency at which they are evaluated and their spatiotemporal scope. The crux of this paper is to support query evaluations and data processing over continually-arriving observational data. We achieve this via construction of an in-memory distributed \emph{sketch} that maintains a compact representation of the data.
-
-\subsection{Challenges}
+%
+\vspace{1em}\\
+%
+\textbf{Challenges}:
 Support for real-time evaluation of queries and analysis over a feature space that is continually evolving introduces unique challenges. These include:
 \begin{itemize}
     \item   \emph{Data volumes:} It is infeasible to store all the observational data. This is especially true if the arrival rates outpace the rate at which data can be written to disk.
@@ -14,22 +16,30 @@ Support for real-time evaluation of queries and analysis over a feature space th
     \item   \emph{Accuracy:} Queries evaluations must be accurate, with appropriate error bounds or false positive probabilities included in the results.
     \item   \emph{Spatiotemporal characteristics:} Queries may target spatiotemporal properties. For example, a user may be interested in feature characteristics for a geospatial location at a particular daily interval over a chronological range (for example, 2:00--4:00 pm over 2--3 months).
 \end{itemize}
-
-\subsection{Research Questions}
+%
+\vspace{1em}
+%
+\textbf{Research Questions}:
 The challenges associated with accomplishing this functionality led us to formulate the following research questions:
 \begin{description}[leftmargin=*]
     \item[\emph{RQ-1:}] How can we generate compact, memory-resident representations of the observational space while accounting for spatiotemporal attributes? The resulting \emph{sketch} must be amenable to fast, continuous updates to ensure its representativeness and fidelity to the original data.
     \item[\emph{RQ-2:}] How can we scale effectively in situations where system load is high or the observations arrive at a rate faster than the rate at which the sketch can be updated? The density and arrival rates for observations may vary based on geospatial characteristics. For example, in a smart-city setting, New York would have a far higher rate of observations than Denver.
     \item[\emph{RQ-3:}] How can we enable expressive, low-latency queries over the distributed sketch while also maintaining accuracy?  Given that the sketch is a compact representation of the data, queries facilitate high-level analysis without requiring users to understand the underlying system implementation.
 \end{description}
-
-\subsection{Approach Summary}
+%
+\vspace{1em}
+%
+\textbf{Approach Summary}:
 Similar to other sketches, the design of \textsc{Synopsis} is guided by the functionality that we wish to support. Synopsis is designed to be a compact, effective surrogate for voluminous data.   Synopsis extracts metadata from observations and organizes this information to support relational queries targeting different portions of the feature space; we support selection, joins, aggregations, and sorting. The \textsc{Synopsis} sketch can interoperate and provide input data to general purpose computations expressed using popular analytic engines such as Spark \cite{zaharia2010spark,armbrust2015spark}, TensorFlow \cite{abadi2016tensorflow,tensorflow}, Hadoop \cite{hadoop,shvachko2010hadoop,borthakur2008hdfs}, and VW \cite{langford2007vowpal}.
 
 Our sketch is also naturally amenable to distribution, with each machine in the cluster holding information about a particular subset of the observational space.  This ensures each cluster-node in the system can evaluate multiple concurrent queries independently. The sketch is capable of scaling in or out depending on streaming ingress rates and memory footprints, with scale-out operations that support targeted alleviation of hotspots. Our framework manages the complexity of identifying these hotspots, splitting portions of the sketch, and migrating the relevant subsets to nodes with higher capacity. Distributing the sketch across multiple cluster-nodes allows us to maintain a finer-grained representation of the feature space while also improving the accuracy of query evaluations; for example, an arctic region and a tropical region would be maintained on separate nodes that specialize for particular climates.
-
-\subsection{Paper Contributions}
-To our knowledge, SYNOPSIS is the first sketch designed specifically for spatiotemporal observational data. Our methodological innovations ensure that the distributed, memory-resident sketch is a compact and effective surrogate for the voluminous observational data while being amenable to querying and serving as input to complex computations. Our specific contributions include: (1) innovative use of metadata to compact observational data, (2) design of a data structure, SIFT (section~\ref{sec:sift}), that keeps pace with high rate data arrivals and is amenable to splitting and fusing at myriad spatiotemporal scopes in support of dynamic scaling operations, (3) structural compaction of the SIFT data structure to conserve memory footprints, (4) support for real time evaluation of expressive queries over the multidimensional feature space at arbitrary spatiotemporal scopes, and (5) interoperation with popular analytical engines.
-
-\subsection{Paper Organization} 
-The remainder of this paper is organized as follows. Section~\ref{sec:system} provides an overview of the system, followed by our methodology in Section~\ref{sec:methodology}. We present performance evaluation results of our system in Section~\ref{sec:performance}. Section~\ref{sec:applications} demonstrates applications of \textsc{Synopsis}, Section~\ref{sec:related} discusses related approaches, and Section~\ref{sec:conclusions} concludes the paper and outlines our future research direction.
+%
+\vspace{1em}\\
+%
+\textbf{Paper Contributions}:
+To our knowledge, SYNOPSIS is the first sketch designed specifically for spatiotemporal observational data. Our methodological innovations ensure that the distributed, memory-resident sketch is a compact and effective surrogate for the voluminous observational data while being amenable to querying and serving as input to complex computations. Our specific contributions include: (1) innovative use of metadata to compact observational data, (2) design of a data structure, SIFT (\S\ref{sec:sift}), that keeps pace with high rate data arrivals and is amenable to splitting and fusing at myriad spatiotemporal scopes in support of dynamic scaling operations, (3) structural compaction of the SIFT data structure to conserve memory footprints, (4) support for real time evaluation of expressive queries over the multidimensional feature space at arbitrary spatiotemporal scopes, and (5) interoperation with popular analytical engines.
+%
+\vspace{1em}\\
+%
+\textbf{Paper Organization}:
+The remainder of this paper is organized as follows. Section~\ref{sec:system} provides an overview of the system, followed by our methodology in \S\ref{sec:methodology}. We present performance evaluation results of our system in \S\ref{sec:performance}. Section~\ref{sec:applications} demonstrates applications of \textsc{Synopsis}, \S\ref{sec:related} discusses related approaches, and \S\ref{sec:conclusions} concludes the paper and outlines our future research direction.

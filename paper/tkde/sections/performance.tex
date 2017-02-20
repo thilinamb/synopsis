@@ -6,38 +6,18 @@ Our subject dataset was sourced from the NOAA North American Mesoscale (NAM) For
 
 Performance evaluations reported here were carried out on a cluster of 40 HP DL160 servers (Xeon E5620, 12 GB RAM). The test cluster was configured to run Fedora 24, and \textsc{Synopsis} was executed under the OpenJDK Java runtime 1.8.0\_72.
 %
-\subsection{Distributed Sketch Memory Evaluation}
-We monitored the growth in memory consumption of the entire distributed sketch over time with continuous data ingestion as shown in Figure~\ref{fig:dist-sketch-mem-usage}. As more data was streamed into the system, the growth rate of the distributed sketch decreased as the sketchlets expanded to include vertices for their particular feature space.  At the end of our monitoring period, the total amount of ingested data was over three orders of magnitudes higher ($\sim 1285$) than the in-memory sketch size, resulting in notable space savings.
 %
-\begin{figure}[h!]
+\begin{figure}[t!]
     \centerline{\includegraphics[width=\linewidth]{figures/ing-and-mem-usage.pdf}}
     \caption{Memory usage of the distributed sketch over time against the amount of ingested data. The rate of growth decreases over time due to the compact nature of sketchlet data structure.}
     \label{fig:dist-sketch-mem-usage}
 \end{figure}
 %
-\subsection{Sketch Ingestion Rate}
-In this experiment, we assessed the ability of the sketch to keep pace with the high rates of incoming observational streams.
-We partitioned our dataset into different numbers of partitions based on timestamps of observations such that each partition comprised observations for a contiguous period of time.
-Within a partition, data collected in a single observation cycle for all geographical locations were stored as successive records.
-Records within a single observation cycle were stored in the same order based on their locations across all observational cycles in all partitions.
-Each partition was assigned with a single ingester that would sequentially parse and emit these records to the distributed sketch.
-Based on our arrangement of records, observations for particular geographical location for different points in time will be emitted roughly at the same time.
-This arrangement forces the corresponding SIFT trees to fan-out on different planes (time and features) simultaneously simulating a strenuous workload on the sketch where different sections within the sketch will be stress tested over time.
-A real world scenario is simulated with a single partition.
-
-With different number of ingesters, we measured the throughput of a single sketchlet as well as of the sketch.
-Table~\ref{tab:throughput} summarizes the results of this benchmark.
-As we increase the number of ingesters with a single sketchlet, the throughput decreases due to the simultaneous fan-out operations taking place within the SIFT trees. This claim is further supported by the increase in the latency for updating the sketchlet as shown in the table.
-
-For the sketch, we started with a single sketchlet and allowed the system to dynamically scale out and measured its throughput once it becomes stable --- when there are no frequent scaling activities.
-System reached the stable state with 14-16 sketchlets in different setups.
-We observed a higher throughput compared to the performance of a single sketchlet due to parallel processing of the observational stream but it did not increase linearly with the number of sketchlets.
-When there is a single ingester, the throughput was constrained by the bandwidth of the machine where the ingester was running --- we were using around 86\% of the available bandwidth.
-With multiple ingesters, due to the way the stream is constructed, the load is not evenly partitioned across the cluster at a given time - only a subset of sketchlets were processing the stream.
-
-\begin{table*}[h!]
+%
+\subsection{Distributed Sketch Memory Evaluation}
+\begin{table*}[h]
     \renewcommand{\arraystretch}{1.3}
-    \caption{Sketchlet update latency and observation ingestion throughput for a sketchlet and the sketch with different number of stream ingesters.}
+    \caption{Profiling the update performance of sketchlet and sketch at high data ingest rates}
     \label{tab:throughput}
     \begin{center}
         \begin{tabularx}{0.9\textwidth}{|X|c|c|c|c|c|c|c|}
@@ -59,6 +39,25 @@ With multiple ingesters, due to the way the stream is constructed, the load is n
     \end{center}
 \end{table*}
 %
+We monitored the growth in memory consumption of the entire distributed sketch over time with continuous data ingestion as shown in Figure~\ref{fig:dist-sketch-mem-usage}. As more data was streamed into the system, the growth rate of the distributed sketch decreased as the sketchlets expanded to include vertices for their particular feature space.  At the end of our monitoring period, the total amount of ingested data was over three orders of magnitudes higher ($\sim 1285$) than the in-memory sketch size, resulting in notable space savings.
+\subsection{Sketch Ingestion Rate}
+In this experiment, we assessed the ability of the sketch to keep pace with the high rates of incoming observational streams.
+We partitioned our dataset based on timestamps of observations such that each partition comprised observations for a contiguous time period.
+Within a partition, data collected in a single observation cycle for all geographical locations were stored as successive records.
+Records within a single observation cycle were stored in the same order based on their locations across all observational cycles in all partitions.
+Each partition was assigned a single ingester that sequentially parsed and streamed these records to the distributed sketch.
+This organization of observations ensured that multiple stream ingesters target a small subset of the sketchlets to profile the \textit{worst case} performance under high stress.
+This setup forces the corresponding SIFT trees to fan-out on different planes (time and features) simultaneously representing a strenuous workload on the sketch where different sections within the sketch will be stress tested over time.
+A real world scenario is simulated with a single partition.
+
+Table~\ref{tab:throughput} summarizes the results of this benchmark.
+As we increase the number of ingesters with a single sketchlet, the throughput decreases due to the simultaneous fan-out operations taking place within the SIFT trees. This claim is further supported by the increase in the latency for updating the sketchlet as shown in the table.
+
+For the sketch, we started with a single sketchlet and allowed the system to dynamically scale out and measured its throughput once it becomes stable --- when there are no frequent scaling activities.
+System reached the stable state with 14-16 sketchlets in different setups.
+We observed a higher throughput compared to the performance of a single sketchlet due to parallel processing of the observational stream but it did not increase linearly with the number of sketchlets.
+When there is a single ingester, the throughput was constrained by the bandwidth of the machine where the ingester was running --- we were using around 86\% of the available bandwidth.
+With multiple ingesters, due to the way the stream is (intentionally) constructed, the load is not evenly partitioned across the cluster at a given time --- only a subset of sketchlets were processing the stream.
 %
 \subsection{Dynamic Scaling: Responding to Variable Load}
 \begin{figure}[b!]
@@ -77,7 +76,7 @@ Since we allow aggressive scale-out, it shows rapid scaling activity during high
 
 \subsection{Analyzing a Snapshot of the Distributed Sketch}
 % scale out graph
-\begin{figure*}[t!]
+\begin{figure*}[h!]
     \centerline{\includegraphics[width=\linewidth]{figures/scaleout_graph_analysis.pdf}}
     \caption{Analysis of a snapshot of the distributed sketch during data ingestion demonstrating the size and distribution of the information corresponding to different prefixes against the observed record count. If the information is dispersed over multiple sketchlets, it is likely to be a prefix with higher number of records and/or a wide range of observed values.}
     \label{fig:scaleout-graph-analysis}
@@ -96,16 +95,15 @@ Their observations spans across a smaller range, hence requires less memory but 
 
 
 \subsection{Query Evaluation Performance}
+\begin{figure*}[h!]
+    \centerline{\includegraphics[width=\linewidth]{figures/query_benchmark_both.pdf}}
+    \caption{Distributed query evaluation performance --- cumulative throughput and latency in a 40 node \textsc{Synopsis} cluster.}
+    \label{fig:dist-query}
+\end{figure*}
 To evaluate distributed query performance, we executed several representative workloads across a variety of sketchlet sizes. These queries were separated into two groups: conventional lookups and tree retrievals.  Figure~\ref{fig:dist-query} demonstrates the end-to-end efficiency of the query evaluations over the distributed sketch.
 Cumulative query throughput and latencies were measured with varying numbers of concurrent query \emph{funnels}.
 A query \emph{funnel} continuously generates and dispatches random queries at their maximum possible rate to stress test the system and saturate its capacity; for instance, a query could request summary statistics or feature relationships when the temperature is between 20 to 30 degrees, humidity is above 80\%, and the wind is blowing at 16 km/h.
 These randomized queries fluctuated in both the ranges of values and spatial scope, resulting in high variability in the number of sketchlets required to resolve the query as well as the depth and breadth of the required tree traversals.
-
-\begin{figure*}
-    \centerline{\includegraphics[width=\linewidth]{figures/query_benchmark_both.pdf}}
-    \caption{Distributed Query Evaluation Performance. Variation of cumulative throughput and latency against the number of concurrent query funnels in a 40 node \textsc{Synopsis} cluster.}
-    \label{fig:dist-query}
-\end{figure*}
 
 
 

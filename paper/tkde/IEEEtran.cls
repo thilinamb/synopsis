@@ -2651,7 +2651,9 @@
 % V1.8 floatsep et al. revised down by 0.15\baselineskip
 % to account for the sideeffects of \topskip compensation
 \floatsep 0.85\baselineskip plus  0.2\baselineskip minus  0.2\baselineskip
-\textfloatsep 1.55\baselineskip plus  0.2\baselineskip minus  0.4\baselineskip
+%\textfloatsep 1.55\baselineskip plus  0.2\baselineskip minus  0.4\baselineskip
+% fixed by us
+\textfloatsep 1.25\baselineskip plus  0.2\baselineskip minus  0.4\baselineskip
 \@fptop 0pt plus 1fil
 \@fpsep 0.75\baselineskip plus 2fil
 \@fpbot 0pt plus 1fil
@@ -2697,7 +2699,7 @@
 \setlength\abovecaptionskip{0.5\baselineskip}
 % compsoc journals are a little more generous
 \ifCLASSOPTIONcompsoc\ifCLASSOPTIONjournal
-  \setlength\abovecaptionskip{0.75\baselineskip}
+  \setlength\abovecaptionskip{0.5\baselineskip}
 \fi\fi
 \setlength\belowcaptionskip{0pt}
 % V1.6 create hooks in case the caption spacing ever needs to be
