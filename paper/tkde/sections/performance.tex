@@ -1,5 +1,5 @@
 \section{Performance Evaluation}
-Here we report system benchmarks profiling several aspects of \textsc{Synopsis}.
+Here we report system benchmarks profiling several aspects of \textsc{Synopsis}. This includes: memory consumption of the sketch, data ingestion performance of the sketch, ability to handle variable ingestion rates, organization of the sketchlets within the sketch and the query performance.
 \label{sec:performance}
 \subsection{Dataset and Experimental Setup}
 Our subject dataset was sourced from the NOAA North American Mesoscale (NAM) Forecast System \cite{noaa_nam}.  The NAM collects atmospheric data several times per day and includes features of interest such as surface temperature, visibility, relative humidity, snow, and precipitation. Each observation in the dataset also incorporates a relevant geographical location and time of creation. This information is used during the data ingest process to partition streams across available computing resources and preserve temporal ordering of events. The size of the entire source dataset was 25 TB.
