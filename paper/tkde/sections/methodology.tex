@@ -64,7 +64,7 @@ If the backlog growth based threshold rule is triggered the scale out operation,
 Then a simple bin-packing algorithm is used to choose a minimum set of subregions for migration such that the excess load is removed from the current sketchlet.
 
 Only a single scaling operation takes place at a given time per sketchlet, which is controlled by a mutex lock.
-Further, every scaling operation is followed by a stabilization period where no scaling operation takes place and system does not enter the monitoring phase for the next MAPE cycle.
+Further, every scaling operation is followed by a \textit{stabilization period} where no scaling operation takes place and system does not enter the monitoring phase for the next MAPE cycle.
 The objective of these constraints is to avoid oscillations in scaling activities; for instance, repetitively scaling out in the presence of memory pressure could result in overprovisioning, which would then lead to recurring scale-in operations.
 %
 
@@ -74,7 +74,7 @@ In this message, it includes a list of preferred sketchlets for the load migrati
 The preferred sketchlet set includes the sketchlets that already hold other subregions.
 It minimizes the number of sketchlets responsible for each geographical region to reduce communication during query evaluations.
 
-The \textsc{Synopsis} deployer component has an approximate view of the entire system gathered through gossip messages, which includes the memory pressure and cumulative backlog information for each sketchlet.
+The \textsc{Synopsis} deployer component has an approximate view of the entire system gathered through gossip messages. This includes the memory pressure and cumulative backlog information for each sketchlet.
 Based on this view and the information present in the request, the deployer replies back with a set of candidate target sketchlets.
 Only if a suitable candidate cannot be found from the set of current sketchlets will a new sketchlet be spawned.
 Upon receiving a response from the deployer, the sketchlet (parent) contacts the target sketchlet (child) and tries to acquire the mutex.
@@ -82,15 +82,15 @@ A lock will be granted only if the target can accommodate the load and no other 
 If the lock acquisition fails, another candidate from the list is attempted; otherwise, the parent sketchlet will create a pass-through channel and direct traffic corresponding to migrated regions towards the child sketchlet.
 Once this process is complete, the parent sketchlet will initiate a state transfer asynchronously using a background channel to ensure the stream data flow is not affected, and update child sketchlet's memory utilization metrics to account for the pending state transfer.
 
-As the data flow tree grows with scaling out operations, having parent sketchlets pass traffic through to their children becomes inefficient because of higher bandwidth consumption as well as increased latency due to additional network hops the packets have to travel through.
-To circumvent this, we allow \emph{short circuiting}, which directs traffic from stream ingesters straight to child sketchlets.
+As the data flow tree grows with scaling out operations, having parent sketchlets pass traffic through to their children becomes inefficient because of higher bandwidth consumption as well as increased latency due to the additional network hops the packets have to traverse through.
+To circumvent this, we allow \emph{short circuiting}, which redirects traffic from stream ingesters straight the downstream sketchlets.
 For instance, stream ingesters will send data directly to sketchlet D using the short circuited route bypassing sketchlets A and C in Figure~\ref{fig:dist-sketch}. 
-We use our gossiping subsystem to update parent sketchlets on child's performance metrics, which is useful for scaling in as explained in Section~\ref{subsec:scaling-in}.
+We use our gossiping subsystem to update parent sketchlets about the child's performance metrics, which is useful for scaling in as explained in Section~\ref{subsec:scaling-in}.
 
-We captured how backlog length and throughput at an individual sketchlet vary with the input rate when dynamic scaling is enabled.
+We captured how backlog length and throughput at an individual sketchlet varies with the input rate when dynamic scaling is enabled.
 The sketchlet that was considered for the experiment immediately received data from stream ingesters, hence the input rate observed at the sketchlet closely resembled the varying data ingestion rate.
-As shown in Figure~\ref{fig:stability-backlog}, scaling out helps a sketchlet to keep up with the variations in the workload which in turn causes the backlog to stay within a safe range.
-It also demonstrates infrequent, rapid scale-out and continuous, gradual scale-in as explained in \S\ref{subsec:scaling-out}.
+As shown in Figure~\ref{fig:stability-backlog}, scaling out helps a sketchlet to keep pace with the variations in the workload which in turn causes the backlog to stay within a safe range.
+This microbenchmark also demonstrates infrequent, rapid scale-out and continuous, gradual scale-in as explained in \S\ref{subsec:scaling-out}.
 % system stability
 \begin{figure*}[h!]
     \begin{subfigure}{0.48\textwidth}
@@ -128,12 +128,12 @@ Scaling in is more complex than scaling out because it involves more than one sk
 At this point, it is possible that further scale-out operations have taken place in the scaled out subregion after the initial scale-out.
 For instance, if sketchlet A in Figure~\ref{fig:dist-sketch} decides to scale-in the subregion \emph{DN}, then it must communicate with sketchlets C and D.
 
-The scale-in protocol starts with a lock acquisition protocol similar to scaling out protocol, but locking the entire subtree is required.
+The scale-in protocol starts with a lock acquisition protocol similar to the scaling out protocol, but involves locking the entire subtree.
 The steps are depicted in Figure~\ref{fig:scale-in-protocol} with respect to our example in Figure~\ref{fig:dist-sketch} where sketchlet C is scaled in.
 As per our example, sketchlet A will have to acquire locks for both sketchlets C and E.
 Locks are acquired in a top-to-bottom fashion where parent locks itself and then attempts to lock the child.
-If lock acquisition is failed in any part of the subtree, then the scale-in operation is aborted and the monitoring process will start the next iteration of the MAPE loop immediately.
-If the subtree is successfully locked, then data flow to the child sketchlet corresponding to this subregion is immediately terminated.
+If lock acquisition fails for any part of the subtree, the scale-in operation is aborted and the monitoring process starts the next iteration of the MAPE loop immediately.
+If the lock acquisition is successful, then data flow to the child sketchlet corresponding to this subregion is immediately terminated.
 
 The state acquisition phase begins next.
 To ensure that \textsc{Synopsis} does not lose any messages, the initiating sketchlet sends a \emph{termination point} control message to the child sketchlet.
