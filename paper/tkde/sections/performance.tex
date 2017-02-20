@@ -8,13 +8,28 @@ Performance evaluations reported here were carried out on a cluster of 40 HP DL1
 
 \subsection{Sketch Ingestion Rate}
 In this experiment, we assessed the ability of the sketch to keep pace with the high rates of incoming observational streams.
-A single sketchlet can support xxxx updates/s.
-To evaluate the cumulative throughput of the distributed sketch, we started the sketch with a single sketchlet and allowed it to dynamically scale as more data is ingested.
-%
+We partitioned our dataset into different numbers of partitions based on timestamps of observations such that each partition comprised observations for a contiguous period of time.
+Within a partition, data collected in a single observation cycle for all geographical locations were stored as successive records.
+Records within a single observation cycle were stored in the same order based on their locations across all observational cycles in all partitions.
+Each partition was assigned with a single ingester that would sequentially parse and emit these records to the distributed sketch.
+Based on our arrangement of records, observations for particular geographical location for different points in time will be emitted roughly at the same time.
+This arrangement forces the corresponding SIFT trees to fan-out on different planes (time and features) simultaneously simulating a strenuous workload on the sketch where different sections within the sketch will be stress tested over time.
+A real world scenario is simulated with a single partition.
+
+With different number of ingesters, we measured the throughput of a single sketchlet as well as of the sketch.
+Table~\ref{tab:throughput} summarizes the results of this benchmark.
+As we increase the number of ingesters with a single sketchlet, the throughput decreases due to the simultaneous fan-out operations taking place within the SIFT trees. This claim is further supported by the increase in the latency for updating the sketchlet as shown in the table.
+
+For the sketch, we started with a single sketchlet and allowed the system to dynamically scale out and measured its throughput once it becomes stable --- when there are no frequent scaling activities.
+System reached the stable state with 14-16 sketchlets in different setups.
+We observed a higher throughput compared to the performance of a single sketchlet due to parallel processing of the observational stream but it did not increase linearly with the number of sketchlets.
+When there is a single ingester, the throughput was constrained by the bandwidth of the machine where the ingester was running --- we were using around 86\% of the available bandwidth.
+With multiple ingesters, due to the way the stream is constructed, the load is not evenly partitioned across the cluster at a given time - only a subset of sketchlets were processing the stream.
+
 \begin{table*}[h!]
     \renewcommand{\arraystretch}{1.3}
     \caption{Sketchlet update latency and observation ingestion throughput for a sketchlet and the sketch with different number of stream ingesters.}
-    \label{tab:resource-util}
+    \label{tab:throughput}
     \begin{center}
         \begin{tabularx}{0.9\textwidth}{|X|c|c|c|c|c|c|c|}
             \hline
