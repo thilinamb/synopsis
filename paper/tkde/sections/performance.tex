@@ -10,7 +10,31 @@ Performance evaluations reported here were carried out on a cluster of 40 HP DL1
 In this experiment, we assessed the ability of the sketch to keep pace with the high rates of incoming observational streams.
 A single sketchlet can support xxxx updates/s.
 To evaluate the cumulative throughput of the distributed sketch, we started the sketch with a single sketchlet and allowed it to dynamically scale as more data is ingested.
-We gradually increased the number of stream ingesters 
+%
+\begin{table*}[h!]
+    \renewcommand{\arraystretch}{1.3}
+    \caption{Sketchlet update latency and observation ingestion throughput for a sketchlet and the sketch with different number of stream ingesters.}
+    \label{tab:resource-util}
+    \begin{center}
+        \begin{tabularx}{0.9\textwidth}{|X|c|c|c|c|c|c|c|}
+            \hline
+            \multirow{2}{*}{Ingester Count} & \multicolumn{2}{c|}{\cellcolor[gray]{0.7}Sketchlet Throughput (msgs/s)} &\multicolumn{2}{c|}{\cellcolor[gray]{0.7}Sketch Throughput (msgs/s)} & \multicolumn{3}{c|}{\cellcolor[gray]{0.7}Sketchlet Update Latency (ns)} \\
+            \cline{2-5}
+             & \cellcolor[gray]{0.9}Mean & \cellcolor[gray]{0.9}Std. Dev.  &  \cellcolor[gray]{0.9}Mean & \cellcolor[gray]{0.9}Std. Dev.
+             &  \cellcolor[gray]{0.9}Mean & \cellcolor[gray]{0.9}$95^{th}$ Perc. & \cellcolor[gray]{0.9}Std. Dev. \\
+            \hline
+            1 & 15124.562 & 575.728 & 44082.476 & 5984.503 & 64752.413 & 67175.250 & 5503.007 \\
+            \hline
+            2 & 14067.452 & 491.783 & 44060.889 & 6206.208 & 64971.289 & 71170.200 & 4012.358 \\
+            \hline
+            4 & 11319.321 & 1003.462 & 41645.317 & 13553.462 & 74025.649 & 78364.100 & 3124.570 \\
+            \hline
+            8 & 5223.280 & 717.254 & 38369.745 & 14008.308 & 81034.038 & 85842.400 & 2501.929 \\
+            \hline
+        \end{tabularx}
+    \end{center}
+\end{table*}
+%
 
 \subsection{Distributed Sketch Memory Evaluation}
 We monitored the growth in memory consumption of the entire distributed sketch over time with continuous data ingestion as shown in Figure~\ref{fig:dist-sketch-mem-usage}. As more data was streamed into the system, the growth rate of the distributed sketch decreased as the sketchlets expanded to include vertices for their particular feature space.  At the end of our monitoring period, the total amount of ingested data was over three orders of magnitudes higher ($\sim 1285$) than the in-memory sketch size, resulting in notable space savings.
