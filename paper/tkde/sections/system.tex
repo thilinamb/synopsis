@@ -3,7 +3,7 @@
 \textsc{Synopsis} is a distributed sketch constructed over voluminous spatiotemporal data streams.
 The number of sketchlets (executing on different machines) that comprise the distributed sketch varies dynamically as the system scales in or out to cope with data arrival rates and memory pressure.
 %Each sketchlet is responsible for one or more geographical scopes and is implemented as a stateful stream processing node that can build and retain state over time.
-\textsc{Synopsis} executes a set of stream ingesters that reads data off the spatiotemporal data streams and inject into the sketch.
+\textsc{Synopsis} assimilates, organizes, and compacts spatiotemporal data stream to comprise the sketch.
 A stream partitioning scheme, based on the Geohash algorithm (described below), is used to route packets to the appropriate sketchlet.
 Sketchlets processes stream packets emitted by the stream ingesters and construct compact, in-memory representations of the observational data by extracting metadata from stream packets.
 During dynamic scaling operations, the geographical extents managed by a sketch varies.
@@ -26,8 +26,7 @@ To achieve fine-grained control over our geohash partitions, we operate at the b
     It is decoupled from the generic data plane to ensure higher priority and low latency processing without being affected by buffering delays and backpressure experienced during stream processing.
 
 	\item[Gossip subsystem:] While a majority of the \textsc{Synopsis} functionality relies on the local state constructed at a particular node, certain functionalities require approximate global knowledge.
-    For instance, each sketchlet maintains a geohash prefix tree to assist in distributed query evaluations by forwarding queries to sketchlets that are responsible for particular geographical extents.
-        In order to establish and maintain this global view of the entire system, sketchlets gossip about their state periodically (based on time intervals and the number of pending updates) as well as when a change in state occurs.
+        In order to establish and maintain this global view of the entire system, nodes comprising the sketch (a.k.a. sketchlets) gossip about their state periodically (based on time intervals and the number of pending updates) as well as when a change in state occurs.
     \textsc{Synopsis} supports \emph{eventual consistency} with respect to these updates given their inherent propagation and convergence delays.
 
 	\item[Querying subsystem:] The querying subsystem is responsible for the distributed evaluation of queries.
