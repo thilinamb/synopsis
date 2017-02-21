@@ -9,7 +9,7 @@ Spatiotemporal datasets are naturally multidimensional with multiple features of
 %
 \textbf{Challenges}:
 Support for real-time evaluation of queries and analysis over a feature space that is continually evolving introduces unique challenges. These include:
-\begin{itemize}
+\begin{itemize}[leftmargin=*]
     \item   \emph{Data volumes:} It is infeasible to store all the observational data. This is especially true if the arrival rates outpace the rate at which data can be written to disk.
     \item   \emph{Data arrival rates:} The data may arrive continually and at high rates. Arrival rates may change over time.
     \item \emph{I/O Costs:} Memory accesses are 5-6 orders of magnitude faster than disk accesses. Given the data volumes, disk accesses during query evaluations or analysis are infeasible.

@@ -17,7 +17,6 @@ Our distributed prefix tree enables query evaluations during both scaling in and
 
 \subsubsection{Query Types}
 Queries supported by \textsc{Synopsis} fall into six categories:
-
 \begin{description}[leftmargin=*]
     \item[Relational Queries] describe the feature space in the context of the hierarchical trees within our SIFT data structure and may target ranges of values under certain conditions. For example, ``What is the relationship between temperature and humidity during July in Alaska, USA, when precipitation was greater than 1 centimeter?'' These queries return a subset of the overall sketch that includes other matching feature values as well.
     % Subsketches may be manipulated and inspected on the client side, and then reused in subsequent queries to request more detail or broaden the query scope. Relational queries can optionally return statistical metadata stored in the leaf nodes of the tree; this is also supported by our statistical query functionality.

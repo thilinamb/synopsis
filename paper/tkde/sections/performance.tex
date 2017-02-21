@@ -1,3 +1,10 @@
+%
+\begin{figure}
+    \centerline{\includegraphics[width=\linewidth]{figures/ing-and-mem-usage.pdf}}
+    \caption{Memory usage of the distributed sketch over time against the amount of ingested data. The rate of growth decreases over time due to the compact nature of sketchlet data structure.}
+    \label{fig:dist-sketch-mem-usage}
+\end{figure}
+%
 \section{Performance Evaluation}
 Here we report system benchmarks profiling several aspects of \textsc{Synopsis}. This includes: memory consumption of the sketch, data ingestion performance of the sketch, ability to handle variable loads, organization of the sketchlets within the sketch and its query evaluation performance.
 \label{sec:performance}
@@ -6,40 +13,40 @@ Our subject dataset was sourced from the NOAA North American Mesoscale (NAM) For
 
 Performance evaluations reported here were carried out on a cluster of 40 HP DL160 servers (Xeon E5620, 12 GB RAM). The test cluster was configured to run Fedora 24, and \textsc{Synopsis} was executed under the OpenJDK Java runtime 1.8.0\_72.
 %
-%
-\begin{figure}[t!]
-    \centerline{\includegraphics[width=\linewidth]{figures/ing-and-mem-usage.pdf}}
-    \caption{Memory usage of the distributed sketch over time against the amount of ingested data. The rate of growth decreases over time due to the compact nature of sketchlet data structure.}
-    \label{fig:dist-sketch-mem-usage}
+\begin{figure}[h!]
+    \centerline{\includegraphics[width=3.5in]{figures/dyn-scaling.pdf}}
+    \caption{Variation in the number of sketchlets as the data ingestion rate changes.}
+    \label{fig:dyn-scaling}
 \end{figure}
 %
-%
 \subsection{Distributed Sketch Memory Evaluation}
-\begin{table*}[h]
-    \renewcommand{\arraystretch}{1.3}
+We monitored the growth in memory consumption of the entire distributed sketch over time with continuous data ingestion as shown in Figure~\ref{fig:dist-sketch-mem-usage}. As more data was streamed into the system, the growth rate of the distributed sketch decreased as the sketchlets expanded to include vertices for their particular feature space.  At the end of our monitoring period, the total amount of ingested data was over three orders of magnitudes higher ($\sim 1285$) than the in-memory sketch size, resulting in notable space savings.
+%
+%
+\begin{table*}
+    \renewcommand{\arraystretch}{1.2}
     \caption{Profiling the update performance of sketchlet and sketch at high data ingest rates}
     \label{tab:throughput}
     \begin{center}
         \begin{tabularx}{0.9\textwidth}{|X|c|c|c|c|c|c|c|}
             \hline
-            \multirow{2}{*}{Ingester Count} & \multicolumn{2}{c|}{\cellcolor[gray]{0.7}Sketchlet Throughput (msgs/s)} &\multicolumn{2}{c|}{\cellcolor[gray]{0.7}Sketch Throughput (msgs/s)} & \multicolumn{3}{c|}{\cellcolor[gray]{0.7}Sketchlet Update Latency (ns)} \\
+            \multirow{2}{*}{Ingester Count} & \multicolumn{2}{c|}{\cellcolor[gray]{0.7}Sketchlet Throughput (msgs/s)} &\multicolumn{2}{c|}{\cellcolor[gray]{0.7}Sketch Throughput (msgs/s)} & \multicolumn{3}{c|}{\cellcolor[gray]{0.7}Sketchlet Update Latency ($\mu$s)} \\
             \cline{2-5}
              & \cellcolor[gray]{0.9}Mean & \cellcolor[gray]{0.9}Std. Dev.  &  \cellcolor[gray]{0.9}Mean & \cellcolor[gray]{0.9}Std. Dev.
              &  \cellcolor[gray]{0.9}Mean & \cellcolor[gray]{0.9}$95^{th}$ Perc. & \cellcolor[gray]{0.9}Std. Dev. \\
             \hline
-            1 & 15124.562 & 575.728 & 44082.476 & 5984.503 & 64752.413 & 67175.250 & 5503.007 \\
+            1 & 15124.562 & 575.728 & 44082.476 & 5984.503 & 64.752 & 67.175 & 5.503 \\
             \hline
-            2 & 14067.452 & 491.783 & 44060.889 & 6206.208 & 64971.289 & 71170.200 & 4012.358 \\
+            2 & 14067.452 & 491.783 & 44060.889 & 6206.208 & 64.971 & 71.170 & 4.012 \\
             \hline
-            4 & 11319.321 & 1003.462 & 41645.317 & 13553.462 & 74025.649 & 78364.100 & 3124.570 \\
+            4 & 11319.321 & 1003.462 & 41645.317 & 13553.462 & 74.026 & 78.364 & 3.125 \\
             \hline
-            8 & 5223.280 & 717.254 & 38369.745 & 14008.308 & 81034.038 & 85842.400 & 2501.929 \\
+            8 & 5223.280 & 717.254 & 38369.745 & 14008.308 & 81.034 & 85.842 & 2.502 \\
             \hline
         \end{tabularx}
     \end{center}
 \end{table*}
 %
-We monitored the growth in memory consumption of the entire distributed sketch over time with continuous data ingestion as shown in Figure~\ref{fig:dist-sketch-mem-usage}. As more data was streamed into the system, the growth rate of the distributed sketch decreased as the sketchlets expanded to include vertices for their particular feature space.  At the end of our monitoring period, the total amount of ingested data was over three orders of magnitudes higher ($\sim 1285$) than the in-memory sketch size, resulting in notable space savings.
 \subsection{Sketch Ingestion Rate}
 In this experiment, we assessed the ability of the sketch to keep pace with the high rates of incoming observational streams.
 We partitioned our dataset based on timestamps of observations such that each partition comprised observations for a contiguous time period.
@@ -60,11 +67,6 @@ When there is a single ingester, the throughput was constrained by the bandwidth
 With multiple ingesters, due to the way the stream is (intentionally) constructed, the load is not evenly partitioned across the cluster at a given time --- only a subset of sketchlets were processing the stream.
 %
 \subsection{Dynamic Scaling: Responding to Variable Load}
-\begin{figure}[t!]
-    \centerline{\includegraphics[width=3.5in]{figures/dyn-scaling.pdf}}
-    \caption{Variation in the number of sketchlets as the data ingestion rate changes.}
-    \label{fig:dyn-scaling}
-\end{figure}
 We evaluated how \textsc{Synopsis} dynamically scales when the data ingestion rate is varied.
 The data ingestion rate was varied over time such that the peak data ingestion rate is higher than the highest possible cumulative throughput to create a backlog at sketchlets.
 We augmented the sketch update code with additional operations to match the relatively low ingestion rates used for better control.
@@ -74,14 +76,14 @@ We started with a single sketchlet and allowed the system to dynamically scale.
 As can be observed in Figure~\ref{fig:dyn-scaling}, the number of sketchlets varies with the ingestion rate.
 Since we allow aggressive scale-out, rapid scaling out is observed during high data ingestion rates whereas scaling in takes place gradually with one subregion (one sketchlet) at a time.
 
-\subsection{Analyzing a Snapshot of the Distributed Sketch}
 % scale out graph
-\begin{figure*}[h!]
+\begin{figure*}
     \centerline{\includegraphics[width=\linewidth]{figures/scaleout_graph_analysis.pdf}}
     \caption{Analysis of a snapshot of the distributed sketch during data ingestion demonstrating the size and distribution of the information corresponding to different prefixes against the observed record count. If the information is dispersed over multiple sketchlets, it is likely to be a prefix with higher number of records and/or a wide range of observed values.}
     \label{fig:scaleout-graph-analysis}
 \end{figure*}
 %
+\subsection{Analyzing a Snapshot of the Distributed Sketch}
 Figure~\ref{fig:scaleout-graph-analysis} visualizes a snapshot of the distributed sketch which demonstrates the organization of sketchlets in runtime as described in \S\ref{sec:methodology}. 
 This represents the state of the system after consuming the complete 2014 NOAA dataset and the sketch contained 48 sketchlets. 
 It shows the distribution and size of the information maintained across sketchlets for each geohash prefix of length 3 against the number of records processed for that particular prefix.
@@ -95,7 +97,7 @@ Their observations spans across a smaller range, hence requires less memory but 
 
 
 \subsection{Query Evaluation Performance}
-\begin{figure*}[t!]
+\begin{figure*}
     \centerline{\includegraphics[width=\linewidth]{figures/query_benchmark_both.pdf}}
     \caption{Distributed query evaluation performance --- cumulative throughput and latency in a 40 node \textsc{Synopsis} cluster.}
     \label{fig:dist-query}
