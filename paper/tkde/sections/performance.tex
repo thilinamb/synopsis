@@ -12,18 +12,13 @@ Here we report system benchmarks profiling several aspects of \textsc{Synopsis}.
 Our subject dataset was sourced from the NOAA North American Mesoscale (NAM) Forecast System \cite{noaa_nam}.  The NAM collects atmospheric data several times per day and includes features of interest such as surface temperature, visibility, relative humidity, snow, and precipitation. Each observation in the dataset also incorporates a relevant geographical location and time of creation. This information is used during the data ingest process to partition streams across available computing resources and preserve temporal ordering of events. The size of the entire source dataset was 25 TB.
 
 Performance evaluations reported here were carried out on a cluster of 40 HP DL160 servers (Xeon E5620, 12 GB RAM). The test cluster was configured to run Fedora 24, and \textsc{Synopsis} was executed under the OpenJDK Java runtime 1.8.0\_72.
-%
-\begin{figure}[h!]
-    \centerline{\includegraphics[width=3.5in]{figures/dyn-scaling.pdf}}
-    \caption{Variation in the number of sketchlets as the data ingestion rate changes.}
-    \label{fig:dyn-scaling}
-\end{figure}
-%
+
 \subsection{Distributed Sketch Memory Evaluation}
 We monitored the growth in memory consumption of the entire distributed sketch over time with continuous data ingestion as shown in Figure~\ref{fig:dist-sketch-mem-usage}. As more data was streamed into the system, the growth rate of the distributed sketch decreased as the sketchlets expanded to include vertices for their particular feature space.  At the end of our monitoring period, the total amount of ingested data was over three orders of magnitudes higher ($\sim 1285$) than the in-memory sketch size, resulting in notable space savings.
 %
+\subsection{Sketch Ingestion Rate}
 %
-\begin{table*}
+\begin{table*}[bp!]
     \renewcommand{\arraystretch}{1.2}
     \caption{Profiling the update performance of sketchlet and sketch at high data ingest rates}
     \label{tab:throughput}
@@ -47,7 +42,6 @@ We monitored the growth in memory consumption of the entire distributed sketch o
     \end{center}
 \end{table*}
 %
-\subsection{Sketch Ingestion Rate}
 In this experiment, we assessed the ability of the sketch to keep pace with the high rates of incoming observational streams.
 We partitioned our dataset based on timestamps of observations such that each partition comprised observations for a contiguous time period.
 Within a partition, data collected in a single observation cycle for all geographical locations were stored as successive records.
@@ -64,18 +58,8 @@ For the sketch, we started with a single sketchlet and allowed the system to dyn
 System reached the stable state with 14-16 sketchlets in different setups.
 We observed a higher throughput compared to the performance of a single sketchlet due to parallel processing of the observational stream but it did not increase linearly with the number of sketchlets.
 When there is a single ingester, the throughput was constrained by the bandwidth of the machine where the ingester was running --- we were using around 86\% of the available bandwidth.
-With multiple ingesters, due to the way the stream is (intentionally) constructed, the load is not evenly partitioned across the cluster at a given time --- only a subset of sketchlets were processing the stream.
+With multiple ingesters, due to the way the stream is (intentionally) constructed, the load is not evenly partitioned across the cluster --- only a subset of sketchlets were processing the stream.
 %
-\subsection{Dynamic Scaling: Responding to Variable Load}
-We evaluated how \textsc{Synopsis} dynamically scales when the data ingestion rate is varied.
-The data ingestion rate was varied over time such that the peak data ingestion rate is higher than the highest possible cumulative throughput to create a backlog at sketchlets.
-We augmented the sketch update code with additional operations to match the relatively low ingestion rates used for better control.
-We used the number of sketchlets within the system to quantify the scaling activities.
-If the system scales out, more sketchlets will be created as a result of targeted load migration.
-We started with a single sketchlet and allowed the system to dynamically scale.
-As can be observed in Figure~\ref{fig:dyn-scaling}, the number of sketchlets varies with the ingestion rate.
-Since we allow aggressive scale-out, rapid scaling out is observed during high data ingestion rates whereas scaling in takes place gradually with one subregion (one sketchlet) at a time.
-
 % scale out graph
 \begin{figure*}
     \centerline{\includegraphics[width=\linewidth]{figures/scaleout_graph_analysis.pdf}}
@@ -95,6 +79,22 @@ In such cases, some of these sketchlets are created in multiple iterations of sc
 A few prefixes with high number of records can be observed with a low memory consumption and are distributed across multiple sketchlets.
 Their observations spans across a smaller range, hence requires less memory but they were chosen for scaling out operations due to their high message rates. 
 
+\subsection{Dynamic Scaling: Responding to Variable Load}
+%
+\begin{figure}[t!]
+    \centerline{\includegraphics[width=3.5in]{figures/dyn-scaling.pdf}}
+    \caption{Responding to variable load using dynamic scaling}
+    \label{fig:dyn-scaling}
+\end{figure}
+%
+We evaluated how \textsc{Synopsis} dynamically scales when the data ingestion rate is varied.
+The data ingestion rate was varied over time such that the peak data ingestion rate is higher than the highest possible cumulative throughput to create a backlog at sketchlets.
+We augmented the sketch update code with additional operations to match the relatively low ingestion rates used for better control.
+We used the number of sketchlets within the system to quantify the scaling activities.
+If the system scales out, more sketchlets will be created as a result of targeted load migration.
+We started with a single sketchlet and allowed the system to dynamically scale.
+As can be observed in Figure~\ref{fig:dyn-scaling}, the number of sketchlets varies with the ingestion rate.
+Since we allow aggressive scale-out, rapid scaling out is observed during high data ingestion rates whereas scaling in takes place gradually with one subregion (one sketchlet) at a time.
 
 \subsection{Query Evaluation Performance}
 \begin{figure*}
@@ -102,9 +102,9 @@ Their observations spans across a smaller range, hence requires less memory but 
     \caption{Distributed query evaluation performance --- cumulative throughput and latency in a 40 node \textsc{Synopsis} cluster.}
     \label{fig:dist-query}
 \end{figure*}
-To evaluate distributed query performance, we executed several representative workloads across a variety of sketchlet sizes. These queries were separated into two groups: conventional lookups and tree retrievals.  Figure~\ref{fig:dist-query} depicts the end-to-end efficiency of the query evaluations over the distributed sketch.
+To evaluate distributed query performance, we executed several representative workloads across a variety of sketchlet sizes. These queries were categorized as conventional lookups and tree retrievals.  Figure~\ref{fig:dist-query} depicts the end-to-end efficiency of the query evaluations over the distributed sketch.
 Cumulative query throughput and latencies were measured with varying numbers of \emph{concurrent query funnels}.
-A query funnel continuously generates and dispatches random queries at its maximum possible rate to stress test the system and saturate its capacity; for example, a query could request summary statistics or feature relationships when the temperature is between 20 to 30 degrees, humidity is above 80\%, and the wind is blowing at 16 km/h.
+A query funnel continuously generates and dispatches random queries at its maximum possible rate to stress test the system and saturate its capacity. For example, a query could request summary statistics or feature relationships when the temperature is between 20$^{\circ}$ - 30$^{\circ}$ , humidity is above 80\%, and the wind is blowing at 16 km/h.
 These randomized queries fluctuated in both the ranges of values and spatial scope, resulting in high variability in the number of sketchlets required to resolve the query as well as the depth and breadth of the required tree traversals.
 
 

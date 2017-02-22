@@ -34,7 +34,7 @@ A \textbf{monitoring} task within every sketchlet periodically gathers two perfo
 \begin{enumerate}[leftmargin=*]
 	\item \textbf{Length of the backlog:} This represents the number of unprocessed messages in the queue. If the sketchlet cannot keep up with the incoming data rate, then the backlog will grow over time.
 	\item \textbf{Memory pressure:} Each sketchlet is allocated a fixed amount of memory. 
-	Exceeding these memory limits creates memory pressure, which may cause extended garbage collection cycles, increased paging activity, and will eventually lead to reduced performance.
+	Exceeding these memory limits creates memory pressure causing extended garbage collection cycles and increased paging activity, eventually leading to reduced performance.
 	The monitoring task continuously records the memory utilization and triggers scaling activities.
 \end{enumerate} 
 
@@ -105,7 +105,15 @@ In certain occasions, it is required to perform multiple consecutive scaling out
 
 %Completing the scale-out protocol quickly is important because it can release mutual exclusive locks in both origin and target \textsc{Synopsis} nodes quickly and participate in other scaling activities soon after the stabilization period.
 %
+%
+\begin{figure}[b!]
+    \centering
+    \includegraphics[scale=0.4, valign=t]{figures/scale-in.pdf} 
+    \caption{Scale-in protocol}
+    \label{fig:scale-in-protocol}
+\end{figure}
 \subsection{Scaling In: Conserving Resources}
+\label{subsec:scaling-in}
 During scaling in, sketchlets merge back some of the subregions scaled out previously.
 This ensures better resource utilization in the system in addition to efficient query evaluations by having to contact fewer sketchlets.
 Scaling in is also guarded by the same mutex lock used for scaling out (only one scale-out or scale-in operation takes place at a given time) and is also followed by a stabilization period.
@@ -133,15 +141,7 @@ After the entire subtree has seen all messages up to the termination point, they
 Once the parent sketchlet receives acknowledgments from the entire subtree, it starts propagating the protocol end messages to initiate lock releasing.
 Locks are released from the bottom to top in the subtree, with the parent sketchlet releasing its lock after each child has released its lock.
 %
-\begin{figure}[h!]
-    \centering
-    \includegraphics[scale=0.4, valign=t]{figures/scale-in.pdf} 
-    \caption{Scale-in protocol}
-    \label{fig:scale-in-protocol}
-\end{figure}
-\label{subsec:scaling-in}
 \input{sections/queries.tex}
-
 \subsection{Coping with Failures in Synopsis}
 \input{sections/fault-tolerance}
 

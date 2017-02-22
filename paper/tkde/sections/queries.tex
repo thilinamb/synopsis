@@ -2,12 +2,12 @@
 \label{subsec:query-eval}
 \textsc{Synopsis} incorporates support for user-defined queries that are evaluated over the distributed sketch.  Queries can be specified by the user in a SQL-like format or with JSON-based key-value descriptions similar to GraphQL~\cite{graphql}. Exact-match, range-based, and summarization queries are all supported over spatiotemporal bounds and individual feature values. The following example depicts how SQL-like queries can be formulated for evaluation over the sketch.
 
-\begin{verbatim}
+\begin{Verbatim}[fontsize=\footnotesize]
 SELECT MEAN(precipitation), MAX(wind_speed)
 WHERE temperature > 20 AND temperature < 30
 AND humidity > .8 AND CORRELATION(
     cloud_cover, precipitation) < -0.25
-\end{verbatim}
+\end{Verbatim}
 
 Depending on scaling operations and the spatial scope of the queries, evaluations are carried out on one or more sketchlets. Information on the placement of sketchlets in the system and their corresponding feature scopes is maintained at each sketchlet in a geohash prefix tree, with changes propagated through the network in an eventually-consistent manner as data is ingested and scaling maneuvers occur.
 
@@ -35,10 +35,8 @@ Queries supported by \textsc{Synopsis} fall into six categories:
 
 \item[Synthetic Data Queries] allow users to request the system to generate representative datasets based on the distributions stored in the sketch. Synthetic data is generated in an online fashion by sampling from the underlying distributions and then streamed to client applications for analytics. The size of the dataset may also be specified; for instance, 10\% of the volume of the original data points.
 \end{description}
-
-Table~\ref{tbl:query-times} outlines local tree traversal times for query evaluations. These queries were separated into two groups: conventional lookups and tree retrievals. Conventional lookups include density queries, set queries, and statistical queries, while tree retrievals request targeted portions of the overall feature space as a tree.  Note that while conventional lookups do not return a tree structure to the client, they still require a tree traversal to resolve. In general, tree retrievals consume more processing time due to their serialization and I/O costs; however, it is worth noting that varying the geographical scope across sketchlet sizes from 5km to 800km did not result in a proportionate increase in processing time. Overall, the sketch is able to satisfy our goal of low-latency query evaluations for each query type.
-
-\begin{table}[b]
+%
+\begin{table}[h!]
     \renewcommand{\arraystretch}{1.2}
     \caption{Local sketchlet evaluation times for each query type (averaged over 1000 iterations). \vspace{-1em}}
     \label{tbl:query-times}
@@ -69,3 +67,4 @@ Table~\ref{tbl:query-times} outlines local tree traversal times for query evalua
         \end{tabular}
     \end{center}
 \end{table}
+Table~\ref{tbl:query-times} outlines local tree traversal times for query evaluations. These queries were separated into two groups: conventional lookups and tree retrievals. Conventional lookups include density queries, set queries, and statistical queries, while tree retrievals request targeted portions of the overall feature space as a tree.  Note that while conventional lookups do not return a tree structure to the client, they still require a tree traversal to resolve. In general, tree retrievals consume more processing time due to their serialization and I/O costs; however, it is worth noting that varying the geographical scope across sketchlet sizes from 5km to 800km did not result in a proportionate increase in processing time. Overall, the sketch provides low-latency query evaluations for each query type.
