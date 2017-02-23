@@ -1,9 +1,10 @@
 \section{Introduction}
 \label{sec:introduction}
 The proliferation of remote sensing equipment (such as radars and satellites), networked sensors, commercial mapping, location-based services, and sales tracking applications have resulted in the exponential growth of spatiotemporal data. Spatiotemporal data comprise observations where both the location and time of measurement are available in addition to \emph{features} of interest (such as humidity, air quality, disease prevalence, sales, etc). This information can be leveraged in several domains to inform scientific modeling, simulations, resource allocation and decision making. Relevant domains include atmospheric science, epidemiology, environmental science, geosciences, smart-city settings, and commercial applications. In these settings, queries over the data must be \emph{expressive} to ensure efficient retrievals. Furthermore, query evaluations must be executed in real time with low latency, regardless of data volumes.
-The sketch must also be an effective surrogate for the data that it snapshots and serve as input for computations.
 
 Spatiotemporal datasets are naturally multidimensional with multiple features of interest being reported/recorded continuously for a particular timestamp and geolocation. The values associated with these features are continually changing; in other words, the dataset \emph{feature space} is always evolving.  Queries specified over these datasets may have a wide range of characteristics encompassing the frequency at which they are evaluated and their spatiotemporal scope. The crux of this paper is to support query evaluations and data processing over continually-arriving observational data. We achieve this via construction of an in-memory distributed \emph{sketch} that maintains a compact representation of the data.
+The sketch is also an effective surrogate for the data that it snapshots and serve as input for computations.
+%
 %
 \vspace{0.7em}\\
 %

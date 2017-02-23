@@ -10,4 +10,5 @@ Additional nodes may be introduced to the trees within a SIFT to collate observa
 \vspace{0.5em} \\
 \textbf{Systems View of the Sketch:} The \textsc{Synopsis} sketch, comprising sketchlets dispersed over multiple machines, is a compact and memory-resident surrogate for the entire observational space. The sketch may be used for any purpose that regular, on-disk data is used for including but not limited to: query evaluations, assessing statistical properties of the data, and launching custom computations using well-known analytical engines.
 
-The \textsc{Synopsis} sketch is adaptive and evolves over time. The number of sketchlets comprising the sketch varies as the sketch performs scaling maneuvers to cope with data volumes and memory management. The number of trees within the SIFT  also varies over time as temporal scopes are aggregated, features binned, and sketchlets are spawned and fused.
+The \textsc{Synopsis} sketch is adaptive and evolves over time. The number of sketchlets comprising the sketch varies as the sketch performs scaling maneuvers to cope with data volumes and memory management. 
+The structure of SIFT trees within a sketchlet varies over time as temporal scopes are aggregated and features binned. The number of SIFT trees within a sketchlet varies as the sketch dynamic scales.

@@ -9,7 +9,7 @@
 Here we report system benchmarks profiling several aspects of \textsc{Synopsis}. This includes: memory consumption of the sketch, data ingestion performance of the sketch, ability to handle variable loads, organization of the sketchlets within the sketch and its query evaluation performance.
 \label{sec:performance}
 \subsection{Dataset and Experimental Setup}
-Our subject dataset was sourced from the NOAA North American Mesoscale (NAM) Forecast System \cite{noaa_nam}.  The NAM collects atmospheric data several times per day and includes features of interest such as surface temperature, visibility, relative humidity, snow, and precipitation. Each observation in the dataset also incorporates a relevant geographical location and time of creation. This information is used during the data ingest process to partition streams across available computing resources and preserve temporal ordering of events. The size of the entire source dataset was 25 TB.
+Our subject dataset was sourced from the NOAA North American Mesoscale (NAM) Forecast System \cite{noaa_nam}.  The NAM collects atmospheric data several times per day and includes features of interest such as surface temperature, visibility, relative humidity, snow, and precipitation. Each observation in the dataset also incorporates a relevant geographical location and time of creation. This information is used during the data ingest process to partition streams across available sketchlets and preserve temporal ordering of events. The size of the entire source dataset was 25 TB.
 
 Performance evaluations reported here were carried out on a cluster of 40 HP DL160 servers (Xeon E5620, 12 GB RAM). The test cluster was configured to run Fedora 24, and \textsc{Synopsis} was executed under the OpenJDK Java runtime 1.8.0\_72.
 
@@ -70,7 +70,7 @@ With multiple ingesters, due to the way the stream is (intentionally) constructe
 \subsection{Analyzing a Snapshot of the Distributed Sketch}
 Figure~\ref{fig:scaleout-graph-analysis} visualizes a snapshot of the distributed sketch which demonstrates the organization of sketchlets in runtime as described in \S\ref{sec:methodology}. 
 This represents the state of the system after consuming the complete 2014 NOAA dataset and the sketch contained 48 sketchlets. 
-It shows the distribution and size of the information maintained across sketchlets for each geohash prefix of length 3 against the number of records processed for that particular prefix.
+It shows the distribution and size of the information maintained across sketchlets for each geohash prefix of length 3 characters against the number of records processed for that particular prefix.
 The memory requirement for a particular geohash prefix depends on the number of records as well as the range of the observed values for different features.
 The space requirement is measured by the number of leaf nodes in the corresponding sketchlets.
 For the majority of the prefixes, the space requirement increases with the number of records processed.

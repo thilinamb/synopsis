@@ -2653,7 +2653,7 @@
 \floatsep 0.85\baselineskip plus  0.2\baselineskip minus  0.2\baselineskip
 %\textfloatsep 1.55\baselineskip plus  0.2\baselineskip minus  0.4\baselineskip
 % fixed by us
-\textfloatsep 1.25\baselineskip plus  0.2\baselineskip minus  0.4\baselineskip
+\textfloatsep 1.15\baselineskip plus  0.2\baselineskip minus  0.4\baselineskip
 \@fptop 0pt plus 1fil
 \@fpsep 0.75\baselineskip plus 2fil
 \@fpbot 0pt plus 1fil
@@ -5984,7 +5984,7 @@ between column types.}%
 \def\@IEEEBIOphotowidth{1.0in}    % width of the biography photo area
 \def\@IEEEBIOphotodepth{1.25in}   % depth (height) of the biography photo area
 % area cleared for photo
-\def\@IEEEBIOhangwidth{1.14in}    % width cleared for the biography photo area
+\def\@IEEEBIOhangwidth{1.10in}    % width cleared for the biography photo area
 \def\@IEEEBIOhangdepth{1.25in}    % depth cleared for the biography photo area
                                   % actual depth will be a multiple of 
                                   % \baselineskip, rounded up
