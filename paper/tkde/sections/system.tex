@@ -4,12 +4,12 @@
 The number of sketchlets (executing on different machines) that comprise the distributed sketch varies dynamically as the system scales in or out to cope with data arrival rates and memory pressure.
 %Each sketchlet is responsible for one or more geographical scopes and is implemented as a stateful stream processing node that can build and retain state over time.
 \textsc{Synopsis} assimilates, organizes, and compacts spatiotemporal data stream to comprise the sketch.
-A stream partitioning scheme, based on the Geohash algorithm (described below), is used to route packets to the appropriate sketchlet.
-Sketchlets processes stream packets emitted by the stream ingesters and construct compact, in-memory representations of the observational data by extracting metadata from stream packets.
-During dynamic scaling, geographic extents managed by a sketchlet varies.
+A stream partitioning scheme, based on the Geohash algorithm (described in the next section), is used to route packets to the appropriate sketchlet.
+Sketchlets process stream packets emitted by stream ingesters and construct compact, in-memory representations of the observational data by extracting metadata from stream packets.
+During dynamic scaling, the geographic extents managed by a sketchlet vary.
 \vspace{1em} \\
 \textbf{Geohash Algorithm} \\
-We use the Geohash~algorithm~\cite{geohash} to balance load and partition incoming data streams. Geohash divides the earth into a hierarchy of bounding boxes identified by Base 32 strings; the longer the geohash string, the more precise the bounding box. Figure~\ref{fig:geohash} illustrates this hierarchy. Most of the eastern United States is contained within the bounding box described by geohash \emph{D}, while \emph{DJ} encompasses substantial parts of Florida, Georgia, and Alabama. The bounding box \emph{DJKJ} (highlighted in red) contains Tallahassee, Florida. This hierarchical representation enables \textsc{Synopsis} to cope with both low- and high-density regions: several cluster-nodes may be tasked with managing streams originating in and around large cities, while rural areas fall under the purview of a single node.
+We use the Geohash~algorithm~\cite{geohash} to balance load and partition incoming data streams. Geohash divides the earth into a hierarchy of bounding boxes identified by Base 32 strings; the longer the geohash string, the more precise the bounding box. Figure~\ref{fig:geohash} illustrates this hierarchy. Most of the eastern United States is contained within the bounding box described by geohash \emph{D}, while \emph{DJ} encompasses substantial parts of Florida, Georgia, and Alabama. The bounding box \emph{DJKJ} (highlighted in red) contains Tallahassee, Florida. This hierarchical representation enables \textsc{Synopsis} to cope with both low- and high-density regions: several sketchlets may be tasked with managing streams originating in and around large cities, while rural areas fall under the purview of a single node.
 
 \begin{figure}[b!]
     \centerline{\includegraphics[width=2.5in]{figures/geohash.pdf}}
@@ -21,10 +21,10 @@ Each bit added to a geohash string reduces its scope by half, with each characte
 
 \textsc{Synopsis} relies on a set of auxiliary services that are needed to construct, update, and maintain the sketch and also to adapt to changing system conditions:
 \vspace{0.5em} \\
-	\textbf{Control plane} is responsible for orchestrating control messages exchanged between \textsc{Synopsis} nodes as part of various distributed protocols such as dynamic scaling.
+	\textbf{Control plane} is responsible for orchestrating control messages exchanged between sketchlets as part of various distributed protocols such as dynamic scaling.
     It is decoupled from the generic data plane to ensure higher priority and low latency processing without being affected by buffering delays and backpressure experienced during stream processing.
 \vspace{0.4em} \\
-	\textbf{Gossip subsystem} is used by the nodes comprising the sketch (a.k.a. sketchlets) to gossip about their state periodically (based on time intervals and the number of pending updates) as well as when a change in state occurs to establish an approximate global view of the system.While a majority of the \textsc{Synopsis} functionality relies on the local state constructed at a particular node, certain functionalities require an approximate global knowledge. 
+	\textbf{Gossip subsystem} is used by the sketchlets to gossip about their state periodically (based on time intervals and the number of pending updates) as well as when a change in state occurs to establish an approximate global view of the system.While a majority of the \textsc{Synopsis} functionality relies on the local state constructed at a particular node, certain functionalities require an approximate global knowledge. 
     \textsc{Synopsis} supports \emph{eventual consistency} with respect to these updates given their inherent propagation and convergence delays.
 \vspace{0.4em} \\
 	\textbf{Querying subsystem} is responsible for the distributed evaluation of queries.

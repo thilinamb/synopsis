@@ -41,7 +41,7 @@ A \textbf{monitoring} task within every sketchlet periodically gathers two perfo
 The objective of scaling out is to maintain the \emph{stability} at each sketchlet.
 We define stability as the ability to keep up with incoming data rates while incurring a manageable memory pressure.  During the \textbf{analyze} phase, we use threshold-based rules \cite{lorido2012auto} to issue scale-out recommendations to sketchlets, which are issued if \textit{either} of the following rules are consistently satisfied for a certain number of monitoring cycles:
 \begin{itemize}[leftmargin=*]  
-\item Backlog growth, which indicates that a portion of the load needs to be migrated to a different cluster-node.
+\item Backlog growth, which indicates that a portion of the load needs to be migrated to a different sketchlet.
 \item High overall memory utilization above a threshold, which is usually set below the memory limits to allow a capacity buffer for the process to avoid oscillation.
 \end{itemize}
 Upon receiving a scale out recommendation during monitoring, the sketchlet executes the \textbf{planning} and \textbf{execution} phases.
