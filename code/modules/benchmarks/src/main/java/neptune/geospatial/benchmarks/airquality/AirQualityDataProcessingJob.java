@@ -44,11 +44,11 @@ public class AirQualityDataProcessingJob {
             // vertices
             Properties senderProps = new Properties();
             senderProps.put(ds.granules.util.Constants.StreamBaseProperties.BUFFER_SIZE, Integer.toString(1800));
-            job.addStreamSource("ingester", ThrottledStreamIngester.class, 1, senderProps);
+            job.addStreamSource("ingester", AirQualityDataIngester.class, 1, senderProps);
 
             Properties processorProps = new Properties();
             processorProps.put(ds.granules.util.Constants.StreamBaseProperties.BUFFER_SIZE, Integer.toString(0));
-            job.addStreamProcessor("stream-processor", StreamProcessor.class, INITIAL_PROCESSOR_COUNT, processorProps);
+            job.addStreamProcessor("stream-processor", AirQualitySketchProcessor.class, INITIAL_PROCESSOR_COUNT, processorProps);
 
             // edges
             job.addLink("ingester", "stream-processor", Constants.Streams.NOAA_DATA_STREAM,
