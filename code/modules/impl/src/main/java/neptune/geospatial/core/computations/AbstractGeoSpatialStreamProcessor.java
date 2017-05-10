@@ -128,7 +128,7 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
 
                 double backlog = getBacklogLength();
                 double memUsage = getLeafCount();
-                double locallyProcessedPrefCount = scalingContext.getLocallyProcessedPrefixCount();
+                double locallyProcessedPrefCount = scalingContext.getLocallyProcessedPrefixCount(); // index 3
                 double prefixLength = scalingContext.getPrefixLength();
 
                 /*try {
@@ -140,7 +140,6 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
                 PeriodicInstanceMetrics periodicInstanceMetrics = new PeriodicInstanceMetrics(instanceId,
                         StatConstants.ProcessorTypes.PROCESSOR,
                         new double[]{backlog, memUsage, meanLatency, throughput, prefixLength, queryThroughput});
-                // was: new double[]{backlog, memUsage, locallyProcessedPrefCount, throughput, prefixLength, queryThroughput});
                 statClient.publish(periodicInstanceMetrics);
             }
         }
@@ -215,13 +214,13 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
     private ScheduledExecutorService checkpointMonitors = Executors.newScheduledThreadPool(1);
 
     private AtomicLong processedCount = new AtomicLong(0);
-    private AtomicLong sumLatency = new AtomicLong(0);
     private ScheduledExecutorService statPublisher = Executors.newScheduledThreadPool(1);
     private Map<Integer, FullQualifiedComputationAddr> pendingPrefixOnlyScaleOutOps = Collections.synchronizedMap(
             new HashMap<Integer, FullQualifiedComputationAddr>());
     private int prefixOnlyScaleOutOpId = 1;
     private AtomicBoolean hasStartedReceivingData = new AtomicBoolean(false);
     private Set<String> scaledOutPrefixes = new HashSet<>();
+    private AtomicLong sumLatency = new AtomicLong(0);
 
     /**
      * Implement the specific business logic to process each
@@ -400,7 +399,7 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
         if (checkpointId <= 0 && preprocess(geoHashIndexedRecord)) {
             // perform the business logic: do this selectively. Send through the traffic we don't process.
             long t1 = System.nanoTime();
-            //process(geoHashIndexedRecord);
+            process(geoHashIndexedRecord);
             long t2 = System.nanoTime();
             synchronized (sumLatency) {
                 sumLatency.addAndGet((t2 - t1));

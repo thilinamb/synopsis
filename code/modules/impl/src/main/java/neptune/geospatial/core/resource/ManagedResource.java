@@ -204,7 +204,7 @@ public class ManagedResource {
                     if (!eligibleForScaling.get()) {
                         return;
                     }
-                    if (avgMemoryUsage >= 0.5 && memoryUsage.size() > 0) {
+                    if (avgMemoryUsage >= 0.45 && memoryUsage.size() > 0) {
                         SortableMetric highestMemConsumer = memoryUsage.poll();
                         double excessMemUsage = getExcessMemConsumption(avgMemoryUsage);
                         logger.info(String.format("Chosen for scaling: Mode: MEMORY, Computation: %s, Mem. usage: %.3f, Excess. mem. usage: %s",

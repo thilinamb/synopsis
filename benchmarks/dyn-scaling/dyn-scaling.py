@@ -12,10 +12,10 @@ def main():
     fig,ax2 = plt.subplots(figsize=(8,4))
 
     colors = ['#332288', '#88CCEE', '#44AA99', '#117733', '#999933', '#DDCC77', '#CC6677', '#882255', '#AA4499']
-    col_1 = colors[0]
-    col_2 = 'darkorange'
+    col_1 = 'dodgerblue'
+    col_2 = 'orange'
 
-    leg_thru = plt.plot(thru[:,0], thru[:,1], color='black', dashes=(1,2), lw=1.3, label='Data Ingestion Rate',)
+    leg_thru = plt.plot(thru[:,0], thru[:,1], color='black', lw=0.9, label='Data Ingestion Rate',)
     pylab.ylabel('Data Ingestion Rate(Msgs/s)', fontsize=13)
     pylab.ylim((0,400))
     #ax2.tick_params(axis='y', colors=col_1)
@@ -37,10 +37,10 @@ def main():
 
     lns = leg_thru + leg_comp
     labs = [l.get_label() for l in lns]
-    leg = ax.legend(lns, labs, fontsize=12, ncol=2, bbox_to_anchor=(0.5, -0.20), loc=8, borderaxespad=0., handlelength=3)
+    leg = ax.legend(lns, labs, fontsize=11, ncol=2, loc='lower center', borderaxespad=0.5, handlelength=3)
     leg.get_frame().set_linewidth(0.1)
     pylab.tight_layout()
-    plt.savefig('figs/dyn_scaling_v4.pdf', dpi=300, bbox_inches='tight')
+    plt.savefig('figs/dyn_scaling_v5.pdf', dpi=300, bbox_inches='tight')
     plt.close()
 
 if __name__ == '__main__':

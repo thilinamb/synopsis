@@ -43,7 +43,7 @@ public class DynamicScalingGraph {
             // vertices
             Properties senderProps = new Properties();
             senderProps.put(ds.granules.util.Constants.StreamBaseProperties.BUFFER_SIZE, Integer.toString(1024 * 1024));
-            job.addStreamSource("ingester", ThrottledStreamIngester.class, 10, senderProps);
+            job.addStreamSource("ingester", ThrottledStreamIngester.class, 2, senderProps);
 
             Properties processorProps = new Properties();
             processorProps.put(ds.granules.util.Constants.StreamBaseProperties.BUFFER_SIZE, Integer.toString(0));
