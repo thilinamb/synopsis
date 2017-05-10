@@ -6,6 +6,7 @@ import io.sigpipe.sing.serialization.SerializationException;
 import io.sigpipe.sing.serialization.SerializationInputStream;
 import io.sigpipe.sing.serialization.Serializer;
 import neptune.geospatial.graph.operators.NOAADataIngester;
+import neptune.geospatial.util.RivuletUtil;
 import neptune.geospatial.util.geohash.GeoHash;
 
 import java.io.FileInputStream;
@@ -20,7 +21,8 @@ public class AirQualityDataIngester extends NOAADataIngester{
     @Override
     protected String getRootDataDirPath() {
         ///s/lattice-95/d/nobackup/granules/air_quality_data/csv/
-        return super.getRootDataDirPath();
+        String hostname = RivuletUtil.getHostInetAddress().getHostName();
+        return "/s/" + hostname + "/d/nobackup/granules/air_quality_data/csv/";
     }
 
     // some test code to see if exported files have the expected attributes
