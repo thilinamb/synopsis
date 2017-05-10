@@ -233,7 +233,7 @@ public class NOAADataIngester extends StreamSource {
         return inputFiles;
     }
 
-    private String getRootDataDirPath() {
+    protected String getRootDataDirPath() {
         String hostname = RivuletUtil.getHostInetAddress().getHostName();
         return "/s/" + hostname + "/b/nobackup/galileo/noaa-data/" + years[yearIndex++] + "/";
     }
