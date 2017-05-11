@@ -10,7 +10,9 @@ import neptune.geospatial.graph.operators.SketchProcessor;
  * @author Thilina Buddhika
  */
 public class AirQualitySketchProcessor extends SketchProcessor {
-    public AirQualitySketchProcessor() {
+
+    @Override
+    protected void initSketch() {
         try {
             hierarchy = new FeatureHierarchy();
             for (String featureName : Configuration.FEATURE_NAMES) {

@@ -36,7 +36,12 @@ public class SketchProcessor extends AbstractGeoSpatialStreamProcessor {
     protected Set<String> activeFeatures = new HashSet<>();
 
     public SketchProcessor() {
-        /* Populate the feature hierarchy */
+        initSketch();
+
+    }
+
+    protected void initSketch() {
+    /* Populate the feature hierarchy */
         try {
             hierarchy = new FeatureHierarchy();
             for (String featureName : ReducedTestConfiguration.FEATURE_NAMES) {
