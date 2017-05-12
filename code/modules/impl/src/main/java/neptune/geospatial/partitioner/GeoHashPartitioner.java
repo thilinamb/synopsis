@@ -72,7 +72,12 @@ public class GeoHashPartitioner implements Partitioner {
                 Topic topic = topics[sum % topics.length];
                 return new Topic[]{topic};
             } else {    // If it is an ingester
-                Topic topic = topics[allLength2Prefixes.get(ghIndexedRec.getGeoHash().substring(0,2)) % topics.length];
+                String prefix = ghIndexedRec.getGeoHash().substring(0, 2);
+                if (!allLength2Prefixes.containsKey(prefix)) {
+                    allLength2Prefixes.put(prefix, allLength2Prefixes.size());
+                    logger.info("New prefix added to the length 2 prefix map: " + prefix);
+                }
+                Topic topic = topics[allLength2Prefixes.get(prefix) % topics.length];
                 return new Topic[]{topic};
             }
         } else {
