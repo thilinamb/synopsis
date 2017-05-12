@@ -65,11 +65,11 @@ public class NOAADataIngester extends StreamSource {
     }
 
     private Logger logger = Logger.getLogger(NOAADataIngester.class);
-    static final int PRECISION = 5;
+    public static final int PRECISION = 5;
 
-    private File[] inputFiles;
-    private int indexLastReadFile = 0;
-    private int totalMessagesInCurrentFile = 0;
+    protected File[] inputFiles;
+    protected int indexLastReadFile = 0;
+    protected int totalMessagesInCurrentFile = 0;
     protected int countEmittedFromCurrentFile = 0;
     private AtomicLong totalEmittedMsgCount = new AtomicLong(0);
     private AtomicLong totalEmittedBytes = new AtomicLong(0);
@@ -185,7 +185,7 @@ public class NOAADataIngester extends StreamSource {
         return null;    // completed reading all files.
     }
 
-    private void startNextFile() {
+    protected void startNextFile() {
         try {
             FileInputStream fIn = new FileInputStream(inputFiles[indexLastReadFile++]);
             BufferedInputStream bIn = new BufferedInputStream(fIn);
@@ -238,7 +238,7 @@ public class NOAADataIngester extends StreamSource {
         return "/s/" + hostname + "/b/nobackup/galileo/noaa-data/" + years[yearIndex++] + "/";
     }
 
-    private GeoHashIndexedRecord parse() {
+    protected GeoHashIndexedRecord parse() {
         GeoHashIndexedRecord record = null;
         try {
             float lat = inStream.readFloat();
