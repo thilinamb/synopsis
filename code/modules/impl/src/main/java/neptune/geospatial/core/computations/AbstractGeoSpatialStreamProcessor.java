@@ -92,55 +92,58 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
 
         @Override
         public void run() {
-            if (!publishData()) {
-                return;
-            }
-            if (firstAttempt) {
-                InstanceRegistration registration = new InstanceRegistration(instanceId,
-                        StatConstants.ProcessorTypes.PROCESSOR);
-                statClient.publish(registration);
-                firstAttempt = false;
-            } else {
-                long now = System.currentTimeMillis();
-                long currentCount = processedCount.get();
-                double throughput = -1;
-                if (previousThroughputTS != -1) {
-                    throughput = (currentCount - previousThroughput) * 1000.0 / (now - previousThroughputTS);
+            try {
+                if (!publishData()) {
+                    return;
                 }
-                // atomic latency
-                double meanLatency;
-                synchronized (sumLatency) {
-                    meanLatency = sumLatency.get() / (currentCount - previousThroughput);
-                    sumLatency.set(0);
+                if (firstAttempt) {
+                    InstanceRegistration registration = new InstanceRegistration(instanceId,
+                            StatConstants.ProcessorTypes.PROCESSOR);
+                    statClient.publish(registration);
+                    firstAttempt = false;
+                } else {
+                    long now = System.currentTimeMillis();
+                    long currentCount = processedCount.get();
+                    double throughput = -1;
+                    if (previousThroughputTS != -1) {
+                        throughput = (currentCount - previousThroughput) * 1000.0 / (now - previousThroughputTS);
+                    }
+                    // atomic latency
+                    double meanLatency;
+                    synchronized (sumLatency) {
+                        if(currentCount > previousThroughput) {
+                            meanLatency = sumLatency.get() / (currentCount - previousThroughput);
+                        }
+                        meanLatency = -1;
+                        sumLatency.set(0);
+                    }
+
+                    previousThroughput = currentCount;
+
+                    // query throughput
+                    double queryThroughput = 0.0;
+                    double currentQueryCount = QueryStatReporter.getInstance().getProcessedQueryCount(this.instanceId);
+                    if (previousQueryCount != -1) {
+                        queryThroughput = (currentQueryCount - previousQueryCount) * 1000.0 / (now - previousThroughputTS);
+                    }
+                    previousQueryCount = currentQueryCount;
+
+                    previousThroughputTS = now;
+
+                    double backlog = getBacklogLength();
+                    double memUsage = getLeafCount();
+                    double locallyProcessedPrefCount = scalingContext.getLocallyProcessedPrefixCount(); // index 3
+                    double prefixLength = scalingContext.getPrefixLength();
+
+                    System.out.println(messageSize.get() + "," + locallyProcessedPrefCount + "," + String.format("%.3f", memUsage / (1024 * 1024)) + "," + processedCount.get() + "\n");
+
+                    PeriodicInstanceMetrics periodicInstanceMetrics = new PeriodicInstanceMetrics(instanceId,
+                            StatConstants.ProcessorTypes.PROCESSOR,
+                            new double[]{backlog, memUsage, meanLatency, throughput, prefixLength, queryThroughput});
+                    statClient.publish(periodicInstanceMetrics);
                 }
-
-                previousThroughput = currentCount;
-
-                // query throughput
-                double queryThroughput = 0.0;
-                double currentQueryCount = QueryStatReporter.getInstance().getProcessedQueryCount(this.instanceId);
-                if (previousQueryCount != -1) {
-                    queryThroughput = (currentQueryCount - previousQueryCount) * 1000.0 / (now - previousThroughputTS);
-                }
-                previousQueryCount = currentQueryCount;
-
-                previousThroughputTS = now;
-
-                double backlog = getBacklogLength();
-                double memUsage = getLeafCount();
-                double locallyProcessedPrefCount = scalingContext.getLocallyProcessedPrefixCount(); // index 3
-                double prefixLength = scalingContext.getPrefixLength();
-
-                /*try {
-                    buffW.write(System.currentTimeMillis() + "," + locallyProcessedPrefCount + "," + String.format("%.3f",memUsage/(1024*1024)) + "," + processedCount.get() + "\n");
-                    buffW.flush();
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }*/
-                PeriodicInstanceMetrics periodicInstanceMetrics = new PeriodicInstanceMetrics(instanceId,
-                        StatConstants.ProcessorTypes.PROCESSOR,
-                        new double[]{backlog, memUsage, meanLatency, throughput, prefixLength, queryThroughput});
-                statClient.publish(periodicInstanceMetrics);
+            } catch (Throwable e) {
+                logger.error("Error in Stat Publisher thread.", e);
             }
         }
     }
