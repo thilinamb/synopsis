@@ -15,6 +15,8 @@ import org.apache.log4j.Logger;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.math.BigInteger;
+import java.util.Random;
 
 /**
  * @author Thilina Buddhika
@@ -22,6 +24,8 @@ import java.io.IOException;
 public class AirQualityDataIngester extends NOAADataIngester {
 
     private Logger logger = Logger.getLogger(AirQualityDataIngester.class);
+    private BigInteger bigInt1 = new BigInteger(128, new Random());
+    private BigInteger bigInt2 = new BigInteger(128, new Random());
 
     @Override
     protected String getRootDataDirPath() {
@@ -59,6 +63,7 @@ public class AirQualityDataIngester extends NOAADataIngester {
     public void emit() throws StreamingDatasetException {
         try {
             super.emit();
+            bigInt1.isProbablePrime(50);
         } catch (Throwable e){
             logger.error("Error in emitting data.", e);
         }

@@ -19,7 +19,7 @@ import java.util.Properties;
  */
 public class AirQualityDataProcessingJob {
     private static final Logger logger = Logger.getLogger(AirQualityDataProcessingJob.class);
-    public static final int INITIAL_PROCESSOR_COUNT = 1;
+    public static final int INITIAL_PROCESSOR_COUNT = 5;
 
     public static void main(String[] args) {
         ParamsReader paramsReader = Granules.getParamsReader();
