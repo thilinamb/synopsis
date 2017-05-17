@@ -201,7 +201,7 @@ public abstract class Query implements ByteSerializable {
                 str += e.toString() + " AND ";
             }
         }
-        return str.substring(0, str.length() - 4) + ";";
+        return str.substring(0, str.length() - 4);
     }
 
     @Deserialize
