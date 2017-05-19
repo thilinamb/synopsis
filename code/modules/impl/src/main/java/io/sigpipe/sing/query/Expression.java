@@ -92,12 +92,16 @@ public class Expression implements ByteSerializable {
             case RANGE_EXC:
             case RANGE_INC_EXC:
             case RANGE_EXC_INC:
-                return operand1.getName() + " in "
-                    + operator.toString().charAt(0)
+                return operand1.getName() + " > "
                     + operand1.getString()
-                    + ", "
-                    + operand2.getString()
-                    + operator.toString().charAt(1);
+                    + " AND "
+                    + operand1.getName() + " < "
+                    + operand2.getString();
+
+            case STR_PREFIX:
+            case STR_SUFFIX:
+                return operand1.getName() + " LIKE \""
+                    + operand1.getString() + "%\"";
 
             default:
                 return operand1.getName() + " " + operator + " "

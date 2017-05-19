@@ -194,14 +194,14 @@ public abstract class Query implements ByteSerializable {
 
     @Override
     public String toString() {
-        String str = "";
+        String str = "SELECT * FROM noaa_data WHERE ";
         for (String expName : expressions.keySet()) {
             List<Expression> exps = expressions.get(expName);
             for (Expression e : exps) {
-                str += e.toString() + System.lineSeparator();
+                str += e.toString() + " AND ";
             }
         }
-        return str;
+        return str.substring(0, str.length() - 4);
     }
 
     @Deserialize
