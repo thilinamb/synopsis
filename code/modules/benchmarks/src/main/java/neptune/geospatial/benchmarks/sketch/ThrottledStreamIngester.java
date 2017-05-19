@@ -1,12 +1,17 @@
 package neptune.geospatial.benchmarks.sketch;
 
+import io.sigpipe.sing.dataset.Metadata;
+import io.sigpipe.sing.serialization.SerializationException;
+import io.sigpipe.sing.serialization.Serializer;
 import neptune.geospatial.graph.operators.NOAADataIngester;
 import org.apache.log4j.Logger;
+import org.joda.time.DateTime;
 
 import java.io.BufferedWriter;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.math.BigInteger;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Random;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -20,15 +25,20 @@ public class ThrottledStreamIngester extends NOAADataIngester {
     private AtomicLong counter = new AtomicLong(0);
     private long tsLastEmitted = -1;
     private BufferedWriter bufferedWriter;
+    private List<String> approvedGeoHashes = new ArrayList<>();
 
     public ThrottledStreamIngester() {
         //super(true);
         super();
-        try {
+        /*try {
             bufferedWriter = new BufferedWriter(new FileWriter("/tmp/throughput-profile.stat"));
         } catch (IOException e) {
             logger.error("Error opening stat file for writing.", e);
-        }
+        }*/
+        approvedGeoHashes.add("DN");
+        approvedGeoHashes.add("DQ");
+        approvedGeoHashes.add("DJ");
+        approvedGeoHashes.add("DM");
     }
 
     @Override
@@ -66,5 +76,34 @@ public class ThrottledStreamIngester extends NOAADataIngester {
             BigInteger bigInt2 = new BigInteger(512, new Random());
             bigInt.divide(bigInt2);
         }
+    }
+
+    /**
+     * Extracting records only for DM, DN, DJ, DQ for months of April - July
+     * @param geohash
+     * @param payload
+     * @return
+     */
+    @Override
+    protected boolean filter(String geohash, byte[] payload) {
+        if(!approvedGeoHashes.contains(geohash.substring(0,2).toUpperCase())){
+            return false;
+        }
+        try {
+            Metadata metadata = Serializer.deserialize(Metadata.class, payload);
+            DateTime dateTime = new DateTime(metadata.getTemporalProperties().getStart());
+            int month = dateTime.monthOfYear().get();
+            if(month >= 4 && month <= 7){
+                return true;
+            }
+        } catch (IOException | SerializationException e) {
+            logger.error("Error deserializing binary payload.", e);
+        }
+        return false;
+    }
+
+    public static void main(String[] args) {
+        DateTime dateTime = new DateTime(System.currentTimeMillis());
+        System.out.println(dateTime.monthOfYear().get());
     }
 }

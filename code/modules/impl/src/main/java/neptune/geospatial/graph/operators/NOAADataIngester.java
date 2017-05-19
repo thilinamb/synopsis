@@ -71,7 +71,7 @@ public class NOAADataIngester extends StreamSource {
     protected int indexLastReadFile = 0;
     protected int totalMessagesInCurrentFile = 0;
     protected int countEmittedFromCurrentFile = 0;
-    private AtomicLong totalEmittedMsgCount = new AtomicLong(0);
+    protected AtomicLong totalEmittedMsgCount = new AtomicLong(0);
     private AtomicLong totalEmittedBytes = new AtomicLong(0);
     private SerializationInputStream inStream;
     private long messageSeqId = 0;
@@ -83,7 +83,7 @@ public class NOAADataIngester extends StreamSource {
     private AtomicInteger remainingPhase1ScaleOutAckCount = new AtomicInteger(0);
     private boolean readAllFiles = false;
     //private String[] years = new String[]{"2011", "2012", "2013", "2014", "2015"};
-    protected String[] years = new String[]{"2014"};
+    protected String[] years = new String[]{"2011", "2012", "2013", "2014"};
     private int yearIndex = 0;
     protected int initialWaitPeriodMS = 10000;
     private Map<String, Long> prefixFreq = new HashMap<>();
@@ -132,14 +132,16 @@ public class NOAADataIngester extends StreamSource {
             GeoHashIndexedRecord record = nextRecord();
             if (record != null) {
                 try {
-                    writeToStream(Constants.Streams.NOAA_DATA_STREAM, record);
-                    totalEmittedMsgCount.incrementAndGet();
-                    totalEmittedBytes.addAndGet(record.getPayload().length);
-                    updateFrequency(record.getGeoHash());
-                    if (totalEmittedMsgCount.get() == 1) {
-                        statPublisherService.scheduleAtFixedRate(new StatPublisher(), 0, 2, TimeUnit.SECONDS);
+                    if (filter(record.getGeoHash(), record.getPayload())) {
+                        writeToStream(Constants.Streams.NOAA_DATA_STREAM, record);
+                        totalEmittedMsgCount.incrementAndGet();
+                        totalEmittedBytes.addAndGet(record.getPayload().length);
+                        updateFrequency(record.getGeoHash());
+                        if (totalEmittedMsgCount.get() == 1) {
+                            statPublisherService.scheduleAtFixedRate(new StatPublisher(), 0, 2, TimeUnit.SECONDS);
+                        }
+                        onSuccessfulEmission();
                     }
-                    onSuccessfulEmission();
                 } catch (StreamingDatasetException e) {
                     logger.error(e);
                 }
@@ -366,16 +368,20 @@ public class NOAADataIngester extends StreamSource {
             logger.error("Error writing to file.", e);
         } finally {
             try {
-                if(bufferedWriter != null){
+                if (bufferedWriter != null) {
                     bufferedWriter.close();
                 }
-                if(fileWriter != null){
+                if (fileWriter != null) {
                     fileWriter.close();
                 }
             } catch (IOException e) {
                 logger.error("Error closing file stream.", e);
             }
         }
+    }
+
+    protected boolean filter(String geohash, byte[] payload) {
+        return true;
     }
 }
 
