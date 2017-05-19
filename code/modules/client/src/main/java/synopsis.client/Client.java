@@ -182,9 +182,10 @@ public class Client {
         long checkpointId = System.currentTimeMillis();
         PersistenceManager.getInstance().submitPersistenceTask(checkpointId, endpoints.size(), cb);
         for (SynopsisEndpoint endpoint : endpoints) {
-            String synopsisEp = endpoint.toString();
+            String synopsisEp = endpoint.getHostname() + ":" + endpoint.getControlPort();
             PersistStateRequest persistStateReq = new PersistStateRequest(checkpointId, getAddr(), true);
             try {
+                System.out.println("Sent a serialization request to: " + synopsisEp);
                 SendUtility.sendControlMessage(synopsisEp, persistStateReq);
             } catch (CommunicationsException | IOException e) {
                 String eMsg = "Error sending the serialization request to the endpoint: " + synopsisEp;
