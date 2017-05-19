@@ -3,6 +3,8 @@ package synopsis.client.query;
 import ds.granules.communication.direct.control.ControlMessage;
 import ds.granules.communication.direct.control.SendUtility;
 import ds.granules.exception.CommunicationsException;
+import io.sigpipe.sing.adapters.QueryTest;
+import io.sigpipe.sing.serialization.SerializationException;
 import neptune.geospatial.core.protocol.msg.client.ClientQueryRequest;
 import neptune.geospatial.core.protocol.msg.client.ClientQueryResponse;
 import neptune.geospatial.core.protocol.msg.client.TargetQueryResponse;
@@ -12,6 +14,8 @@ import org.apache.log4j.Logger;
 import synopsis.client.ClientException;
 import synopsis.client.SynopsisEndpoint;
 
+import java.io.BufferedWriter;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.util.List;
 import java.util.Random;
@@ -40,6 +44,8 @@ public class QClient implements Runnable {
     private final QClientStatRecorder statRecorder;
     private CountDownLatch latch;
     private boolean manualMode = false;
+    // gather some queries in SQL format to use with Spark
+    private BufferedWriter sqlQueryWriter;
 
     public QClient(int queryCount, QueryWrapper[] queries, QueryCreator.QueryType[] queryTypes, double[] percentages,
                    String clientUrl, QueryManager queryManager,
@@ -70,6 +76,11 @@ public class QClient implements Runnable {
         this.clientUrl = clientUrl;
         this.latch = latch;
         this.random = new Random();
+        try {
+            this.sqlQueryWriter = new BufferedWriter(new FileWriter("/tmp/sql-queries.txt"));
+        } catch (IOException e) {
+            logger.error("Error initializing SQL writer.", e);
+        }
     }
 
     private double[] prepareCumulPercentages(double[] percentages) throws ClientException {
@@ -136,6 +147,14 @@ public class QClient implements Runnable {
                 if (completedQueryCount > WARMUP_THRESHOLD && currentQueryResponse.getQueryRespSize() > 0) {
                     statRecorder.recordIndividualRecord("metadata", currentQueryResponse.getElapsedTimeInMS(),
                             currentQueryResponse.getQueryResponseSizeInKB(), statisticsOutputFile);
+                    // Get the SQL equivalent form of the query.
+                    if (sqlQueryWriter != null) {
+                        try {
+                            sqlQueryWriter.write(QueryTest.getSQLFormat(nextQ) + '\n');
+                        } catch (SerializationException e) {
+                            logger.error("Error generating SQL equalent form of the query.", e);
+                        }
+                    }
                 }
 
             } catch (ClientException | IOException e) {
@@ -149,6 +168,10 @@ public class QClient implements Runnable {
 
         try {
             statRecorder.finalizeStats();
+            if (sqlQueryWriter != null) {
+                sqlQueryWriter.flush();
+                sqlQueryWriter.close();
+            }
         } catch (IOException e) {
             logger.error("Error flushing outputs.", e);
         }
@@ -167,7 +190,8 @@ public class QClient implements Runnable {
     }
 
     private String nextEndpoint() {
-        return endpoints.get(random.nextInt(endpoints.size())).toString();
+        SynopsisEndpoint ep = endpoints.get(random.nextInt(endpoints.size()));
+        return ep.getHostname() + ":" + ep.getControlPort();
     }
 
     void handleQueryResponse(ControlMessage ctrlMsg) {
