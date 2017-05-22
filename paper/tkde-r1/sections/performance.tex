@@ -1,9 +1,9 @@
 %
-\begin{figure}
-    \centerline{\includegraphics[width=\linewidth]{figures/ing-and-mem-usage.pdf}}
+\begin{figure*}
+    \centerline{\includegraphics[width=\linewidth]{figures/ing-and-mem-usage-noaa-airquality.pdf}}
     \caption{Memory usage of the distributed sketch over time against the amount of ingested data. The rate of growth decreases over time due to the compact nature of sketchlet data structure.}
     \label{fig:dist-sketch-mem-usage}
-\end{figure}
+\end{figure*}
 %
 \section{Performance Evaluation}
 Here we report system benchmarks profiling several aspects of \textsc{Synopsis}. This includes: memory consumption of the sketch, data ingestion performance of the sketch, ability to handle variable loads, organization of the sketchlets within the sketch and its query evaluation performance.
