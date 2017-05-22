@@ -60,7 +60,7 @@ Reviewer: 2
 
 > (1) In Section 1, the first and second items in “challenges” are similar. High data arrival rates will incur high data volumes. Consequently, challenges of “data volumes” and “data arrival rates” can be merged;
 
-(response)
+Thank you for bringing this to our attention. We have merged the first two challenges.
 
 > (2) The overflow is not easy to follow. The format/definition of the queries to be handled is still unclear. The problem definition (i.e., the format of the observational streaming data, the definition of the queries, etc.) can be presented before Section 2;
 
