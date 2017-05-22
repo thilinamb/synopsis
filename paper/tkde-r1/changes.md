@@ -24,7 +24,7 @@ Reviewer: 1
 
 > 3) For experiments, just one dataset is used in experiments. More datasets should be introduced to study the performance of Synopsis extensively.
 
-Thank you for this suggestion! We have added a benchmark that incorporates air quality data sourced from XXX to Section X.X. We feel this addition substantially strenthgens the claims made in the paper, and also corroborates the results from our previous experiment with atmospheric data -- both benchmarks demonstrate similar profiles in memory consumption as new observations are assimilated.
+Thank you for this suggestion! We have added a benchmark that incorporates air quality data sourced from XXX to Section X.X. We feel this addition substantially strenthgens the claims made in the paper, and also corroborates the results from our previous experiment with atmospheric data -- both benchmarks demonstrate similar profiles in memory consumption as new observations are assimilated. In general, this helps illustrate how Synopsis can scale as additional data is stored, while handling diversity in dataset types.
 
 > 4) Synopsis should be compared with existing works in experiments to more clearly show the advantages of Synopsis. It is better to pick the state-of-the-art existing technique and make comparison in experiments.
 
