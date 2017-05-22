@@ -11,11 +11,10 @@ The sketch is also an effective surrogate for the data that it snapshots and ser
 \textbf{Challenges}:
 Support for real-time evaluation of queries and analysis over a feature space that is continually evolving introduces unique challenges. These include:
 \begin{itemize}[leftmargin=*]
-    \item   \emph{Data volumes:} It is infeasible to store all the observational data. This is especially true if the arrival rates outpace the rate at which data can be written to disk.
-    \item   \emph{Data arrival rates:} The data may arrive continually and at high rates. Arrival rates may change over time.
+    \item   \emph{Data volumes and arrival rates:} It is infeasible to store all observations, which may arrive continually and at high rates. This is especially true if the arrival rates outpace disk speeds.
     \item \emph{I/O Costs:} Memory accesses are 5-6 orders of magnitude faster than disk accesses. Given the data volumes, disk accesses during query evaluations or analysis are infeasible.
     \item   \emph{Accuracy:} Queries evaluations must be accurate, with appropriate error bounds included in the results.
-    \item   \emph{Spatiotemporal characteristics:} Queries and analysis tasks may target spatiotemporal properties. For example, a user may be interested in feature characteristics for a geospatial location at a particular daily interval over a chronological range (for example, 2:00--4:00 pm over 2--3 months).
+    \item   \emph{Spatiotemporal characteristics:} Queries and analysis may target both spatial and chronological properties of the dataset.
 \end{itemize}
 %
 \vspace{0.7em}
