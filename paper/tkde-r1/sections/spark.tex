@@ -1,7 +1,7 @@
 \subsection{Use with Analytic Engines}
 Synthetic data queries in \textsc{Synopsis} can be used to generate representative datasets that require less space while still providing high accuracy.  
 Such datasets can be used efficiently with analytic engines such as Apache Spark \cite{zaharia2010spark} and TensorFlow \cite{tensorflow}.  
-We used Spark to train regression models based on the Random Forest ensemble method to predict temperatures using surface visibility, humidity and precipitation in the southeast United States during the months of May--August, 2011--2014.
+We used Spark to train regression models based on the Random Forest ensemble method to predict temperatures (in Kelvin) using surface visibility, humidity and precipitation in the southeast United States during the months of May--August, 2011--2014.
 These models were generated using the original full-resolution data as well as synthetic data sets that were sized at 10\% and 20\% of the original data.
 The accuracy of these models were measured using a test dataset extracted from actual observations (30\% of the overall dataset size).
 All three datasets were staged on HDFS and loaded into Spark to train the ensemble models.
@@ -23,15 +23,15 @@ For instance, our 10\% synthetic dataset produces a model with similar accuracy 
             \cline{4-9}
              & & & \cellcolor[gray]{0.9}Mean & \cellcolor[gray]{0.9}Std. Dev.  &  \cellcolor[gray]{0.9}Mean & \cellcolor[gray]{0.9}Std. Dev. &  \cellcolor[gray]{0.9}Mean & \cellcolor[gray]{0.9}Std. Dev. \\
             \hline
-            Original & 25.350 & 208 & 4.611 & 0.133 & 520.657 & 7.690 & 6.025 & 0.051 \\
+            Original & 25.350 & 208 & 4.611 & 0.133 & 520.657 & 7.690 & 6.025 K & 0.051 \\
             \hline
-            Synthetic - 10\% & 2.549 & 21 & 3.424 & 0.288 & 246.212 & 15.046 & 5.980 & 0.024 \\
+            Synthetic - 10\% & 2.549 & 21 & 3.424 & 0.288 & 246.212 & 15.046 & 5.980 K & 0.024 \\
             \hline
-            Synthetic - 20\% & 4.336 & 41 & 3.997 & 0.392 & 278.682 & 17.475 & 6.018 & 0.064 \\
+            Synthetic - 20\% & 4.336 & 41 & 3.997 & 0.392 & 278.682 & 17.475 & 6.018 K & 0.064 \\
             \hline
         \end{tabularx}
     \end{center}
     \vspace{-1em}
 \end{table*}
 %
-
+%TODO discussion on why RMSE is actually better for the smaller datasets
