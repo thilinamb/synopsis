@@ -1,0 +1,70 @@
+\documentclass[9pt,journal,compsoc]{IEEEtran}
+\usepackage{amsmath,amssymb,amsbsy}
+\usepackage{graphicx}
+\usepackage{balance}  % for  \balance command ON LAST PAGE  (only there!)
+\usepackage{url}
+\usepackage{enumitem}
+\usepackage{hyperref}
+\usepackage{multirow}
+\usepackage{gensymb}
+\usepackage{subcaption}
+\usepackage[export]{adjustbox}
+\usepackage{tabularx, colortbl}
+\usepackage{array}
+\usepackage{dblfloatfix}
+\usepackage{fancyvrb}
+\usepackage{gensymb}
+
+\begin{document}
+\bstctlcite{IEEEexample:BSTcontrol}
+
+\title{Synopsis: A Distributed Sketch over Voluminous Spatiotemporal Observational Streams}
+
+\author{Thilina~Buddhika, Matthew Malensek, Sangmi Lee Pallickara and Shrideep Pallickara,~\IEEEmembership{Members,~IEEE}%
+\IEEEcompsocitemizethanks{\IEEEcompsocthanksitem T. Buddhika, M. Malensek, S.L. Pallickara and S. Pallickara  are with the Department
+of Computer Science, Colorado State University.
+E-mail: \{thilinab, malensek, sangmi, shrideep\}@cs.colostate.edu\protect}}
+
+\IEEEtitleabstractindextext{%
+\input{sections/abstract}
+\begin{IEEEkeywords}
+data sketches, streaming systems, spatiotemporal data, query evaluations
+\end{IEEEkeywords}}
+\maketitle
+
+\IEEEdisplaynontitleabstractindextext
+\input{sections/introduction}
+\input{sections/system}
+\input{sections/methodology}
+\input{sections/performance}
+\input{sections/applications}
+\input{sections/related}
+\input{sections/conclusions}
+\vspace{1em}\\
+\input{sections/acknowledgments}
+
+% ensure same length columns on last page (might need two sub-sequent latex runs)
+% \balance
+
+\bibliographystyle{IEEEtran}
+\bibliography{references}
+\vspace*{-3.7\baselineskip}
+\begin{IEEEbiography}[{\includegraphics[width=1in,height=1.2in, clip,keepaspectratio]{./bio/thilina.jpg}}]{Thilina Buddhika}
+Thilina Buddhika is a Ph.D. candidate in the Computer Science department at Colorado State University.  His research interests are in the area of real time, high throughput stream processing specifically targeted to environments such as Internet of Things (IoT) and health care applications.
+\end{IEEEbiography}
+\vspace{-1.60cm}
+\begin{IEEEbiography}[{\includegraphics[width=1in,height=1.2in,clip,keepaspectratio]{./bio/matthew.jpg}}]{Matthew Malensek}
+Matthew Malensek is a Ph.D. student in the Department of Computer Science at Colorado State University. His research involves the design and implementation of large-scale distributed systems, data-intensive computing, and cloud computing.
+\end{IEEEbiography}
+%
+\vspace{-1.60cm}
+\begin{IEEEbiography}[{\includegraphics[width=1in,height=1.2in,clip,keepaspectratio]{./bio/sangmi.jpg}}]{Sangmi Lee Pallickara}
+Sangmi Lee Pallickara is an Assistant Professor in the Department of Computer Science at Colorado State University. She received her Masters and Ph.D. degrees in Computer Science from Syracuse University and Florida State University, respectively. Her research interests are in the area of large-scale scientific data management. She is a recipient of the NSF CAREER award.
+\end{IEEEbiography}
+%
+\vspace{-1.56cm}
+\begin{IEEEbiography}[{\includegraphics[width=1in,height=1.2in,clip,keepaspectratio]{./bio/shrideep.jpg}}]{Shrideep Pallickara}
+Shrideep Pallickara is an Associate Professor in the Department of Computer Science and a Monfort Professor at Colorado State University. His research interests are in the area of large-scale distributed systems. He received his Masters and Ph.D. degrees from Syracuse University. He is a recipient of an NSF CAREER award.
+\enlargethispage{0.7cm}
+\end{IEEEbiography}
+\end{document}
