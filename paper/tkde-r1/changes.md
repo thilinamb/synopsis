@@ -76,41 +76,12 @@ This manuscript focuses on the problem of processing queries over a stream of sp
 Reviewer: 3
 -----------
 
-Recommendation: Author Should Prepare A Minor Revision
+> This paper proposes a distributed sketch over spatiotemporal streams called SYNOPSIS. This sketch maintains a compact representation of the streaming data, organized as a so-called SIFT structure, and it supports dynamic scaling to preserve responsiveness and avoid overprovisioning. A set of queries are supported by the proposed sketch, such as relational queries, statistical queries, etc. The experimental study demonstrates the efficacy of SYNOPSIS.
 
-Comments:
-This paper proposes a distributed sketch over spatiotemporal streams called SYNOPSIS. This sketch maintains a compact representation of the streaming data, organized as a so-called SIFT structure, and it supports dynamic scaling to preserve responsiveness and avoid overprovisioning. A set of queries are supported by the proposed sketch, such as relational queries, statistical queries, etc. The experimental study demonstrates the efficacy of SYNOPSIS.
+> My major concern is that the core technique of the sketch is based on the previous work [11], and a set of queries can be supported is because of the usage of Welford's method [11], and thus the novelty is limited, although the authors take into account the varied data density and arrival rates. I think the authors need to exploit more novel techniques to support more types of queries (maybe in the future work?).
 
-My major concern is that the core technique of the sketch is based on the previous work [11], and a set of queries can be supported is because of the usage of Welford's method [11], and thus the novelty is limited, although the authors take into account the varied data density and arrival rates. I think the authors need to exploit more novel techniques to support more types of queries (maybe in the future work?).
+> Another question is about the spatial or temporal query window size. The distributed sketch is based on the geohash algorithm, which divides the earth into a hierarchy of bounding boxes. The spatial range specified in the query may not cover the bound boxes exactly, which means that only part of the data in a box should be considered rather than the entire data in the box. However, the record in each box used in query processing contains statistics for the whole box. How can the accuracy of the queries be guaranteed?
 
-Another question is about the spatial or temporal query window size. The distributed sketch is based on the geohash algorithm, which divides the earth into a hierarchy of bounding boxes. The spatial range specified in the query may not cover the bound boxes exactly, which means that only part of the data in a box should be considered rather than the entire data in the box. However, the record in each box used in query processing contains statistics for the whole box. How can the accuracy of the queries be guaranteed?
+> The SIFT structural compaction is not described clearly enough. I suggest the authors add an example in that section. Is it true that it does not matter how the original SIFT is constructed (either spatial first level or temporal first level), because it will be reconfigured dynamically?
 
-The SIFT structural compaction is not described clearly enough. I suggest the authors add an example in that section. Is it true that it does not matter how the original SIFT is constructed (either spatial first level or temporal first level), because it will be reconfigured dynamically?
-
-Yufei Tao et al. proposed a sketch-based method for spatio-temporal aggregation (Spatio-Temporal Aggregation Using Sketches. ICDE'04), which is relevant to this work. The authors should discuss this paper in the related work section.
-
-
-Additional Questions:
-1. Which category describes this manuscript?: Research/Technology
-
-2. How relevant is this manuscript to the readers of this periodical? Please explain your rating under Public Comments below. : Very Relevant
-
-1.  Please explain how this manuscript advances this field of research and/or contributes something new to the literature. : This paper proposes a distributed sketch over spatiotemporal streams called SYNOPSIS.
-
-2. Is the manuscript technically sound? Please explain your answer under Public Comments below. : Yes
-
-1. Are the title, abstract, and keywords appropriate? Please explain under Public Comments below.: Yes
-
-2. Does the manuscript contain sufficient and appropriate references? Please explain under Public Comments below.: Important references are missing; more references are needed
-
-3. Does the introduction state the objectives of the manuscript in terms that encourage the reader to read on? Please explain your answer under Public Comments below.: Yes
-
-4. How would you rate the organization of the manuscript? Is it focused? Is the length appropriate for the topic? Please explain under Public Comments below. : Satisfactory
-
-5. Please rate the readability of the manuscript. Explain your rating under Public Comments below.: Easy to read
-
-6. Should the supplemental material be included? (Click on the Supplementary Files icon to view files): Does not apply, no supplementary files included
-
-7. If yes to 6, should it be accepted: As is
-
-Please rate the manuscript. Please explain your answer.: Excellent
+> Yufei Tao et al. proposed a sketch-based method for spatio-temporal aggregation (Spatio-Temporal Aggregation Using Sketches. ICDE'04), which is relevant to this work. The authors should discuss this paper in the related work section.
