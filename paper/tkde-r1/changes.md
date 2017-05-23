@@ -24,7 +24,7 @@ Reviewer: 1
 
 > 3) For experiments, just one dataset is used in experiments. More datasets should be introduced to study the performance of Synopsis extensively.
 
-Thank you for this suggestion! We have added a benchmark that incorporates air quality data sourced from XXX to Section X.X. We feel this addition substantially strenthgens the claims made in the paper, and also corroborates the results from our previous experiment with atmospheric data -- both benchmarks demonstrate similar profiles in memory consumption as new observations are assimilated. In general, this helps illustrate how Synopsis can scale as additional data is stored, while handling diversity in dataset types.
+Thank you for this suggestion! We have added a benchmark that incorporates air quality data sourced from XXX to Section X.X. We feel this addition substantially strengthens the claims made in the paper, and also corroborates the results from our previous experiment with atmospheric data -- both benchmarks demonstrate similar profiles in memory consumption as new observations are assimilated. In general, this helps illustrate how Synopsis can scale as additional data is stored, while handling diversity in dataset types.
 
 > 4) Synopsis should be compared with existing works in experiments to more clearly show the advantages of Synopsis. It is better to pick the state-of-the-art existing technique and make comparison in experiments.
 
@@ -46,6 +46,10 @@ This is an excellent point, and we have augmented our discussion in Section 5.2 
 Reviewer: 2
 -----------
 
+> This manuscript focuses on the problem of processing queries over a stream of spatio-temporal observational data. Each item in the stream contains a geographical location, a timestamp, and a set of key-value pairs. The authors develop a number of components to efficiently process the queries. Experimental results demonstrate that their proposal is capable of high efficiency. Overall, this is a good piece of research work that studies an interesting and practical problem. But it can be improved, especially in terms of presentation.
+
+(response)
+
 > Strong points:
 > (1) The problem of processing general queries over spatio-temporal observational data is quite useful and practical;
 > (2) Based on the experimental results, the proposed solutions are efficient.
@@ -66,7 +70,7 @@ Thank you for bringing this to our attention. We have merged the first two chall
 
 We appreciate this feedback and have taken a number of steps to improve readability of the manuscript:
 
-- Additional headings ('System Components' in Sec. 1, ...)
+- Additional headings and formatting improvements ('System Components' in Sec. 1, indentation for the components, ...)
 - item 2...
 
 We have also added a new 'Problem Definition' section, placed before Section 2 as suggested. We feel that this helps bring readers up to speed with the trade-off space we are working with and also introduces the kind of queries Synopsis supports early on. Thank you for this suggestion!
@@ -74,8 +78,6 @@ We have also added a new 'Problem Definition' section, placed before Section 2 a
 > (3) In Section 3.3, what are the novelty and technical challenge(s) of “sketchlet”, especially in the context of “distributed maintenance”?
 
 (response)
-
-This manuscript focuses on the problem of processing queries over a stream of spatio-temporal observational data. Each item in the stream contains a geographical location, a timestamp, and a set of key-value pairs. The authors develop a number of components to efficiently process the queries. Experimental results demonstrate that their proposal is capable of high efficiency. Overall, this is a good piece of research work that studies an interesting and practical problem. But it can be improved, especially in terms of presentation.
 
 
 Reviewer: 3
