@@ -5,7 +5,7 @@ Editor Comments
 ---------------
 > We have received three review reports. While all the reviewers appreciate your research efforts, a number of concerns on the novelty, performance bound, query accuracy, experiments, etc. have been raised. Please address all these concerns in a major revision.
 
-To begin, we would like to thank the editors and reviewers for their valuable feedback. We were thrilled to receive and implement these suggestions, and believe that the revised manuscript has been improved substantially as a result.
+To begin, we would like to thank the editors and reviewers for their valuable feedback. We were delighted to receive and implement these suggestions, and believe that the revised manuscript has been improved substantially as a result.
 
 Our main improvements to the text include:
 
@@ -92,7 +92,12 @@ Reviewer: 3
 
 > My major concern is that the core technique of the sketch is based on the previous work [11], and a set of queries can be supported is because of the usage of Welford's method [11], and thus the novelty is limited, although the authors take into account the varied data density and arrival rates. I think the authors need to exploit more novel techniques to support more types of queries (maybe in the future work?).
 
-(response)
+Welford's method is indeed a key part of the functionality in Synopsis; however, we feel that the true novelty of our approach is derived from the hierarchical organization of metadata in the SIFT, which eventually leads to these statical summaries. While other approaches may choose to create a multidimensional matrix of feature values or store statistics at each vertex in the graph, we were able to substantially reduce memory consumption by tracking query contexts through the SIFT and storing data solely at the leaves. Combined with our use of Geohashes, we can effectively scale the SIFT in and out at runtime with changing resource demands.
+
+It is also worth noting that the primary benefit of using Welford's method is that we can track distributions within metadata bins on a fine-grained level; while it would certainly be possible to operate the system without the presence of these statistical summaries (simply storing bin counts instead), the accuracy of (1) query results, and (2) synthetic datasets would decrease.
+
+TODO discuss how we improved the methodology to highlight this.
+
 
 > Another question is about the spatial or temporal query window size. The distributed sketch is based on the geohash algorithm, which divides the earth into a hierarchy of bounding boxes. The spatial range specified in the query may not cover the bound boxes exactly, which means that only part of the data in a box should be considered rather than the entire data in the box. However, the record in each box used in query processing contains statistics for the whole box. How can the accuracy of the queries be guaranteed?
 
