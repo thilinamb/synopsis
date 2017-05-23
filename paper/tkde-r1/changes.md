@@ -60,11 +60,16 @@ Reviewer: 2
 
 > (1) In Section 1, the first and second items in “challenges” are similar. High data arrival rates will incur high data volumes. Consequently, challenges of “data volumes” and “data arrival rates” can be merged;
 
-Thank you for bringing this to our attention. We have merged the first two challenges.
+Thank you for bringing this to our attention. We have merged the first two challenges listed in Section 1.
 
 > (2) The overflow is not easy to follow. The format/definition of the queries to be handled is still unclear. The problem definition (i.e., the format of the observational streaming data, the definition of the queries, etc.) can be presented before Section 2;
 
-(response)
+We appreciate this feedback and have taken a number of steps to improve readability of the manuscript:
+
+- Additional headings ('System Components' in Sec. 1, ...)
+- item 2...
+
+We have also added a new 'Problem Definition' section, placed before Section 2 as suggested. We feel that this helps bring readers up to speed with the trade-off space we are working with and also introduces the kind of queries Synopsis supports early on. Thank you for this suggestion!
 
 > (3) In Section 3.3, what are the novelty and technical challenge(s) of “sketchlet”, especially in the context of “distributed maintenance”?
 
