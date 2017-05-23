@@ -49,18 +49,14 @@ Reviewer: 2
 -----------
 
 > This manuscript focuses on the problem of processing queries over a stream of spatio-temporal observational data. Each item in the stream contains a geographical location, a timestamp, and a set of key-value pairs. The authors develop a number of components to efficiently process the queries. Experimental results demonstrate that their proposal is capable of high efficiency. Overall, this is a good piece of research work that studies an interesting and practical problem. But it can be improved, especially in terms of presentation.
-
-(response)
-
+>
 > Strong points:
-> (1) The problem of processing general queries over spatio-temporal observational data is quite useful and practical;
-> (2) Based on the experimental results, the proposed solutions are efficient.
-
-(response)
-
+> 1. The problem of processing general queries over spatio-temporal observational data is quite useful and practical;
+> 2. Based on the experimental results, the proposed solutions are efficient.
+>
 > Weak points:
-> (1) The presentation can be improved. The overflow of this paper is not easy to follow;
-> (2) The technical contributions and challenges of the problem studied in this work are not presented in a clear way.
+> 1. The presentation can be improved. The overflow of this paper is not easy to follow;
+> 2. The technical contributions and challenges of the problem studied in this work are not presented in a clear way.
 
 (response)
 
