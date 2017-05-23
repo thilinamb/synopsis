@@ -5,7 +5,9 @@ Editor Comments
 ---------------
 > We have received three review reports. While all the reviewers appreciate your research efforts, a number of concerns on the novelty, performance bound, query accuracy, experiments, etc. have been raised. Please address all these concerns in a major revision.
 
-(response)
+To begin, we would like to thank the editors and reviewers for their valuable feedback. We were thrilled to receive and implement these suggestions, and believe that the revised manuscript has been improved substantially as a result.
+
+Our main improvements to the text include:
 
 
 Reviewer: 1
@@ -71,7 +73,8 @@ Thank you for bringing this to our attention. We have merged the first two chall
 We appreciate this feedback and have taken a number of steps to improve readability of the manuscript:
 
 - Additional headings and formatting improvements ('System Components' in Sec. 1, indentation for the components, ...)
-- item 2...
+- Removal of some redundant/repetitive text (Figure captions that duplicated manuscript text, ...)
+- item 3...
 
 We have also added a new 'Problem Definition' section, placed before Section 2 as suggested. We feel that this helps bring readers up to speed with the trade-off space we are working with and also introduces the kind of queries Synopsis supports early on. Thank you for this suggestion!
 
