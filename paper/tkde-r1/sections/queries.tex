@@ -3,10 +3,10 @@
 \textsc{Synopsis} incorporates support for user-defined queries that are evaluated over the distributed sketch.  Queries can be specified by the user in a SQL-like format or with JSON-based key-value descriptions similar to GraphQL~\cite{graphql}. Exact-match, range-based, and summarization queries are all supported over spatiotemporal bounds and individual feature values. The following example depicts how SQL-like queries can be formulated for evaluation over the sketch.
 
 \begin{Verbatim}[fontsize=\footnotesize]
-SELECT MEAN(precipitation), MAX(wind_speed)
-WHERE temperature > 20 AND temperature < 30
-AND humidity > .8 AND CORRELATION(
-    cloud_cover, precipitation) < -0.25
+    SELECT MEAN(precipitation), MAX(wind_speed)
+    WHERE temperature > 20 AND temperature < 30
+    AND humidity > .8 AND CORRELATION(
+        cloud_cover, precipitation) < -0.25
 \end{Verbatim}
 
 Depending on scaling operations and the spatial scope of the queries, evaluations are carried out on one or more sketchlets. Information on the placement of sketchlets in the system and their corresponding feature scopes is maintained at each sketchlet in a geohash prefix tree, with changes propagated through the network in an eventually-consistent manner as data is ingested and scaling maneuvers occur.
