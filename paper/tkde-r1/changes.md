@@ -101,7 +101,7 @@ TODO discuss how we improved the methodology to highlight this.
 
 > Another question is about the spatial or temporal query window size. The distributed sketch is based on the geohash algorithm, which divides the earth into a hierarchy of bounding boxes. The spatial range specified in the query may not cover the bound boxes exactly, which means that only part of the data in a box should be considered rather than the entire data in the box. However, the record in each box used in query processing contains statistics for the whole box. How can the accuracy of the queries be guaranteed?
 
-(response)
+This is an excellent question, and we have updated the text (Section X.X) to better explain how such spatial queries are resolved. In short, we maintain a full-resolution geohash for each observation. While this incurs additional memory overhead compared to simply not storing the entire hash, it allows us to perform fine-grained queries. In situations where multiple geohash bounding boxes overlap the query region, we decompose the query into the smallest possible geohash ranges and then eliminate any non-matching observations by calculating and comparing their respective latitude/longitude points. As a result, spatial retrievals in Synopsis are somewhat similar to an R-Tree [cite] traversal.
 
 > The SIFT structural compaction is not described clearly enough. I suggest the authors add an example in that section. Is it true that it does not matter how the original SIFT is constructed (either spatial first level or temporal first level), because it will be reconfigured dynamically?
 
