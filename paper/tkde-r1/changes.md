@@ -24,7 +24,7 @@ Reviewer: 1
 
 > 3) For experiments, just one dataset is used in experiments. More datasets should be introduced to study the performance of Synopsis extensively.
 
-(response)
+Thank you for this suggestion! We have added a benchmark that incorporates air quality data sourced from XXX to Section X.X. We feel this addition substantially strenthgens the claims made in the paper, and also corroborates the results from our previous experiment with atmospheric data -- both benchmarks demonstrate similar profiles in memory consumption as new observations are assimilated. In general, this helps illustrate how Synopsis can scale as additional data is stored, while handling diversity in dataset types.
 
 > 4) Synopsis should be compared with existing works in experiments to more clearly show the advantages of Synopsis. It is better to pick the state-of-the-art existing technique and make comparison in experiments.
 
@@ -40,7 +40,7 @@ Reviewer: 1
 
 > 7) I am confused by Table 4. I think using full data should be more accurate than using a subset of the full data. But, Table 4 shows that the RMSE of using full data is higher than the RMSEs of using 10% and 20% of the full data.
 
-(response)
+This is an excellent point, and we have augmented our discussion in Section 5.2 to better explain this result. While there are not substantial differences in the error reported for each dataset size (an RMSE of about 6 Kelvin), we believe that the additional data points available in the full-sized dataset may have led to over-fitting rather than a boost in model performance. As a result, the smaller synthetic samples are less susceptible to over-fitting and perform slightly better.
 
 
 Reviewer: 2
