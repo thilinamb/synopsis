@@ -10,9 +10,9 @@ To begin, we would like to thank the editors and reviewers for their valuable fe
 Our main improvements to the text include:
 - Edits that address each of the questions raised by the reviewers (explained in greater detail below)
 - A memory growth benchmark that incorporates a second geospatial dataset. This illustrates that the memory consumption profile observed with our first dataset applies to another geospatial dataset as well.
-- A benchmark comparing the query performance of Spark SQL with Synopsis to demonstrate the benefit of the approximations made by Synopsis; while both systems operate in memory, Spark is tasked with substantially more computation, and thus requires an order of magnitude more time to execute the same set of queries. (TODO: make sure this statement is correct)
+- A benchmark comparing the query performance of Spark SQL with Synopsis to demonstrate the benefit of the data structures and approximations employed by Synopsis
 - Additions to the RF benchmark (?)
-- Pseudocode representation of the SIFT reconfiguration algorithm
+- Pseudocode representation of the SIFT structural compaction algorithm
 - Substantial cleanup and formatting tweaks to improve readability
 
 
