@@ -59,7 +59,7 @@ Figure~\ref{fig:quantization} illustrates the quantization process for the \emph
 
 This information is provided alongside any query results returned by the system. During initialization, we calculate the normalized error for each data point empirically (shown in the lower portion of Figure~\ref{fig:quantization}). For values that are observed less frequently, the error rate is higher; temperatures from 240 -- 260 Kelvin (-33.15 to -13.15 \degree C) reach a normalized root-mean-square error (NRMSE) of about 7\%. However, approximately 80\% of the values in the tree will be assigned to vertices with an error of about 0.5\%. In practice, this means that commonly-observed values returned by \textsc{Synopsis} will be within 0.25 Kelvin of their actual value.
 %
-\begin{figure}
+\begin{figure}[b!]
     \centerline{\includegraphics[width=3.5in]{figures/quantization.pdf}}
     \caption{A demonstration of the quantization process, with 29 vertex bins generated across the distribution of surface temperature values in our dataset. Each bin is indicated by a vertical line under the curve.}
     \label{fig:quantization}
