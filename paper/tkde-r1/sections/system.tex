@@ -33,12 +33,13 @@ While designing \textsc{Synopsis}, we targeted a data model wherein observations
 %
 \textbf{\hl{Query Support}}:
 \textsc{Synopsis} supports common query constructs such as selects or joins, while also providing rich analytical queries that report statistical information, make predictions, or produce synthetic datasets (detailed fully in \S\ref{subsec:query-eval}). A key innovation in our query support is that portions of the sketch itself can be retrieved and manipulated by clients. The following query demonstrates this functionality, where climate features are requested from a region when the wind speed is more than a standard deviation away from the mean:
-\begin{Verbatim}[fontsize=\footnotesize]
+
+\begin{lstlisting}[language=SQL,style=custompy]
    SELECT location, precipitation, humidity
    WHERE location LIKE 'dj%' AND
        (wind_sp > MEAN(wind_sp) + STD(wind_sp)
        OR wind_sp < MEAN(wind_sp) - STD(wind_sp))
-\end{Verbatim}
+\end{lstlisting}
 %
 %\vspace{0.7em}\\
 %
