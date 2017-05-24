@@ -5,12 +5,12 @@ Editor Comments
 ---------------
 > We have received three review reports. While all the reviewers appreciate your research efforts, a number of concerns on the novelty, performance bound, query accuracy, experiments, etc. have been raised. Please address all these concerns in a major revision.
 
-To begin, we would like to thank the editors and reviewers for their valuable feedback. We were delighted to receive and implement these suggestions, and believe that the revised manuscript has been improved substantially as a result.
+To begin, we would like to thank the editors and reviewers for their valuable feedback. We were delighted to receive and implement these suggestions, and believe that the revised manuscript has been improved substantially as a result.  Our main improvements to the text include:
 
-Our main improvements to the text include:
 - Edits that address each of the questions raised by the reviewers (explained in greater detail below)
+- A revamped contributions section in the introduction to highlight the novelty of the design of our SIFT data structure
 - A memory growth benchmark that incorporates a second geospatial dataset. This illustrates that the memory consumption profile observed with our first dataset applies to another geospatial dataset as well.
-- A benchmark comparing the query performance of Spark SQL with Synopsis to demonstrate the benefit of the data structures and approximations employed by Synopsis
+- A benchmark comparing the query performance of Spark SQL with Synopsis to demonstrate the benefit of the data structures and systems design employed by Synopsis
 - Additions to the RF benchmark (?)
 - Pseudocode representation of the SIFT structural compaction algorithm
 - Substantial cleanup and formatting tweaks to improve readability
@@ -20,7 +20,7 @@ Reviewer: 1
 -----------
 > This paper proposes a novel distributed sketch, Synopsis, to index spatiotemporal stream data. Synopsis is update friendly. Specifically, Synopsis can scale effectively when the arrive rate of the data stream is faster than the rate at which the Synopsis can be updated. Synopsis is a summary of the data but most information is reserved such that queries on Synopsis can produce results of high accuracy.
 
-(response)
+Thank you for your review; we have addressed each of the points below, and feel that these suggestions were extremely helpful in improving our work.
 
 > 1) In Section 3, the techniques of different parts of Synopsis are proposed. But I feel the algorithms are not very clearly proposed. It is better to present the algorithms in the pseudo code manner.
 
