@@ -7,13 +7,12 @@ Editor Comments
 
 To begin, we would like to thank the editors and reviewers for their valuable feedback. We were delighted to receive and implement these suggestions, and believe that the revised manuscript has been improved substantially as a result.  Our main improvements to the text include:
 
-- Edits that address each of the questions raised by the reviewers (explained in greater detail below)
-- A revamped contributions section in the introduction to highlight the novelty of the design of our SIFT data structure
+- Edits that address each of the questions raised by the reviewers (explained in greater detail below), along with substantial cleanup and formatting tweaks to improve readability
+- A revamped contributions section in the introduction to highlight the novelty of our SIFT data structure
 - A memory growth benchmark that incorporates a second geospatial dataset. This illustrates that the memory consumption profile observed with our first dataset applies to another geospatial dataset as well.
 - A benchmark comparing the query performance of Spark SQL with Synopsis to demonstrate the benefit of the data structures and systems design employed by Synopsis
 - Additions to the RF benchmark (?)
-- Pseudocode representation of the SIFT structural compaction algorithm
-- Substantial cleanup and formatting tweaks to improve readability
+- Pseudocode representation of the SIFT structural compaction algorithm and calculation of the fan-out score
 
 
 Reviewer: 1
@@ -24,11 +23,11 @@ Thank you for your review; we have addressed each of the points below, and feel 
 
 > 1) In Section 3, the techniques of different parts of Synopsis are proposed. But I feel the algorithms are not very clearly proposed. It is better to present the algorithms in the pseudo code manner.
 
-(response)
+To address this point, we have added code listings for the calculation of the fan-out score and our structural compaction algorithm in Section 3.2.2. For the distributed functionality (scaling in and out), a previous iteration of the paper included pseudocode, but we found that the sequence diagrams were more effective in communicating how the protocols work. We also have added more detail to sections 3.2.1, 3.2.3, and made a variety of tweaks to 3.3 and 3.4 to improve the clarity of our algorithms.
 
 > 2) The theoretical performance analysis of the techniques is not discussed. Maybe it is better to propose some bounds of the techniques of Synopsis, e.g., bound of time complexity or bound of error.
 
-(response)
+While our previous manuscript discussed the error bounds reported alongside query results, we now report the time complexity of both insertions and lookups for the SIFT (O(log n)), as well as for our quantization algorithm (O(n)). We also added a bit of discussion on how the fan-out scores can be used to estimate memory bounds; briefly, given fan-out scores for each level in the hierarchy, we can estimate the total number of vertices, edges, and leaves that will exist in the SIFT. This allows us to make accurate judgements about memory consumption in the system.
 
 > 3) For experiments, just one dataset is used in experiments. More datasets should be introduced to study the performance of Synopsis extensively.
 
@@ -40,7 +39,7 @@ Thank you for this suggestion! We have added a benchmark that incorporates air q
 
 > 5) In Section 4.6, just the random query is studied. It is better to use some real queries.
 
-(response)
+While the queries used for these benchmarks were indeed random, it is worth noting that the parameterization of our query generation test harness was based on real-world usage patterns. In other words, we observed the ranges of values and combinations of features that were frequently requested from users of our copy of the NOAA dataset stored on a local file system. We also used several queries developed for the visualizations in the paper as seed queries for the generator. We have updated the description of this benchmark to better explain how the test queries were sourced.
 
 > 6) The experiment of tuning the number of machines of the cluster should be added. It is an important experiment to show the scalability of a distributed technique.
 
