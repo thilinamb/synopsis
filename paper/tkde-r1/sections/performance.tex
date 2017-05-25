@@ -14,6 +14,8 @@ One of our subject datasets was sourced from the NOAA North American Mesoscale (
 The other dataset, collected by the US Environmental Protection Agency, contained daily summary data of four criteria gases ($O_3$, $SO_2$, $CO$ and $NO_2$) used for calculating the air quality in a given area.}~\cite{epa-criteriagases}. \hl{Each observation in both datasets also incorporates a relevant geographical location and time of creation. This information is used during the data ingest process to partition streams across available sketchlets and preserve temporal ordering of events. Data streams were ingested at faster rates to simulate high data arrival rates while ensuring their temporal ordering is preserved.}
 
 Performance evaluations reported here were carried out on a cluster of 40 HP DL160 servers (Xeon E5620, 12 GB RAM). The test cluster was configured to run Fedora 24, and \textsc{Synopsis} was executed under the OpenJDK Java runtime 1.8.0\_72.
+For evaluations involving Apache Spark, we used Apache Spark version 2.0.1 with HDFS 2.6.0 with a 100 node cluster by combining our baseline cluster of 40 machines with 30 HP DL320e servers (Xeon E3-1220 V2, 8 GB RAM) and 30 HP DL60 servers (Xeon E5-2620, 16 GB RAM). 
+
 
 \subsection{Distributed Sketch Memory Evaluation}
 We monitored the growth in memory consumption of the entire distributed sketch over time with continuous data ingestion as shown in Figure~\ref{fig:dist-sketch-mem-usage} for both datasets. As more data was streamed into the system, the growth rate of the distributed sketch decreased as the sketchlets expanded to include vertices for their particular feature space.  At the end of our monitoring period, the total amount of ingested data was around three orders of magnitude higher ($\sim 1285$ for \hl{NOAA data and $\sim 926$ for air quality data}) than the in-memory sketch size, resulting in notable space savings.
@@ -114,7 +116,16 @@ These randomized queries fluctuated in both the ranges of values and spatial sco
     \caption{Contrasting Synopsis query performance with Spark-SQL.}
     \label{fig:spark-sql-query}
 \end{figure}
-
-
-
+%
+Next we evaluated the query speedup gained by maintaining an in-memory sketch of the data compared to a traditional ETL pipeline.
+We extracted timestamp, location information (as a geohash), temperature, surface visibility, humidity and precipitation in the southeast United States during the months of May--August, 2011--2014 and loaded them into Spark as a DataFrame which was then queried using SparkSQL.
+Given that the underlying RDD of the DataFrame cannot be shared between multiple Spark applications, we used a multi-threaded driver to issue concurrent queries.
+Similarly Synopsis was evaluated using a multi-threaded query funnel.
+For Spark, in order to minimize the data transfer between Spark cluster and driver, a \texttt{count} action was performed after the SQL query and its result was retrieved at the client.
+For Synopsis, we performed equivalent tree retrieval queries where sections of the distributed sketch is serialized and sent back to the query funnel.
+End-to-end latencies of the queries were recorded for different concurrency levels.
+The results of this evaluation is depicted in Figure~\ref{fig:spark-sql-query}.
+The end-to-end latency of the Synopsis queries is significantly less despite the higher communication overhead between the cluster and query funnel compared to Spark SQL.
+Spark queries provides higher accuracy because queries are answered after scanning the entire dataset, but it requires more resources and incurs higher query latencies and variability.
+Resource requirements and query latencies with such ETL systems drastically increase with more features and larger temporal scopes.
 

@@ -5,7 +5,6 @@ We used Spark to train regression models based on the Random Forest ensemble met
 These models were generated using the original full-resolution data as well as synthetic data sets that were sized at 10\% and 20\% of the original data.
 The accuracy of these models were measured using a test dataset extracted from actual observations (30\% of the overall dataset size).
 All three datasets were staged on HDFS and loaded into Spark to train the ensemble models.
-We used Apache Spark version 2.0.1 with HDFS 2.6.0 with a 100 node cluster by combining our baseline cluster of 40 machines with 30 HP DL320e servers (Xeon E3-1220 V2, 8 GB RAM) and 30 HP DL60 servers (Xeon E5-2620, 16 GB RAM). 
 
 We evaluated the efficacy of our approach based on the on-disk and in-memory storage requirements, data loading time, training time and the accuracy of the model.
 Our observations are summarized in Table~\ref{tab:spark-rf}.
