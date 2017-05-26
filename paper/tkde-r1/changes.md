@@ -19,7 +19,7 @@ Reviewer: 1
 -----------
 > This paper proposes a novel distributed sketch, Synopsis, to index spatiotemporal stream data. Synopsis is update friendly. Specifically, Synopsis can scale effectively when the arrive rate of the data stream is faster than the rate at which the Synopsis can be updated. Synopsis is a summary of the data but most information is reserved such that queries on Synopsis can produce results of high accuracy.
 
-Thank you for your review; we have addressed each of the points below, and feel that these suggestions were extremely helpful in improving our work.
+Thank you for your review; we have addressed each of the points below and feel that these suggestions were extremely helpful in improving our work!
 
 > 1) In Section 3, the techniques of different parts of Synopsis are proposed. But I feel the algorithms are not very clearly proposed. It is better to present the algorithms in the pseudo code manner.
 
@@ -27,7 +27,7 @@ To address this point, we have added code listings for the calculation of the fa
 
 > 2) The theoretical performance analysis of the techniques is not discussed. Maybe it is better to propose some bounds of the techniques of Synopsis, e.g., bound of time complexity or bound of error.
 
-While our previous manuscript discussed the error bounds reported alongside query results, we now report the time complexity of both insertions and lookups for the SIFT (O(log n)), as well as for our quantization algorithm (O(n)). We also added a bit of discussion on how the fan-out scores can be used to estimate memory bounds; briefly, given fan-out scores for each level in the hierarchy, we can estimate the total number of vertices, edges, and leaves that will exist in the SIFT. This allows us to make accurate judgements about memory consumption in the system.
+While our previous manuscript discussed the standard error reported alongside query results, we now report the time complexity of both insertions and lookups for the SIFT (O(log n)), as well as for our quantization algorithm (O(n)). We also added a bit of discussion on how the fan-out scores can be used to estimate memory bounds; briefly, given fan-out scores for each level in the hierarchy, we can estimate the total number of vertices, edges, and leaves that will exist in the SIFT. This allows us to make accurate judgements about memory consumption in the system.
 
 > 3) For experiments, just one dataset is used in experiments. More datasets should be introduced to study the performance of Synopsis extensively.
 
@@ -35,7 +35,7 @@ Thank you for this suggestion! We have added a benchmark that incorporates air q
 
 > 4) Synopsis should be compared with existing works in experiments to more clearly show the advantages of Synopsis. It is better to pick the state-of-the-art existing technique and make comparison in experiments.
 
-(response)
+We felt that Spark SQL would be a good point of comparison with Synopsis; while an exact 1:1 system does not exist, Spark is currently at the state-of-the-art in cluster computing and analysis. In this benchmark, we compared query latency between the two systems. TODO more
 
 > 5) In Section 4.6, just the random query is studied. It is better to use some real queries.
 
