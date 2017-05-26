@@ -1,0 +1,397 @@
+\documentclass{article}
+\usepackage[utf8]{inputenc}
+\usepackage{graphicx}
+\usepackage{geometry}
+\geometry{
+    letterpaper,
+    top=1in, bottom=1in,
+    left=1in, right=1in,
+}
+\usepackage{times}
+
+\usepackage{color}
+\usepackage[most]{tcolorbox}
+
+\definecolor{lightblue}{HTML}{e9f3f9}
+\definecolor{darkblue}{HTML}{5bacde}
+\definecolor{shadowcolor}{HTML}{cecece}
+\tcbset{
+    skin=enhanced,
+    drop shadow=shadowcolor,
+    left=0.5em,
+    right=0.5em,
+    top=0.5em,
+    bottom=0.5em,
+    before skip=1.5em,
+    after skip=1.5em,
+    colback=lightblue,
+    colframe=darkblue,
+    boxrule=0.75pt,
+    parbox=false
+}
+
+\begin{document}
+
+\section{Summary of Changes}\label{summary-of-changes}
+\subsection{Editor Comments}\label{editor-comments}
+
+We have received three review reports. While all the reviewers
+appreciate your research efforts, a number of concerns on the novelty,
+performance bound, query accuracy, experiments, etc. have been raised.
+Please address all these concerns in a major revision.
+
+\begin{tcolorbox}
+To begin, we would like to thank the editors and reviewers for their
+valuable feedback. We were pleased to receive and implement these
+suggestions, and believe that the revised manuscript has been improved
+substantially as a result. Our main improvements to the text include:
+
+\begin{itemize}
+\item
+  Edits that address each of the questions raised by the reviewers
+  (explained in greater detail below), along with substantial cleanup
+  and formatting tweaks to improve readability
+\item
+  A revamped contributions section in the introduction to highlight the
+  novelty of our SIFT data structure
+\item
+  A memory growth benchmark that incorporates a second geospatial
+  dataset. This illustrates that the memory consumption profile observed
+  with our first dataset applies to another geospatial dataset as well.
+\item
+  Pseudocode representation of the SIFT structural compaction algorithm
+  and calculation of the fan-out score
+\item
+  A benchmark comparing the query performance of Spark SQL with Synopsis
+  to demonstrate the benefit of the data structures and systems design
+  employed by Synopsis
+\item
+  Additions to the RF benchmark (?)
+\end{itemize}
+\end{tcolorbox}
+
+\subsection{Reviewer: 1}\label{reviewer-1}
+
+This paper proposes a novel distributed sketch, Synopsis, to index
+spatiotemporal stream data. Synopsis is update friendly. Specifically,
+Synopsis can scale effectively when the arrive rate of the data stream
+is faster than the rate at which the Synopsis can be updated. Synopsis
+is a summary of the data but most information is reserved such that
+queries on Synopsis can produce results of high accuracy.
+
+\begin{tcolorbox}
+Thank you for your review; we have addressed each of the points below
+and feel that these suggestions were extremely helpful in improving our
+work!
+\end{tcolorbox}
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi})}
+\item
+  In Section 3, the techniques of different parts of Synopsis are
+  proposed. But I feel the algorithms are not very clearly proposed. It
+  is better to present the algorithms in the pseudo code manner.
+\end{enumerate}
+
+\begin{tcolorbox}
+To address this point, we have added code listings for the calculation
+of the fan-out score and our structural compaction algorithm in Section
+3.2.2. For the distributed functionality (scaling in and out), a
+previous iteration of the paper included pseudocode, but we found that
+the sequence diagrams were more effective in communicating how the
+protocols work. We also have added more detail to sections 3.2.1, 3.2.3,
+and made a variety of tweaks to 3.3 and 3.4 to improve the clarity of
+our algorithms.
+\end{tcolorbox}
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi})}
+\setcounter{enumi}{1}
+\item
+  The theoretical performance analysis of the techniques is not
+  discussed. Maybe it is better to propose some bounds of the techniques
+  of Synopsis, e.g., bound of time complexity or bound of error.
+\end{enumerate}
+
+\begin{tcolorbox}
+While our previous manuscript discussed the standard error reported
+alongside query results, we now report the time complexity of both
+insertions and lookups for the SIFT $(O(log\ n))$, as well as for our
+quantization algorithm $(O(n))$. We also added a bit of discussion on how
+the fan-out scores can be used to estimate memory bounds; briefly, given
+fan-out scores for each level in the hierarchy, we can estimate the
+total number of vertices, edges, and leaves that will exist in the SIFT.
+This allows us to make accurate judgements about memory consumption in
+the system.
+\end{tcolorbox}
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi})}
+\setcounter{enumi}{2}
+\item
+  For experiments, just one dataset is used in experiments. More
+  datasets should be introduced to study the performance of Synopsis
+  extensively.
+\end{enumerate}
+
+\begin{tcolorbox}
+Thank you for this suggestion! We have added a benchmark that
+incorporates air quality data sourced from XXX to Section X.X. We feel
+this addition substantially strengthens the claims made in the paper,
+and also corroborates the results from our previous experiment with
+atmospheric data -- both benchmarks demonstrate similar profiles in
+memory consumption as new observations are assimilated. In general, this
+helps illustrate how Synopsis can scale as additional data is stored,
+while handling diversity in dataset types.
+\end{tcolorbox}
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi})}
+\setcounter{enumi}{3}
+\item
+  Synopsis should be compared with existing works in experiments to more
+  clearly show the advantages of Synopsis. It is better to pick the
+  state-of-the-art existing technique and make comparison in
+  experiments.
+\end{enumerate}
+
+\begin{tcolorbox}
+We felt that Spark SQL would be a good point of comparison with
+Synopsis; while an exact 1:1 system does not exist, Spark is currently
+at the state-of-the-art in cluster computing and analysis. In this
+benchmark, we compared query latency between the two systems. TODO more
+\end{tcolorbox}
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi})}
+\setcounter{enumi}{4}
+\item
+  In Section 4.6, just the random query is studied. It is better to use
+  some real queries.
+\end{enumerate}
+
+\begin{tcolorbox}
+While the queries used for these benchmarks were indeed random, it is
+worth noting that the parameterization of our query generation test
+harness was based on real-world usage patterns. In other words, we
+observed the ranges of values and combinations of features that were
+frequently requested from users of our copy of the NOAA dataset stored
+on a local file system. We also used several queries developed for the
+visualizations in the paper as seed queries for the generator. We have
+updated the description of this benchmark to better explain how the test
+queries were sourced.
+\end{tcolorbox}
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi})}
+\setcounter{enumi}{5}
+\item
+  The experiment of tuning the number of machines of the cluster should
+  be added. It is an important experiment to show the scalability of a
+  distributed technique.
+\end{enumerate}
+
+\begin{tcolorbox}
+(response)
+\end{tcolorbox}
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi})}
+\setcounter{enumi}{6}
+\item
+  I am confused by Table 4. I think using full data should be more
+  accurate than using a subset of the full data. But, Table 4 shows that
+  the RMSE of using full data is higher than the RMSEs of using 10\% and
+  20\% of the full data.
+\end{enumerate}
+
+\begin{tcolorbox}
+This is an excellent point, and we have augmented our discussion in
+Section 5.2 to better explain this result. While there are not
+substantial differences in the error reported for each dataset size (an
+RMSE of about 6 Kelvin), we believe that the additional data points
+available in the full-sized dataset may have led to over-fitting rather
+than a boost in model performance. As a result, the smaller synthetic
+samples are less susceptible to over-fitting and perform slightly
+better.
+\end{tcolorbox}
+
+\subsection{Reviewer: 2}\label{reviewer-2}
+
+This manuscript focuses on the problem of processing queries over a
+stream of spatio-temporal observational data. Each item in the stream
+contains a geographical location, a timestamp, and a set of key-value
+pairs. The authors develop a number of components to efficiently process
+the queries. Experimental results demonstrate that their proposal is
+capable of high efficiency. Overall, this is a good piece of research
+work that studies an interesting and practical problem. But it can be
+improved, especially in terms of presentation.
+
+Strong points: 1. The problem of processing general queries over
+spatio-temporal observational data is quite useful and practical; 2.
+Based on the experimental results, the proposed solutions are efficient.
+
+Weak points: 1. The presentation can be improved. The overflow of this
+paper is not easy to follow; 2. The technical contributions and
+challenges of the problem studied in this work are not presented in a
+clear way.
+
+\begin{tcolorbox}
+(response)
+\end{tcolorbox}
+
+\begin{enumerate}
+\def\labelenumi{(\arabic{enumi})}
+\item
+  In Section 1, the first and second items in ``challenges'' are
+  similar. High data arrival rates will incur high data volumes.
+  Consequently, challenges of ``data volumes'' and ``data arrival
+  rates'' can be merged;
+\end{enumerate}
+
+\begin{tcolorbox}
+Thank you for bringing this to our attention. We have merged the first
+two challenges listed in Section 1.
+\end{tcolorbox}
+
+\begin{enumerate}
+\def\labelenumi{(\arabic{enumi})}
+\setcounter{enumi}{1}
+\item
+  The overflow is not easy to follow. The format/definition of the
+  queries to be handled is still unclear. The problem definition (i.e.,
+  the format of the observational streaming data, the definition of the
+  queries, etc.) can be presented before Section 2;
+\end{enumerate}
+
+\begin{tcolorbox}
+We appreciate this feedback and have taken a number of steps to improve
+readability of the manuscript:
+
+\begin{itemize}
+\item
+  Additional headings and formatting improvements (`System Components'
+  in Sec. 1, indentation for the components, \ldots{})
+\item
+  Removal of some redundant/repetitive text (Figure captions that
+  duplicated manuscript text, \ldots{})
+\item
+  item 3\ldots{}
+\end{itemize}
+
+We have also added a new `Problem Definition' section, placed before
+Section 2 as suggested. We feel that this helps bring readers up to
+speed with the trade-off space we are working with and also introduces
+the kind of queries Synopsis supports early on. Thank you for this
+suggestion!
+\end{tcolorbox}
+
+\begin{enumerate}
+\def\labelenumi{(\arabic{enumi})}
+\setcounter{enumi}{2}
+\item
+  In Section 3.3, what are the novelty and technical challenge(s) of
+  ``sketchlet'', especially in the context of ``distributed
+  maintenance''?
+\end{enumerate}
+
+\begin{tcolorbox}
+(response)
+\end{tcolorbox}
+
+\subsection{Reviewer: 3}\label{reviewer-3}
+
+This paper proposes a distributed sketch over spatiotemporal streams
+called SYNOPSIS. This sketch maintains a compact representation of the
+streaming data, organized as a so-called SIFT structure, and it supports
+dynamic scaling to preserve responsiveness and avoid overprovisioning. A
+set of queries are supported by the proposed sketch, such as relational
+queries, statistical queries, etc. The experimental study demonstrates
+the efficacy of SYNOPSIS.
+
+\begin{tcolorbox}
+(response)
+\end{tcolorbox}
+
+My major concern is that the core technique of the sketch is based on
+the previous work {[}11{]}, and a set of queries can be supported is
+because of the usage of Welford's method {[}11{]}, and thus the novelty
+is limited, although the authors take into account the varied data
+density and arrival rates. I think the authors need to exploit more
+novel techniques to support more types of queries (maybe in the future
+work?).
+
+\begin{tcolorbox}
+Welford's method is indeed a key part of the functionality in Synopsis;
+however, we feel that the true novelty of our approach is derived from
+the hierarchical organization of metadata in the SIFT, which eventually
+leads to these statical summaries. While other approaches may choose to
+create a multidimensional matrix of feature values or store statistics
+at each vertex in the graph, we were able to substantially reduce memory
+consumption by tracking query contexts through the SIFT and storing data
+solely at the leaves. Combined with our use of Geohashes, we can
+effectively scale the SIFT in and out at runtime with changing resource
+demands.
+
+It is also worth noting that the primary benefit of using Welford's
+method is that we can track distributions within metadata bins on a
+fine-grained level; while it would certainly be possible to operate the
+system without the presence of these statistical summaries (simply
+storing bin counts instead), the accuracy of (1) query results, and (2)
+synthetic datasets would decrease.
+
+TODO discuss how we improved the methodology to highlight this.
+\end{tcolorbox}
+
+Another question is about the spatial or temporal query window size. The
+distributed sketch is based on the geohash algorithm, which divides the
+earth into a hierarchy of bounding boxes. The spatial range specified in
+the query may not cover the bound boxes exactly, which means that only
+part of the data in a box should be considered rather than the entire
+data in the box. However, the record in each box used in query
+processing contains statistics for the whole box. How can the accuracy
+of the queries be guaranteed?
+
+\begin{tcolorbox}
+This is an excellent question, and we have updated the text (Section
+X.X) to better explain how such spatial queries are resolved. In short,
+we maintain a full-resolution geohash for each observation. While this
+incurs additional memory overhead compared to simply not storing the
+entire hash, it allows us to perform fine-grained queries. In situations
+where multiple geohash bounding boxes overlap the query region, we
+decompose the query into the smallest possible geohash ranges and then
+eliminate any non-matching observations by calculating and comparing
+their respective latitude/longitude points. As a result, spatial
+retrievals in Synopsis are somewhat similar to an R-Tree {[}cite{]}
+traversal.
+\end{tcolorbox}
+
+The SIFT structural compaction is not described clearly enough. I
+suggest the authors add an example in that section. Is it true that it
+does not matter how the original SIFT is constructed (either spatial
+first level or temporal first level), because it will be reconfigured
+dynamically?
+
+\begin{tcolorbox}
+That is correct: the SIFT will be reconfigured based on observed
+distributions and fan-out scores. Along with the improvements suggested
+by Reviewer 1, we have revamped Section 3.2.2 to be much more
+straightforward. We observe the full-resolution values stored in the
+SIFT, calculate fan-out scores for each feature (the average number of
+outgoing edges for feature vertices), sort the features based on the
+score (from low to high), and then reconfigure the tree hierarchy to
+match the sorted feature fan-out scores.
+\end{tcolorbox}
+
+Yufei Tao et al. proposed a sketch-based method for spatio-temporal
+aggregation (Spatio-Temporal Aggregation Using Sketches. ICDE'04), which
+is relevant to this work. The authors should discuss this paper in the
+related work section.
+
+\begin{tcolorbox}
+Thank you very much for bringing this to our attention; we have added a
+discussion about this work and some of the related technologies it
+builds on to the related work (Section 6).
+\end{tcolorbox}
+
+\end{document}
