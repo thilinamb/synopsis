@@ -110,4 +110,4 @@ That is correct: the SIFT will be reconfigured based on observed distributions a
 
 > Yufei Tao et al. proposed a sketch-based method for spatio-temporal aggregation (Spatio-Temporal Aggregation Using Sketches. ICDE'04), which is relevant to this work. The authors should discuss this paper in the related work section.
 
-(response)
+Thank you very much for bringing this work to our attention; we have added a discussion about it and some of the related technologies it builds on to the related work (Section 6).
