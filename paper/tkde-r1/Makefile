@@ -1,5 +1,7 @@
 name=synopsis-tkde
 
+all: $(name).pdf changes.pdf
+
 $(name).pdf: $(name).tex ./sections/* ./figures/* references.bib
 	pdflatex -interaction=batchmode $(name)
 	bibtex $(name) || true
@@ -7,5 +9,10 @@ $(name).pdf: $(name).tex ./sections/* ./figures/* references.bib
 	pdflatex -interaction=nonstopmode $(name)
 	rm -f $(name).{aux,bbl,bib,blg,log,toc,out}
 
+changes.pdf: changes.tex
+	pdflatex $<
+	rm -rf changes.{aux,bbl,bib,blg,log,toc,out}
+
 clean:
 	rm -f $(name).{aux,bbl,bib,blg,log,pdf,toc,out}
+	rm -f changes.{aux,bbl,bib,blg,log,toc,out}
