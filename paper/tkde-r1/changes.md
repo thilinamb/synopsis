@@ -106,7 +106,7 @@ This is an excellent question, and we have updated the text (Section X.X) to bet
 
 > The SIFT structural compaction is not described clearly enough. I suggest the authors add an example in that section. Is it true that it does not matter how the original SIFT is constructed (either spatial first level or temporal first level), because it will be reconfigured dynamically?
 
-(response)
+That is correct: the SIFT will be reconfigured based on observed distributions and fan-out scores. Along with the improvements suggested by Reviewer 1, we have revamped Section 3.2.2 to be much more straightforward. We observe the full-resolution values stored in the SIFT, calculate fan-out scores for each feature (the average number of outgoing edges for feature vertices), sort the features based on the score (from low to high), and then reconfigure the tree hierarchy to match the sorted feature fan-out scores.
 
 > Yufei Tao et al. proposed a sketch-based method for spatio-temporal aggregation (Spatio-Temporal Aggregation Using Sketches. ICDE'04), which is relevant to this work. The authors should discuss this paper in the related work section.
 
