@@ -173,14 +173,9 @@ While the queries used for these benchmarks were indeed generated randomly, it i
 \end{enumerate}
 
 \begin{tcolorbox}
-This is an excellent point, and we have augmented our discussion in
-Section 5.2 to better explain this result. While there are not
-substantial differences in the error reported for each dataset size (an
-RMSE of about 6 Kelvin), we believe that the additional data points
-available in the full-sized dataset may have led to over-fitting rather
-than a boost in model performance. As a result, the smaller synthetic
-samples are less susceptible to over-fitting and perform slightly
-better.
+This is an excellent point, and we have augmented our discussion in Section 5.2 to better explain this result. While there are not substantial differences in the error reported for each dataset size (an RMSE of about 6 Kelvin), we believe that the additional data points available in the full-sized dataset may have led to over-fitting rather than a boost in model performance. As a result, the smaller synthetic samples are less susceptible to over-fitting and perform slightly better.
+
+To explore this hypothesis, we re-ran the benchmarks using 10\% and 20\% samples of the full-resolution data for a direct comparison with the synthetic data. %TODO finish
 \end{tcolorbox}
 
 \subsection*{Reviewer: 2}\label{reviewer-2}
@@ -324,7 +319,7 @@ where multiple geohash bounding boxes overlap the query region, we
 decompose the query into the smallest possible geohash ranges and then
 eliminate any non-matching observations by calculating and comparing
 their respective latitude/longitude points. As a result, spatial
-retrievals in Synopsis are somewhat similar to an R-Tree {[}cite{]}
+    retrievals in Synopsis are somewhat similar to an R-Tree \cite{guttman1984r}
 traversal.
 \end{tcolorbox}
 
@@ -352,8 +347,11 @@ related work section.
 
 \begin{tcolorbox}
 Thank you very much for bringing this to our attention; we have added a
-discussion about this work and some of the related technologies it
-builds on to the related work (Section 6).
+    discussion about this work \cite{tao2004spatio} and some of the related technologies it
+    builds on \cite{papadias2002indexing,flajolet1985probabilistic} to the related work (Section 6). 
 \end{tcolorbox}
+
+\bibliographystyle{plain}
+\bibliography{references.bib}
 
 \end{document}
