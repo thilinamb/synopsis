@@ -120,13 +120,15 @@ These randomized queries fluctuated in both the ranges of values and spatial sco
 
 \hl{Next we evaluated the query speedup gained by maintaining an in-memory sketch of the data compared to a traditional ETL pipeline.
 We extracted timestamp, location information (as a geohash), temperature, surface visibility, humidity and precipitation in the southeast United States during the months of May--August, 2011--2014 and loaded them into Spark as a DataFrame which was then queried using SparkSQL.
-Given that the underlying RDD of the DataFrame cannot be shared between multiple Spark applications, we used a multi-threaded driver to issue concurrent queries.
-Similarly Synopsis was evaluated using a multi-threaded query funnel.
+Given that the underlying RDD of the DataFrame cannot be shared between multiple Spark applications, we used a multi-threaded driver to issue concurrent queries in order to evaluate the query performance with different number of clients.
+Similarly, Synopsis was evaluated using a multi-threaded query funnel.
 For Spark, in order to minimize the data transfer between Spark cluster and driver, a} \texttt{count} \hl{action was performed after the SQL query and its result was retrieved at the client.
 For Synopsis, we performed equivalent tree retrieval queries where sections of the distributed sketch is serialized and sent back to the query funnel.
 End-to-end latencies of the queries were recorded for different concurrency levels.
+Spark was evaluated under two different settings --- caching enabled and disabled for the Dataframe.
 The results of this evaluation is depicted in} Figure~\ref{fig:spark-sql-query}.
-\hl{The end-to-end latency of the Synopsis queries is significantly less despite the higher communication overhead between the cluster and query funnel compared to Spark SQL.
-Spark queries provides higher accuracy because queries are answered after scanning the entire dataset, but it requires more resources and incurs higher query latencies and variability.
-Resource requirements and query latencies with such ETL systems drastically increase with more features and larger temporal scopes.}
+When caching is enabled, the Dataframe will be kept in memory once materialized for the first time reducing the subsequent access times. Caching the entire Dataframe in memory may not be feasible in most real world spatiotemporal analytical tasks where the size of the dataset exceeds the available memory capacity of the cluster.
+\hl{The end-to-end latency of the Synopsis queries is significantly less despite the larger size of the query results (section of the sketch for Synopsis vs the number of matching records for SparkSQL) transferred from the cluster to the query funnel.
+Spark queries provides higher accuracy because queries are answered after scanning the entire dataset, but it requires more resources --- mainly memory and storage -- and incurs higher query latencies.
+Resource requirements and query latencies with such ETL systems drastically increase with the number of features and geospatial and temporal scopes.}
 
