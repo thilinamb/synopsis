@@ -194,7 +194,7 @@ Weak points:
 \end{enumerate}
 
 \begin{tcolorbox}
-(response)
+    Thank you very much for your thoughtful suggestions. We have implemented these changes in the manuscript; our specific actions are noted below. In particular, this revision includes several updates to improve readability and the clarity of our algorithms.
 \end{tcolorbox}
 
 \begin{enumerate}
@@ -207,8 +207,7 @@ Weak points:
 \end{enumerate}
 
 \begin{tcolorbox}
-Thank you for bringing this to our attention. We have merged the first
-two challenges listed in Section 1.
+Thank you for bringing this to our attention. We have merged the first two challenges listed in Section 1.
 \end{tcolorbox}
 
 \begin{enumerate}
@@ -222,25 +221,15 @@ two challenges listed in Section 1.
 \end{enumerate}
 
 \begin{tcolorbox}
-We appreciate this feedback and have taken a number of steps to improve
-readability of the manuscript:
+We appreciate this feedback and have taken a number of steps to improve the readability of our manuscript:
 
 \begin{itemize}
-\item
-  Additional headings and formatting improvements (`System Components'
-  in Sec. 1, indentation for the components, \ldots{})
-\item
-  Removal of some redundant/repetitive text (Figure captions that
-  duplicated manuscript text, \ldots{})
-\item
-  item 3\ldots{}
+\item Additional headings and formatting improvements (`System Components' in Sec. 1, indentation for the components, code listings for algorithms, syntax highlighting on the listings and SQL statements)
+\item Removal of some redundant/repetitive text, including Figure captions that duplicated main manuscript text.
+\item As per your suggestion, we reorganized the preliminaries. We now discuss the system components, data model, definition of queries, and partitioning strategy right after the introduction. This comes before the methodology and should help introduce readers to the trade-off space we are working with while also providing a glimpse of the queries \textsc{Synopsis} supports.
 \end{itemize}
-
-We have also added a new `Problem Definition' section, placed before
-Section 2 as suggested. We feel that this helps bring readers up to
-speed with the trade-off space we are working with and also introduces
-the kind of queries Synopsis supports early on. Thank you for this
-suggestion!
+%
+Thank you for these suggestions!
 \end{tcolorbox}
 
 \begin{enumerate}
@@ -253,7 +242,7 @@ suggestion!
 \end{enumerate}
 
 \begin{tcolorbox}
-(response)
+    This is a key connection that was not made clearly before. We have added Section 3.2.5 to discuss how the SIFT structure facilitates scalability in terms of the distributed system, and also clarified a few key points in Sections 3.3 and 3.4 to better explain the interaction between the two components. Thank you for this suggestion.
 \end{tcolorbox}
 
 \subsection*{Reviewer: 3}\label{reviewer-3}
@@ -310,17 +299,8 @@ processing contains statistics for the whole box. How can the accuracy
 of the queries be guaranteed?
 
 \begin{tcolorbox}
-This is an excellent question, and we have updated the text (Section
-X.X) to better explain how such spatial queries are resolved. In short,
-we maintain a full-resolution geohash for each observation. While this
-incurs additional memory overhead compared to simply not storing the
-entire hash, it allows us to perform fine-grained queries. In situations
-where multiple geohash bounding boxes overlap the query region, we
-decompose the query into the smallest possible geohash ranges and then
-eliminate any non-matching observations by calculating and comparing
-their respective latitude/longitude points. As a result, spatial
-    retrievals in Synopsis are somewhat similar to an R-Tree \cite{guttman1984r}
-traversal.
+    %TODO changes to the manuscript!!
+This is an excellent question, and we have updated the text (Section X.X) to better explain how such spatial queries are resolved. In short, we maintain a full-resolution geohash for each observation. While this incurs additional memory overhead compared to simply not storing the entire hash, it allows us to perform fine-grained queries. In situations where multiple geohash bounding boxes overlap the query region, we decompose the query into the smallest possible geohash ranges and then eliminate any non-matching observations by calculating and comparing their respective latitude/longitude points. As a result, spatial retrievals in Synopsis are somewhat similar to an R-Tree \cite{guttman1984r} traversal.
 \end{tcolorbox}
 
 The SIFT structural compaction is not described clearly enough. I
@@ -330,14 +310,7 @@ first level or temporal first level), because it will be reconfigured
 dynamically?
 
 \begin{tcolorbox}
-That is correct: the SIFT will be reconfigured based on observed
-distributions and fan-out scores. Along with the improvements suggested
-by Reviewer 1, we have revamped Section 3.2.2 to be much more
-straightforward. We observe the full-resolution values stored in the
-SIFT, calculate fan-out scores for each feature (the average number of
-outgoing edges for feature vertices), sort the features based on the
-score (from low to high), and then reconfigure the tree hierarchy to
-match the sorted feature fan-out scores.
+That is correct: the SIFT will be reconfigured based on observed distributions and fan-out scores. Along with the improvements suggested by Reviewer 1, we have revamped Section 3.2.2 to be much more straightforward. We observe the full-resolution values stored in the SIFT, calculate fan-out scores for each feature (the average number of outgoing edges for feature vertices), sort the features based on the score (from low to high), and then reconfigure the tree hierarchy to match the sorted feature fan-out scores.
 \end{tcolorbox}
 
 Yufei Tao et al. proposed a sketch-based method for spatio-temporal
@@ -346,9 +319,7 @@ is relevant to this work. The authors should discuss this paper in the
 related work section.
 
 \begin{tcolorbox}
-Thank you very much for bringing this to our attention; we have added a
-    discussion about this work \cite{tao2004spatio} and some of the related technologies it
-    builds on \cite{papadias2002indexing,flajolet1985probabilistic} to the related work (Section 6). 
+Thank you very much for bringing this to our attention; we have added a discussion about this work \cite{tao2004spatio} and some of the related technologies it builds on \cite{papadias2002indexing,flajolet1985probabilistic} to the related work (Section 6). 
 \end{tcolorbox}
 
 \bibliographystyle{plain}
