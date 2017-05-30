@@ -192,7 +192,7 @@ queries were sourced.
 \end{enumerate}
 
 \begin{tcolorbox}
-(response)
+    Our scaling algorithm is able to dynamically cope with both increases and decreases in resource availability at run time, with the primary goal being to conserve resources whenever possible (while respecting accuracy constraints). We operate under this expectation due to the approximate nature of \textsc{Synopsis}; with a limitless resource pool, users would likely select an alternative system that does not trade off accuracy. However, it is worth noting that as long as geohash precision is available (i.e., the spatial areas managed by \textsc{Synopsis} can be subdivided), the system can continue to scale out.
 \end{tcolorbox}
 
 \begin{enumerate}
