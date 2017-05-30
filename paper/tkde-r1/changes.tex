@@ -51,20 +51,22 @@ substantially as a result. Our main improvements to the text include:
   Edits that address each of the questions raised by the reviewers
   (explained in greater detail below), along with substantial cleanup
   and formatting tweaks to improve readability
+
 \item
   A revamped contributions section in the introduction to highlight the
   novelty of our SIFT data structure
+
 \item
   A memory growth benchmark that incorporates a second geospatial
   dataset. This illustrates that the memory consumption profile observed
   with our first dataset applies to another geospatial dataset as well.
+
 \item
   Pseudocode representation of the SIFT structural compaction algorithm
   and calculation of the fan-out score
-\item
-  A benchmark comparing the query performance of Spark SQL with Synopsis
-  to demonstrate the benefit of the data structures and systems design
-  employed by Synopsis
+
+\item A benchmark comparing the query performance of Spark SQL with \textsc{Synopsis} to demonstrate the benefit of the data structures and systems design employed by \textsc{Synopsis}
+
 \item
   Additions to the RF benchmark (?)
 \end{itemize}
@@ -80,9 +82,7 @@ is a summary of the data but most information is reserved such that
 queries on Synopsis can produce results of high accuracy.
 
 \begin{tcolorbox}
-Thank you for your review; we have addressed each of the points below
-and feel that these suggestions were extremely helpful in improving our
-work!
+Thank you for your review; we have addressed each of the points below. We appreciate these suggestions and felt that they were extremely helpful in improving our work!
 \end{tcolorbox}
 
 \begin{enumerate}
@@ -171,15 +171,7 @@ benchmark, we compared query latency between the two systems. TODO more
 \end{enumerate}
 
 \begin{tcolorbox}
-While the queries used for these benchmarks were indeed random, it is
-worth noting that the parameterization of our query generation test
-harness was based on real-world usage patterns. In other words, we
-observed the ranges of values and combinations of features that were
-frequently requested from users of our copy of the NOAA dataset stored
-on a local file system. We also used several queries developed for the
-visualizations in the paper as seed queries for the generator. We have
-updated the description of this benchmark to better explain how the test
-queries were sourced.
+While the queries used for these benchmarks were indeed generated randomly, it is worth noting that the parameterization of our query generation test harness was based on real-world usage patterns. In other words, we observed the ranges of values and combinations of features that were frequently requested from users of our copy of the NOAA dataset stored on a local file system. We also used several queries developed for the visualizations in the paper as seed queries for the generator. We have updated the description of this benchmark to better explain how the test queries were sourced.
 \end{tcolorbox}
 
 \begin{enumerate}
@@ -217,24 +209,19 @@ better.
 \end{tcolorbox}
 
 \subsection*{Reviewer: 2}\label{reviewer-2}
-
-This manuscript focuses on the problem of processing queries over a
-stream of spatio-temporal observational data. Each item in the stream
-contains a geographical location, a timestamp, and a set of key-value
-pairs. The authors develop a number of components to efficiently process
-the queries. Experimental results demonstrate that their proposal is
-capable of high efficiency. Overall, this is a good piece of research
-work that studies an interesting and practical problem. But it can be
-improved, especially in terms of presentation.
-
-Strong points: 1. The problem of processing general queries over
-spatio-temporal observational data is quite useful and practical; 2.
-Based on the experimental results, the proposed solutions are efficient.
-
-Weak points: 1. The presentation can be improved. The overflow of this
-paper is not easy to follow; 2. The technical contributions and
-challenges of the problem studied in this work are not presented in a
-clear way.
+This manuscript focuses on the problem of processing queries over a stream of spatio-temporal observational data. Each item in the stream contains a geographical location, a timestamp, and a set of key-value pairs. The authors develop a number of components to efficiently process the queries. Experimental results demonstrate that their proposal is capable of high efficiency. Overall, this is a good piece of research work that studies an interesting and practical problem. But it can be improved, especially in terms of presentation. \\
+%
+Strong points:
+\begin{enumerate}
+    \item The problem of processing general queries over spatio-temporal observational data is quite useful and practical;
+    \item Based on the experimental results, the proposed solutions are efficient.
+\end{enumerate}
+%
+Weak points:
+\begin{enumerate}
+    \item The presentation can be improved. The overflow of this paper is not easy to follow;
+    \item The technical contributions and challenges of the problem studied in this work are not presented in a clear way.
+\end{enumerate}
 
 \begin{tcolorbox}
 (response)
