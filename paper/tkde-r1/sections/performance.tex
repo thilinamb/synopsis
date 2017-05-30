@@ -106,10 +106,10 @@ Since we allow aggressive scale-out, rapid scaling out is observed during high d
     \caption{Distributed query evaluation performance --- cumulative throughput and latency in a 40 node \textsc{Synopsis} cluster.}
     \label{fig:dist-query}
 \end{figure*}
-To evaluate distributed query performance, we executed several representative workloads across a variety of sketchlet sizes. These queries were categorized as conventional lookups and tree retrievals.  Figure~\ref{fig:dist-query} depicts the end-to-end efficiency of the query evaluations over the distributed sketch.
+To evaluate distributed query performance, we executed representative workloads based on observed access patterns over our test dataset across a variety of sketchlet sizes. These queries were categorized as conventional lookups and tree retrievals.  Figure~\ref{fig:dist-query} depicts the end-to-end efficiency of the query evaluations over the distributed sketch.
 Cumulative query throughput and latencies were measured with varying numbers of \emph{concurrent query funnels}.
-A query funnel continuously generates and dispatches random queries at its maximum possible rate to stress test the system and saturate its capacity. For example, a query could request summary statistics or feature relationships when the temperature is between 20$^{\circ}$ - 30$^{\circ}$, humidity is above 80\%, and the wind is blowing at 16 km/h.
-These randomized queries fluctuated in both the ranges of values and spatial scope, resulting in high variability in the number of sketchlets required to resolve the query as well as the depth and breadth of the required tree traversals.
+A query funnel continuously generates and dispatches representative queries at the maximum possible rate to stress test the system and saturate its capacity. For example, a query could request summary statistics or feature relationships when the temperature is 20--30$^{\circ}$, humidity is above 80\%, and the wind speed is 16 km/h.
+These queries fluctuated in both the ranges of values and spatial scope, resulting in high variability in the number of sketchlets required to resolve the query as well as the depth and breadth of the required tree traversals.
 %
 \begin{figure}
     \centerline{\includegraphics[width=\linewidth]{figures/spark-sql-query-complete.pdf}}
