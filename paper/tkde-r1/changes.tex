@@ -118,7 +118,7 @@ While our previous manuscript discussed the standard error reported alongside qu
 \end{enumerate}
 
 \begin{tcolorbox}
-Thank you for this suggestion! We have added a benchmark that incorporates air quality data sourced from the US Environmental Protection Agency to Section 4.2. We feel this addition substantially strengthens the claims made in the paper, and also corroborates the results from our previous experiment with atmospheric data -- both benchmarks demonstrate similar profiles in memory consumption as new observations are assimilated. In general, this helps illustrate how Synopsis can scale as additional data is stored, while handling broad diversity in dataset types.
+    Thank you for this suggestion! We have added a benchmark that incorporates air quality data sourced from the US Environmental Protection Agency to Section 4.2. We feel this addition substantially strengthens the claims made in the paper, and also corroborates the results from our previous experiment with atmospheric data -- both benchmarks demonstrate similar profiles in memory consumption as new observations are assimilated. In general, this helps illustrate how \textsc{Synopsis} can scale as additional data is stored, while handling broad diversity in dataset types.
 \end{tcolorbox}
 
 \begin{enumerate}
@@ -132,7 +132,7 @@ Thank you for this suggestion! We have added a benchmark that incorporates air q
 \end{enumerate}
 
 \begin{tcolorbox}
-    We felt that Spark SQL would be a reasonable point of comparison with Synopsis; while an exact 1:1 system does not exist, Spark is currently at the state-of-the-art in cluster computing and analysis. In this new benchmark (discussed in Section 4.6), we compared query latency between the two systems; for Spark, this includes results with and without caching enabled (pinning the RDDs in memory) -- while a production environment would preclude caching the entire dataset, we wanted to provide a fair point of comparison between the two systems by avoiding disk I/O in Spark.
+    We felt that Spark SQL would be a reasonable point of comparison with \textsc{Synopsis}; while an exact 1:1 system does not exist, Spark is currently at the state-of-the-art in cluster computing and analysis. In this new benchmark (discussed in Section 4.6), we compared query latency between the two systems; for Spark, this includes results with and without caching enabled (pinning the RDDs in memory) -- while a production environment would preclude caching the entire dataset, we wanted to provide a fair point of comparison between the two systems by avoiding disk I/O in Spark.
     
     The benchmark demonstrates that the end-to-end latency of \textsc{Synopsis} queries is significantly less compared to Spark SQL. However, it is worth noting that Spark queries provide higher accuracy because they are answered after scanning the entire dataset. On the other hand, Spark requires more resources and incurs higher query latencies and variability.
 \end{tcolorbox}
@@ -242,7 +242,7 @@ Thank you for these suggestions!
 \end{enumerate}
 
 \begin{tcolorbox}
-    This is a key connection that was not made clearly before. We have added Section 3.2.5 to discuss how the SIFT structure facilitates scalability in terms of the distributed system, and also clarified a few key points in Sections 3.3 and 3.4 to better explain the interaction between the two components. Thank you for this suggestion.
+    This is a key connection that was not made clearly before. We have added Section 3.2.5 to discuss how the SIFT structure facilitates scalability in terms of the distributed system, and also clarified a few key points in Sections 3.3 and 3.4 to better explain the interaction between the two components. 
 \end{tcolorbox}
 
 \subsection*{Reviewer: 3}\label{reviewer-3}
@@ -256,7 +256,7 @@ queries, statistical queries, etc. The experimental study demonstrates
 the efficacy of SYNOPSIS.
 
 \begin{tcolorbox}
-(response)
+    We greatly appreciate your review and thoughtful comments, and have addressed each of the points below. In particular, we have taken steps to highlight the novelty of our algorithms. Thank you!
 \end{tcolorbox}
 
 My major concern is that the core technique of the sketch is based on
@@ -268,25 +268,11 @@ novel techniques to support more types of queries (maybe in the future
 work?).
 
 \begin{tcolorbox}
-Welford's method is indeed a key part of the functionality in Synopsis;
-however, we feel that the true novelty of our approach is derived from
-the hierarchical organization of metadata in the SIFT, which eventually
-leads to these statical summaries. While other approaches may choose to
-create a multidimensional matrix of feature values or store statistics
-at each vertex in the graph, we were able to substantially reduce memory
-consumption by tracking query contexts through the SIFT and storing data
-solely at the leaves. Combined with our use of Geohashes, we can
-effectively scale the SIFT in and out at runtime with changing resource
-demands.
+    Welford's method is indeed a key part of the functionality in \textsc{Synopsis}; however, we feel that the true novelty of our approach is derived from the hierarchical organization of metadata in the SIFT, which eventually leads to these statical summaries. While other approaches may choose to create a multidimensional matrix of feature values or store statistics at each vertex in the graph, we were able to substantially reduce memory consumption by tracking query contexts through the SIFT and storing data solely at the leaves. Combined with our use of Geohashes, we can effectively scale the SIFT in and out at runtime with changing resource demands.
 
-It is also worth noting that the primary benefit of using Welford's
-method is that we can track distributions within metadata bins on a
-fine-grained level; while it would certainly be possible to operate the
-system without the presence of these statistical summaries (simply
-storing bin counts instead), the accuracy of (1) query results, and (2)
-synthetic datasets would decrease.
+It is also worth noting that the primary benefit of using Welford's method is that we can track distributions within metadata bins on a fine-grained level; it would actually be possible to operate the system without the presence of these statistical summaries (simply storing bin counts instead), but the accuracy of: (1) query results, and (2) synthetic datasets would decrease somewhat. Nevertheless, the dynamic scaling, query resoultion, and even metadata extraction processes would all continue to operate effectively.
 
-TODO discuss how we improved the methodology to highlight this.
+We took several steps to help highlight the novely of our approach; the ``Paper Contributions'' subsection in the introduction was rewritten to focus on novel aspects, we have improved the clarity of the descriptions of our algorithms in Section 3, and also added a discussion to the future work about the potential for additional novel queries.
 \end{tcolorbox}
 
 Another question is about the spatial or temporal query window size. The
@@ -300,7 +286,7 @@ of the queries be guaranteed?
 
 \begin{tcolorbox}
     %TODO changes to the manuscript!!
-This is an excellent question, and we have updated the text (Section X.X) to better explain how such spatial queries are resolved. In short, we maintain a full-resolution geohash for each observation. While this incurs additional memory overhead compared to simply not storing the entire hash, it allows us to perform fine-grained queries. In situations where multiple geohash bounding boxes overlap the query region, we decompose the query into the smallest possible geohash ranges and then eliminate any non-matching observations by calculating and comparing their respective latitude/longitude points. As a result, spatial retrievals in Synopsis are somewhat similar to an R-Tree \cite{guttman1984r} traversal.
+    This is an excellent question, and we have updated the text (Section X.X) to better explain how such spatial queries are resolved. In short, we maintain a full-resolution geohash for each observation. While this incurs additional memory overhead compared to simply not storing the entire hash, it allows us to perform fine-grained queries. In situations where multiple geohash bounding boxes overlap the query region, we decompose the query into the smallest possible geohash ranges and then eliminate any non-matching observations by calculating and comparing their respective latitude/longitude points. As a result, spatial retrievals in \textsc{Synopsis} are somewhat similar to an R-Tree \cite{guttman1984r} traversal.
 \end{tcolorbox}
 
 The SIFT structural compaction is not described clearly enough. I
