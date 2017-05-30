@@ -1,8 +1,7 @@
-\textsc{Synopsis} relies on passive replication to recover from sketchlet failures.
-It was chosen because active replication increase the resource consumption significantly and it is infeasible to use upstream backups because the state of a sketchlet depends on the entire set of messages it has processed previously \cite{castro2013integrating}.
+\textsc{Synopsis} relies on passive replication to recover from sketchlet failures because active replication increases resource consumption significantly and it is infeasible to use upstream backups because the state of a sketchlet depends on the entire set of messages it has processed previously \cite{castro2013integrating}.
 
 Support for fault tolerance is implemented by augmenting the distributed sketch with a set of secondary sketchlets.
-A sketchlet is assigned with a set of $n$ secondary sketchlets each running on different machines, so that \textsc{Synopsis} can withstand up to $n$ concurrent machine failures.
+A sketchlet is assigned a set of $n$ secondary sketchlets on different machines to ensure \textsc{Synopsis} can withstand up to $n$ concurrent machine failures.
 In our implementation, we used two secondary sketchlets ($n=2$) assigned to each sketchlet.
 A primary sketchlet periodically sends the changes to its in-memory state as an \emph{edit stream} to its secondary sketchlets.
 The secondary sketchlets, which act as the sink to the edit stream, serialize incoming messages to persistent storage.
