@@ -285,8 +285,7 @@ processing contains statistics for the whole box. How can the accuracy
 of the queries be guaranteed?
 
 \begin{tcolorbox}
-    %TODO changes to the manuscript!!
-    This is an excellent question, and we have updated the text (Section X.X) to better explain how such spatial queries are resolved. In short, we maintain a full-resolution geohash for each observation. While this incurs additional memory overhead compared to simply not storing the entire hash, it allows us to perform fine-grained queries. In situations where multiple geohash bounding boxes overlap the query region, we decompose the query into the smallest possible geohash ranges and then eliminate any non-matching observations by calculating and comparing their respective latitude/longitude points. As a result, spatial retrievals in \textsc{Synopsis} are somewhat similar to an R-Tree \cite{guttman1984r} traversal.
+    This is an excellent question, and we have updated the text (Section 3.5) to better explain how such spatial queries are resolved. In short, we maintain a full-resolution geohash for each observation. While this incurs additional memory overhead compared to simply not storing the entire hash, it allows us to perform fine-grained queries. In situations where multiple geohash bounding boxes overlap the query region, we decompose the query into the smallest possible geohash ranges and then eliminate any non-matching observations by calculating and comparing their respective latitude/longitude points. As a result, spatial retrievals in \textsc{Synopsis} are somewhat similar to an R-Tree \cite{guttman1984r} traversal.
 \end{tcolorbox}
 
 The SIFT structural compaction is not described clearly enough. I
