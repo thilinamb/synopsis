@@ -8,6 +8,7 @@ import math
 import random as rnd
 import pyspark
 from pyspark import SparkConf, SparkContext
+import numpy as np
 
 def parse_json_record(rec):
 	ind_var = ('visibility_surface', 'relative_humidity_zerodegc_isotherm', 'precipitable_water_entire_atmosphere')
@@ -28,35 +29,60 @@ def main():
          .set("spark.executor.memory", "2g").set('spark.executor.cores', '2'))
 	sc = SparkContext(conf = conf)
 	sc.setLogLevel('ERROR')
-    #spark = SparkSession.builder.appName("Random Forrest Benchmark").config(conf = conf_).master('spark://lattice-10.cs.colostate.edu:11011').getOrCreate()
-    #spark.sparkContext.setLogLevel('ERROR')
-    #sc = spark.sparkContext
 
-    # HDFS Namenode
+        # HDFS Namenode
 	hdfs_nn = 'hdfs://lattice-100.cs.colostate.edu:46780/'
-    
-    # load input data
+        
+    # load time test
+	input_list = ('test/southeast-0*-*.txt', 'sample/sample-10.txt', 'sample/sample-20.txt', 'syn/southeast-synth-1.txt', '/syn/southeast-synth-2.txt')
+	load_times = []        
+	for i in range(6):
+		load_time_i = []
+		for input_path in input_list:
+			t1 = time.time()
+			data = sc.textFile(hdfs_nn + input_path)
+			data.count()
+			t2 = time.time()
+			load_time_i.append(t2 - t1)
+		load_times.append(load_time_i)
+		print('Load time iteration completed. iteation: ', i)
+
+	load_time_data = np.array(load_times)
+	print('Load time data shape: ', load_time_data.shape)
+	np.save('load_times.npy', load_time_data)
+
+        # load input data
 	noaa_raw = sc.textFile(hdfs_nn + 'test/southeast-0*-*.txt')
 	noaa_json=noaa_raw.map(load_json).filter(lambda x: len(x) > 0)
 	noaa_labeled = noaa_json.map(parse_json_record)
+	print('Full Dataset Parition Count: ', noaa_labeled.getNumPartitions())
 
 	syn = sc.textFile(hdfs_nn + 'syn/southeast-synth-1.txt')
 	syn_json=syn.map(load_json).filter(lambda x: len(x) > 0)
-	syn_labeled = syn_json.map(parse_json_record)
+	syn_labeled = syn_json.map(parse_json_record)    
+	print('Synthetic 10% Parition Count: ', syn_labeled.getNumPartitions())
 
 	syn2 = sc.textFile(hdfs_nn + '/syn/southeast-synth-2.txt')
 	syn2_json=syn2.map(load_json).filter(lambda x: len(x) > 0)
 	syn2_labeled = syn2_json.map(parse_json_record)
-	
-	noaa_labeled.cache()
-	syn_labeled.cache()
-	syn2_labeled.cache()
+	print('Synthetic 20% Parition Count: ', syn2_labeled.getNumPartitions())
 
-	noaa_10 = noaa_labeled.filter(lambda x: rnd.random() < 0.1)
-	noaa_20 = noaa_labeled.filter(lambda x: rnd.random() < 0.2)
+	#noaa_labeled.cache()
+	#syn_labeled.cache()
+	#syn2_labeled.cache()
 
-	noaa_10.cache()
-	noaa_20.cache()
+	noaa_10_raw = sc.textFile(hdfs_nn + 'sample/sample-10.txt')
+	noaa_10_json = noaa_10_raw.map(load_json).filter(lambda x: len(x) > 0)
+	noaa_10 = noaa_10_json.map(parse_json_record)
+	print('10% Sample Parition Count: ', noaa_10.getNumPartitions())
+
+	noaa_20_raw = sc.textFile(hdfs_nn + 'sample/sample-20.txt')
+	noaa_20_json = noaa_20_raw.map(load_json).filter(lambda x: len(x) > 0)
+	noaa_20 = noaa_20_json.map(parse_json_record)
+	print('20% Sample Parition Count: ', noaa_20.getNumPartitions())
+
+	#noaa_10.cache()
+	#noaa_20.cache()
 
 	print('Record Counts - Raw: ', noaa_labeled.count())
 	print('Record Counts - Syn 10%: ', syn_labeled.count())
@@ -73,8 +99,8 @@ def main():
 		# training and test RDDs
 		training_rdd, test_rdd = noaa_labeled.randomSplit(weights=[0.95, 0.05], seed=rnd.randint(100,2000))
 		# cache them
-		training_rdd.cache()
-		test_rdd.cache()
+		#training_rdd.cache()
+		#test_rdd.cache()
 
     	# training phase
     	# raw
@@ -154,12 +180,12 @@ def main():
     	
 		print(out_str)
     	# write to file
-		with open(out_f, 'w') as file_handler:
+		with open(out_f, 'a') as file_handler:
 			file_handler.write(out_str)
 
     	# uncache training and test RDDs
-		training_rdd.unpersist()
-		test_rdd.unpersist()
+		#training_rdd.unpersist()
+		#test_rdd.unpersist()
 		it_end = time.time()
 		print('Iteration Completion Time: ', (it_end - it_start))
 		time.sleep(120)
