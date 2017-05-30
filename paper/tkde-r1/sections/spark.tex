@@ -18,19 +18,19 @@ For instance, our 10\% synthetic dataset produces a model with similar accuracy 
     \begin{center}
         \begin{tabularx}{\textwidth}{|X|c|c|c|c|c|c|c|c|}
             \hline
-            \multirow{2}{*}{Dataset} & \multirow{2}{*}{Size (GB)} & \multirow{2}{*}{RDD Partitions} & \multicolumn{2}{c|}{\cellcolor[gray]{0.7}Data Loading Time (s)} &\multicolumn{2}{c|}{\cellcolor[gray]{0.7}Model Training Time (s)} & \multicolumn{2}{c|}{\cellcolor[gray]{0.7}Accuracy (RMSE)}\\
+            \multirow{2}{*}{Dataset} & \multirow{2}{*}{Size (GB)} & \multirow{2}{*}{RDD Partitions} & \multicolumn{2}{c|}{\cellcolor[gray]{0.7}Data Loading Time (s)} &\multicolumn{2}{c|}{\cellcolor[gray]{0.7}Model Training Time (s)} & \multicolumn{2}{c|}{\cellcolor[gray]{0.7}Accuracy - RMSE (K)}\\
             \cline{4-9}
              & & & \cellcolor[gray]{0.9}Mean & \cellcolor[gray]{0.9}Std. Dev.  &  \cellcolor[gray]{0.9}Mean & \cellcolor[gray]{0.9}Std. Dev. &  \cellcolor[gray]{0.9}Mean & \cellcolor[gray]{0.9}Std. Dev. \\
             \hline
-            Original & 25.350 & 208 & 4.611 & 0.133 & 520.657 & 7.690 & 6.025 K & 0.051 \\
+            Original & 25.350 & 208 & 32.859 & 6.043 & 520.657 & 7.690 & 6.025 & 0.051 \\
             \hline
-            Original - 10\% Sample & - & - & - & - & - & - & -  & - \\
+            Original - 10\% Sample & 2.535 & 21 & 4.223 & 1.768 & - & - & -  & - \\
             \hline
-            Original - 20\% Sample & - & - & - & - & - & - & - & - \\
+            Original - 20\% Sample & 5.069 & 41 & 6.746 & 2.269 & - & - & - & - \\
             \hline
-            Synthetic - 10\% & 2.549 & 21 & 3.424 & 0.288 & 246.212 & 15.046 & 5.980 K & 0.024 \\
+            Synthetic - 10\% & 2.549 & 21 & 4.969 & 2.168 & 246.212 & 15.046 & 5.980 & 0.024 \\
             \hline
-            Synthetic - 20\% & 4.336 & 41 & 3.997 & 0.392 & 278.682 & 17.475 & 6.018 K & 0.064 \\
+            Synthetic - 20\% & 5.098 & 41 & 8.726 & 3.200 & 278.682 & 17.475 & 6.018 & 0.064 \\
             \hline
         \end{tabularx}
     \end{center}
