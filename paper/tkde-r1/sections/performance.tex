@@ -113,7 +113,7 @@ These queries fluctuated in both the ranges of values and spatial scope, resulti
 %
 \begin{figure}
     \centerline{\includegraphics[width=\linewidth]{figures/spark-sql-query-complete.pdf}}
-    \caption{Contrasting Synopsis query performance with Spark-SQL.}
+    \caption{Contrasting \textsc{Synopsis} query performance with Spark-SQL.}
     \label{fig:spark-sql-query}
 \end{figure}
 %
@@ -121,12 +121,12 @@ These queries fluctuated in both the ranges of values and spatial scope, resulti
 \hl{Next we evaluated the query speedup gained by maintaining an in-memory sketch of the data compared to a traditional ETL pipeline.
 We extracted timestamp, location information (as a geohash), temperature, surface visibility, humidity and precipitation in the southeast United States during the months of May--August, 2011--2014 and loaded them into Spark as a DataFrame which was then queried using SparkSQL.
 Given that the underlying RDD of the DataFrame cannot be shared between multiple Spark applications, we used a multi-threaded driver to issue concurrent queries.
-Similarly Synopsis was evaluated using a multi-threaded query funnel.
+Similarly \textsc{Synopsis} was evaluated using a multi-threaded query funnel.
 For Spark, in order to minimize the data transfer between Spark cluster and driver, a} \texttt{count} \hl{action was performed after the SQL query and its result was retrieved at the client.
-For Synopsis, we performed equivalent tree retrieval queries where sections of the distributed sketch is serialized and sent back to the query funnel.
+For \textsc{Synopsis}, we performed equivalent tree retrieval queries where sections of the distributed sketch is serialized and sent back to the query funnel.
 End-to-end latencies of the queries were recorded for different concurrency levels.
 The results of this evaluation is depicted in} Figure~\ref{fig:spark-sql-query}.
-\hl{The end-to-end latency of the Synopsis queries is significantly less despite the higher communication overhead between the cluster and query funnel compared to Spark SQL.
+\hl{The end-to-end latency of the \textsc{Synopsis} queries is significantly less despite the higher communication overhead between the cluster and query funnel compared to Spark SQL.
 Spark queries provides higher accuracy because queries are answered after scanning the entire dataset, but it requires more resources and incurs higher query latencies and variability.
 Resource requirements and query latencies with such ETL systems drastically increase with more features and larger temporal scopes.}
 
