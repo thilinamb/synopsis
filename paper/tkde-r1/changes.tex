@@ -105,15 +105,7 @@ our algorithms.
 \end{enumerate}
 
 \begin{tcolorbox}
-While our previous manuscript discussed the standard error reported
-alongside query results, we now report the time complexity of both
-insertions and lookups for the SIFT $(O(log\ n))$, as well as for our
-quantization algorithm $(O(n))$. We also added a bit of discussion on how
-the fan-out scores can be used to estimate memory bounds; briefly, given
-fan-out scores for each level in the hierarchy, we can estimate the
-total number of vertices, edges, and leaves that will exist in the SIFT.
-This allows us to make accurate judgements about memory consumption in
-the system.
+While our previous manuscript discussed the standard error reported alongside query results, we now report the time complexity of both insertions and lookups for the SIFT $(O(log\ n))$, as well as for our quantization algorithm $(O(n))$. We also added a bit of discussion to Section 3.2.2 on how the fan-out scores can be used to estimate memory bounds; briefly, given fan-out scores for each level in the hierarchy, we can estimate the total number of vertices, edges, and leaves that will exist in the SIFT.  This allows us to make accurate judgements about memory consumption in the system.
 \end{tcolorbox}
 
 \begin{enumerate}
@@ -126,14 +118,7 @@ the system.
 \end{enumerate}
 
 \begin{tcolorbox}
-Thank you for this suggestion! We have added a benchmark that
-incorporates air quality data sourced from XXX to Section X.X. We feel
-this addition substantially strengthens the claims made in the paper,
-and also corroborates the results from our previous experiment with
-atmospheric data -- both benchmarks demonstrate similar profiles in
-memory consumption as new observations are assimilated. In general, this
-helps illustrate how Synopsis can scale as additional data is stored,
-while handling diversity in dataset types.
+Thank you for this suggestion! We have added a benchmark that incorporates air quality data sourced from the US Environmental Protection Agency to Section 4.2. We feel this addition substantially strengthens the claims made in the paper, and also corroborates the results from our previous experiment with atmospheric data -- both benchmarks demonstrate similar profiles in memory consumption as new observations are assimilated. In general, this helps illustrate how Synopsis can scale as additional data is stored, while handling broad diversity in dataset types.
 \end{tcolorbox}
 
 \begin{enumerate}
@@ -147,10 +132,9 @@ while handling diversity in dataset types.
 \end{enumerate}
 
 \begin{tcolorbox}
-We felt that Spark SQL would be a good point of comparison with
-Synopsis; while an exact 1:1 system does not exist, Spark is currently
-at the state-of-the-art in cluster computing and analysis. In this
-benchmark, we compared query latency between the two systems. TODO more
+    We felt that Spark SQL would be a reasonable point of comparison with Synopsis; while an exact 1:1 system does not exist, Spark is currently at the state-of-the-art in cluster computing and analysis. In this new benchmark (discussed in Section 4.6), we compared query latency between the two systems; for Spark, this includes results with and without caching enabled (pinning the RDDs in memory) -- while a production environment would preclude caching the entire dataset, we wanted to provide a fair point of comparison between the two systems by avoiding disk I/O in Spark.
+    
+    The benchmark demonstrates that the end-to-end latency of \textsc{Synopsis} queries is significantly less compared to Spark SQL. However, it is worth noting that Spark queries provide higher accuracy because they are answered after scanning the entire dataset. On the other hand, Spark requires more resources and incurs higher query latencies and variability.
 \end{tcolorbox}
 
 \begin{enumerate}
