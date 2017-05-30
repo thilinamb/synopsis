@@ -9,8 +9,11 @@ $(name).pdf: $(name).tex ./sections/* ./figures/* references.bib
 	pdflatex -interaction=nonstopmode $(name)
 	rm -f $(name).{aux,bbl,bib,blg,log,toc,out}
 
-changes.pdf: changes.tex
-	pdflatex $<
+changes.pdf: changes.tex references.bib
+	pdflatex -interaction=batchmode changes
+	bibtex changes || true
+	pdflatex -interaction=batchmode changes
+	pdflatex -interaction=nonstopmode changes
 	rm -rf changes.{aux,bbl,bib,blg,log,toc,out}
 
 clean:
