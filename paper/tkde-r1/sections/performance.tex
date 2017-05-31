@@ -116,7 +116,7 @@ Similarly, \textsc{Synopsis} was evaluated using a multi-threaded query funnel.
 For Spark, in order to minimize the data transfer between the cluster and driver, a} \texttt{count} \hl{action was performed after the SQL query and its result was retrieved at the client.
 For \textsc{Synopsis}, we performed equivalent tree retrieval queries where sections of the distributed sketch is serialized and sent back to the query funnel.
 End-to-end latencies of the queries were recorded for different concurrency levels.
-Spark was evaluated under two different settings --- caching enabled and disabled for the Dataframe.
+Spark was evaluated under two different settings: caching enabled and disabled for the Dataframe.
 The results of this evaluation is depicted in} Figure~\ref{fig:spark-sql-query}.
 %
 \begin{figure}[b!]
