@@ -105,7 +105,7 @@ our algorithms.
 \end{enumerate}
 
 \begin{tcolorbox}
-While our previous manuscript discussed the standard error reported alongside query results, we now report the time complexity of both insertions and lookups for the SIFT $(O(log\ n))$, as well as for our quantization algorithm $(O(n))$. We also added a bit of discussion to Section 3.2.2 on how the fan-out scores can be used to estimate memory bounds; briefly, given fan-out scores for each level in the hierarchy, we can estimate the total number of vertices, edges, and leaves that will exist in the SIFT.  This allows us to make accurate judgements about memory consumption in the system.
+While the previous revision of the manuscript discussed the standard error reported alongside query results, we now report the time complexity of both insertions and lookups for the SIFT $(O(log\ n))$, as well as for our quantization algorithm $(O(n))$. We also added a bit of discussion to Section 3.2.2 on how the fan-out scores can be used to estimate memory bounds; briefly, given fan-out scores for each level in the hierarchy, we can estimate the total number of vertices, edges, and leaves that will exist in the SIFT.  This allows us to make accurate judgements about memory consumption in the system.
 \end{tcolorbox}
 
 \begin{enumerate}
@@ -132,7 +132,7 @@ While our previous manuscript discussed the standard error reported alongside qu
 \end{enumerate}
 
 \begin{tcolorbox}
-    We felt that an ETL (Extract-Transform-Load) pipeline implemented using Spark SQL would be a reasonable point of comparison with \textsc{Synopsis}; while an exact 1:1 system does not exist, Spark is currently at the state-of-the-art in cluster computing and analysis. The objective of this benchmark is to motivate the necessity of maintaining an in-memory sketch of the spatiotemporal streams instead of traditional data processing schemes. In this new benchmark (discussed in Section 4.6), we compared query latency between the two systems; for Spark, this includes results with and without caching enabled (pinning the RDDs in memory) -- while a production environment would preclude caching the entire dataset, we wanted to provide a fair point of comparison between the two systems by avoiding disk I/O in Spark.
+    To address this point, we added a new benchmark (discussed in Section 4.6) comparing \textsc{Synopsis} with Spark SQL. We felt that an ETL (Extract-Transform-Load) pipeline implemented using Spark SQL would be a reasonable point of comparison; while an exact 1:1 system does not exist, Spark is currently at the state-of-the-art in cluster computing and analysis. The objective of this benchmark is to motivate the necessity of maintaining an in-memory sketch of the spatiotemporal streams instead of traditional data processing schemes. The benchmark compares query latency between the two systems; for Spark, this includes results with and without caching enabled (pinning the RDDs in memory) -- while a production environment would preclude caching the entire dataset, we wanted to provide a fair point of comparison between the two systems by avoiding disk I/O in Spark.
     
     The benchmark demonstrates that the end-to-end latency of \textsc{Synopsis} queries is significantly less compared to Spark SQL. However, it is worth noting that Spark queries provide higher accuracy because they are answered after scanning the entire dataset. On the other hand, Spark requires more resources and incurs higher query latencies and variability.
 \end{tcolorbox}
@@ -146,9 +146,7 @@ While our previous manuscript discussed the standard error reported alongside qu
 \end{enumerate}
 
 \begin{tcolorbox}
-While the queries used for these benchmarks were indeed generated randomly, it is worth noting that the parameterization of our query generation test harness was based on real-world usage patterns. In other words, we observed the ranges of values and combinations of features that were frequently requested from users of our copy of the NOAA dataset stored on a local file system. We also used several queries developed for the visualizations in the paper as seed queries for the generator. We have updated the description of this benchmark to better explain how the test queries were sourced.
-
-Issuing queries picked from a larger set through concurrent query funnels distributes the load across a majority of sketchlets; therefore useful in measuring the query performance of \textsc{Synopsis} in a distributed setup. 
+While the queries used for these benchmarks were indeed generated randomly, it is worth noting that the parameterization of our query generation test harness was based on real-world usage patterns. In other words, we observed the ranges of values and combinations of features that were frequently requested from users of our copy of the NOAA dataset stored on a local file system. We also used several queries developed for the visualizations in the paper as seed queries for the generator.  In our benchmarks, issuing queries picked from a larger set through concurrent query funnels distributes the load across a majority of sketchlets and is therefore useful in measuring query performance of \textsc{Synopsis} in a distributed setup.  We have updated the description of this benchmark to better explain how the test queries were sourced and implemented.
 \end{tcolorbox}
 
 \begin{enumerate}
@@ -161,7 +159,7 @@ Issuing queries picked from a larger set through concurrent query funnels distri
 \end{enumerate}
 
 \begin{tcolorbox}
-    Our scaling algorithm is able to dynamically cope with both increases and decreases in resource availability at run time (based on two metrics captured at a sketchlet: backlog growth and memory usage), with the primary goal being to conserve resources whenever possible (while respecting accuracy constraints). We operate under this expectation due to the approximate nature of \textsc{Synopsis}; with a limitless resource pool, users would likely select an alternative system that does not trade off accuracy. However, it is worth noting that as long as geohash precision is available (i.e., the spatial areas managed by \textsc{Synopsis} can be subdivided), the system can continue to scale out.
+    Our scaling algorithm is able to dynamically cope with both increases and decreases in resource availability at run time (based on two metrics captured at a sketchlet: backlog growth and memory usage), with the primary goal being to conserve resources whenever possible while respecting accuracy constraints. We operate under this expectation due to the approximate nature of \textsc{Synopsis}; with a limitless resource pool, users would likely select an alternative system that does not trade off accuracy. However, it is worth noting that as long as geohash precision is available (i.e., the spatial areas managed by \textsc{Synopsis} can be subdivided), the system can continue to scale out. We touch on this briefly in Section 4.3.
 \end{tcolorbox}
 
 \begin{enumerate}
@@ -177,7 +175,7 @@ Issuing queries picked from a larger set through concurrent query funnels distri
 \begin{tcolorbox}
 This is an excellent point, and we have augmented our discussion in Section 5.2 to better explain this result. While there are not substantial differences in the error reported for each dataset size (an RMSE of about 6 Kelvin), we believe that the additional data points available in the full-sized dataset may have led to over-fitting rather than a boost in model performance. As a result, the smaller synthetic samples are less susceptible to over-fitting and perform slightly better.
 
-To explore this hypothesis, we re-ran the benchmarks using 10\% and 20\% samples of the full-resolution data for a direct comparison with the synthetic data. %TODO finish
+    To explore this hypothesis, we re-ran the entire benchmark. This allowed us to confirm the results (which are largely similar as reported in Table 4) as well as execute two new iterations using 10\% and 20\% samples of the full-resolution data for a direct comparison with the synthetic data. This revealed only small differences in model performance across the board, which underscores our assertion that synthetic data can act as a much faster surrogate for full-resolution datasets.
 \end{tcolorbox}
 
 \subsection*{Reviewer: 2}\label{reviewer-2}
