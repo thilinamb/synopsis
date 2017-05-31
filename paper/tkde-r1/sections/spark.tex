@@ -4,7 +4,7 @@ Such datasets can be used efficiently with analytic engines such as Apache Spark
 We used Spark to train regression models based on the Random Forest ensemble method to predict temperatures (in Kelvin) using surface visibility, humidity and precipitation in the southeast United States during the months of May--August, 2011--2014.
 These models were generated using the original full-resolution data as well as synthetic data sets that were sized at 10\% and 20\% of the original data.
 The accuracy of these models was measured using a test dataset extracted from actual observations (30\% of the overall dataset size).
-All three datasets were staged on HDFS and loaded into Spark to train the ensemble models.
+All five datasets were staged on HDFS and loaded into Spark to train the ensemble models.
 
 We evaluated the efficacy of our approach based on the on-disk and in-memory storage requirements, data loading time, training time and the accuracy of the model.
 Our observations are summarized in Table~\ref{tab:spark-rf}.
