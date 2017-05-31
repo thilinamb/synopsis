@@ -113,7 +113,7 @@ These queries fluctuated in both the ranges of values and spatial scope, resulti
 We extracted the timestamp, location information (as a geohash), temperature, surface visibility, humidity and precipitation in the southeast United States during the months of May--August, 2011--2014 and loaded them into Spark as a DataFrame which was then queried using Spark SQL.
 Given that the underlying RDD of the DataFrame cannot be shared between multiple Spark applications, we used a multi-threaded driver to issue concurrent queries.
 Similarly, \textsc{Synopsis} was evaluated using a multi-threaded query funnel.
-For Spark, in order to minimize the data transfer between the cluster and driver, a} \texttt{count} \hl{action was performed after the SQL query and its result was retrieved at the client.
+In order to minimize the data transfer between the Spark cluster and driver, a} \texttt{count} \hl{action was performed after the SQL query and its result was retrieved at the client.
 For \textsc{Synopsis}, we performed equivalent tree retrieval queries where sections of the distributed sketch is serialized and sent back to the query funnel.
 End-to-end latencies of the queries were recorded for different concurrency levels.
 Spark was evaluated under two different settings: caching enabled and disabled for the Dataframe.

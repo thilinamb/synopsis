@@ -28,4 +28,3 @@ Similarly, our geohash-based partitioner together with control algorithms in \te
 Our state migration scheme doesn't require migrating states between sketchlets that do not participate in the scaling activity, unlike with a reconfiguration of a regular hash-based partitioner.
 Unlike in \textsc{Synopsis}, in their implementation, the stream data flow is paused until state migration is complete using vertical and horizontal barriers.
 Finally, \textsc{Synopsis}' scaling schemes are placement-aware, meaning certain nodes are preferred when performing scaling with the objective of reducing the span of the distributed sketch.
-
