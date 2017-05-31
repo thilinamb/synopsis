@@ -123,7 +123,7 @@ Similarly, \textsc{Synopsis} was evaluated using a multi-threaded query funnel.
 For Spark, in order to minimize the data transfer between the cluster and driver, a} \texttt{count} \hl{action was performed after the SQL query and its result was retrieved at the client.
 For \textsc{Synopsis}, we performed equivalent tree retrieval queries where sections of the distributed sketch is serialized and sent back to the query funnel.
 End-to-end latencies of the queries were recorded for different concurrency levels.
-Spark was evaluated under two different settings --- caching enabled and disabled for the Dataframe.
+Spark was evaluated under two different settings: caching enabled and disabled for the Dataframe.
 The results of this evaluation is depicted in} Figure~\ref{fig:spark-sql-query}.
 When caching is enabled, the Dataframe will be kept in memory once materialized for the first time reducing the subsequent access times. Caching the entire Dataframe in memory may not be feasible in most real world spatiotemporal analytical tasks where the size of the dataset exceeds the available memory capacity of the cluster.
 \hl{The end-to-end latency of the \textsc{Synopsis} queries is significantly less despite the larger size of the query results (section of the sketch for \textsc{Synopsis} vs the number of matching records for SparkSQL) transferred from the cluster to the query funnel.
