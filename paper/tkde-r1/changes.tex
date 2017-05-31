@@ -49,7 +49,7 @@ substantially as a result. Our main improvements to the text include:
 \begin{itemize}
 \item Edits that address each of the questions raised by the reviewers (explained in greater detail below), along with substantial cleanup and formatting tweaks to improve readability
 
-\item A brand new memory growth benchmark that incorporates a second geospatial dataset. This illustrates that the memory consumption profile observed with our first dataset applies to another geospatial dataset as well.
+\item A brand new memory growth benchmark that incorporates a second spatiotemporal dataset. This illustrates that the memory consumption profile observed with our first dataset applies to another geospatial dataset as well.
 
 \item Revamped contributions section in the introduction to highlight the novelty of our SIFT data structure
 
@@ -90,7 +90,7 @@ of the fan-out score and our structural compaction algorithm in Section
 3.2.2. For the distributed functionality (scaling in and out), a
 previous iteration of the paper included pseudocode, but we found that
 the sequence diagrams were more effective in communicating how the
-protocols work. We also have added more detail to sections 3.2.1, 3.2.3,
+protocols work when participating entities are distributed across multiple machines. We also have added more detail to sections 3.2.1, 3.2.3,
 and made a variety of tweaks to 3.3 and 3.4 to improve the clarity of
 our algorithms.
 \end{tcolorbox}
@@ -132,7 +132,7 @@ While our previous manuscript discussed the standard error reported alongside qu
 \end{enumerate}
 
 \begin{tcolorbox}
-    We felt that Spark SQL would be a reasonable point of comparison with \textsc{Synopsis}; while an exact 1:1 system does not exist, Spark is currently at the state-of-the-art in cluster computing and analysis. In this new benchmark (discussed in Section 4.6), we compared query latency between the two systems; for Spark, this includes results with and without caching enabled (pinning the RDDs in memory) -- while a production environment would preclude caching the entire dataset, we wanted to provide a fair point of comparison between the two systems by avoiding disk I/O in Spark.
+    We felt that an ETL (Extract-Transform-Load) pipeline implemented using Spark SQL would be a reasonable point of comparison with \textsc{Synopsis}; while an exact 1:1 system does not exist, Spark is currently at the state-of-the-art in cluster computing and analysis. The objective of this benchmark is to motivate the necessity of maintaining an in-memory sketch of the spatiotemporal streams instead of traditional data processing schemes. In this new benchmark (discussed in Section 4.6), we compared query latency between the two systems; for Spark, this includes results with and without caching enabled (pinning the RDDs in memory) -- while a production environment would preclude caching the entire dataset, we wanted to provide a fair point of comparison between the two systems by avoiding disk I/O in Spark.
     
     The benchmark demonstrates that the end-to-end latency of \textsc{Synopsis} queries is significantly less compared to Spark SQL. However, it is worth noting that Spark queries provide higher accuracy because they are answered after scanning the entire dataset. On the other hand, Spark requires more resources and incurs higher query latencies and variability.
 \end{tcolorbox}
@@ -147,6 +147,8 @@ While our previous manuscript discussed the standard error reported alongside qu
 
 \begin{tcolorbox}
 While the queries used for these benchmarks were indeed generated randomly, it is worth noting that the parameterization of our query generation test harness was based on real-world usage patterns. In other words, we observed the ranges of values and combinations of features that were frequently requested from users of our copy of the NOAA dataset stored on a local file system. We also used several queries developed for the visualizations in the paper as seed queries for the generator. We have updated the description of this benchmark to better explain how the test queries were sourced.
+
+Issuing queries picked from a larger set through concurrent query funnels distributes the load across a majority of sketchlets; therefore useful in measuring the query performance of \textsc{Synopsis} in a distributed setup. 
 \end{tcolorbox}
 
 \begin{enumerate}
@@ -159,7 +161,7 @@ While the queries used for these benchmarks were indeed generated randomly, it i
 \end{enumerate}
 
 \begin{tcolorbox}
-    Our scaling algorithm is able to dynamically cope with both increases and decreases in resource availability at run time, with the primary goal being to conserve resources whenever possible (while respecting accuracy constraints). We operate under this expectation due to the approximate nature of \textsc{Synopsis}; with a limitless resource pool, users would likely select an alternative system that does not trade off accuracy. However, it is worth noting that as long as geohash precision is available (i.e., the spatial areas managed by \textsc{Synopsis} can be subdivided), the system can continue to scale out.
+    Our scaling algorithm is able to dynamically cope with both increases and decreases in resource availability at run time (based on two metrics captured at a sketchlet: backlog growth and memory usage), with the primary goal being to conserve resources whenever possible (while respecting accuracy constraints). We operate under this expectation due to the approximate nature of \textsc{Synopsis}; with a limitless resource pool, users would likely select an alternative system that does not trade off accuracy. However, it is worth noting that as long as geohash precision is available (i.e., the spatial areas managed by \textsc{Synopsis} can be subdivided), the system can continue to scale out.
 \end{tcolorbox}
 
 \begin{enumerate}
