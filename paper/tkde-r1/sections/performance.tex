@@ -2,16 +2,16 @@
 Here we report system benchmarks profiling several aspects of \textsc{Synopsis}, including the memory consumption and data ingestion performance of the sketch, its ability to handle variable loads, organization of sketchlets, and query performance.
 \label{sec:performance}
 \subsection{Dataset and Experimental Setup}
-\hl{We have used two primary datasets for our evaluation.
-One of our subject datasets was sourced from the NOAA North American Mesoscale (NAM) Forecast System} \cite{noaa_nam}.  \hl{The NAM collects atmospheric data several times per day and includes features of interest such as surface temperature, visibility, relative humidity, snow, and precipitation. The size of this entire source dataset was 25 TB.
-The other dataset, collected by the US Environmental Protection Agency, contained daily summary data of four criteria gases ($O_3$, $SO_2$, $CO$ and $NO_2$) used for calculating the air quality in a given area.}~\cite{epa-criteriagases}. \hl{Each observation in both datasets also incorporates a relevant geographical location and time of creation. This information is used during the data ingest process to partition streams across available sketchlets and preserve temporal ordering of events. Data streams were ingested at faster rates to simulate high data arrival rates while ensuring temporal ordering was preserved.}
+We have used two primary datasets for our evaluation.
+One of our subject datasets was sourced from the NOAA North American Mesoscale (NAM) Forecast System~\cite{noaa_nam}.  The NAM collects atmospheric data several times per day and includes features of interest such as surface temperature, visibility, relative humidity, snow, and precipitation. The size of this entire source dataset was 25 TB.
+The other dataset, collected by the US Environmental Protection Agency, contained daily summary data of four criteria gases ($O_3$, $SO_2$, $CO$ and $NO_2$) used for calculating the air quality in a given area~\cite{epa-criteriagases}. Each observation in both datasets also incorporates a relevant geographical location and time of creation. This information is used during the data ingest process to partition streams across available sketchlets and preserve temporal ordering of events. Data streams were ingested at faster rates to simulate high data arrival rates while ensuring temporal ordering was preserved.
 
 Performance evaluations reported here were carried out on a cluster of 40 HP DL160 servers (Xeon E5620, 12 GB RAM). The test cluster was configured to run Fedora 24, and \textsc{Synopsis} was executed under the OpenJDK Java runtime 1.8.0\_72.
 For evaluations involving Apache Spark, we used Apache Spark version 2.0.1 with HDFS 2.6.0 with a 100 node cluster by combining our baseline cluster of 40 machines with 30 HP DL320e servers (Xeon E3-1220 V2, 8 GB RAM) and 30 HP DL60 servers (Xeon E5-2620, 16 GB RAM). 
 
 
 \subsection{Distributed Sketch Memory Evaluation}
-We monitored the growth in memory consumption of the entire distributed sketch over time with continuous data ingestion as shown in Figure~\ref{fig:dist-sketch-mem-usage} for both datasets. As more data was streamed into the system, the growth rate of the distributed sketch decreased as the sketchlets expanded to include vertices for their particular feature space.  At the end of our monitoring period, the total amount of ingested data was around three orders of magnitude higher ($\sim 1285$ for \hl{NOAA data and $\sim 926$ for air quality data}) than the in-memory sketch size, resulting in notable space savings.
+We monitored the growth in memory consumption of the entire distributed sketch over time with continuous data ingestion as shown in Figure~\ref{fig:dist-sketch-mem-usage} for both datasets. As more data was streamed into the system, the growth rate of the distributed sketch decreased as the sketchlets expanded to include vertices for their particular feature space.  At the end of our monitoring period, the total amount of ingested data was around three orders of magnitude higher ($\sim 1285$ for NOAA data and $\sim 926$ for air quality data) than the in-memory sketch size, resulting in notable space savings.
 %
 %
 \begin{figure*}[t!]
@@ -109,15 +109,15 @@ Cumulative query throughput and latencies were measured with varying numbers of 
 A query funnel continuously generates and dispatches representative queries at the maximum possible rate to stress test the system and saturate its capacity. For example, a query could request summary statistics or feature relationships when the temperature is 20--30$^{\circ}$, humidity is above 80\%, and the wind speed is 16 km/h.
 These queries fluctuated in both the ranges of values and spatial scope, resulting in high variability in the number of sketchlets required to resolve the query as well as the depth and breadth of the tree traversals.
 
-\hl{Next we evaluated the query speedup gained by maintaining an in-memory sketch of the data compared to a traditional ETL pipeline.
+Next we evaluated the query speedup gained by maintaining an in-memory sketch of the data compared to a traditional ETL pipeline.
 We extracted the timestamp, location information (as a geohash), temperature, surface visibility, humidity and precipitation in the southeast United States during the months of May--August, 2011--2014 and loaded them into Spark as a DataFrame which was then queried using Spark SQL.
 Given that the underlying RDD of the DataFrame cannot be shared between multiple Spark applications, we used a multi-threaded driver to issue concurrent queries.
 Similarly, \textsc{Synopsis} was evaluated using a multi-threaded query funnel.
-In order to minimize the data transfer between the Spark cluster and driver, a} \texttt{count} \hl{action was performed after the SQL query and its result was retrieved at the client.
+In order to minimize the data transfer between the Spark cluster and driver, a \texttt{count} action was performed after the SQL query and its result was retrieved at the client.
 For \textsc{Synopsis}, we performed equivalent tree retrieval queries where sections of the distributed sketch is serialized and sent back to the query funnel.
 End-to-end latencies of the queries were recorded for different concurrency levels.
 Spark was evaluated under two different settings: caching enabled and disabled for the Dataframe.
-The results of this evaluation is depicted in} Figure~\ref{fig:spark-sql-query}.
+The results of this evaluation is depicted in Figure~\ref{fig:spark-sql-query}.
 %
 \begin{figure}[b!]
     \centerline{\includegraphics[width=\linewidth]{figures/spark-sql-query-complete.pdf}}
@@ -125,7 +125,7 @@ The results of this evaluation is depicted in} Figure~\ref{fig:spark-sql-query}.
     \label{fig:spark-sql-query}
 \end{figure}
 %
-\hl{When caching is enabled, the Dataframe will be kept in memory once materialized for the first time reducing the subsequent access times. Caching the entire Dataframe in memory may not be feasible in most real world spatiotemporal analytical tasks where the size of the dataset exceeds the available memory capacity of the cluster.
+When caching is enabled, the Dataframe will be kept in memory once materialized for the first time reducing the subsequent access times. Caching the entire Dataframe in memory may not be feasible in most real world spatiotemporal analytical tasks where the size of the dataset exceeds the available memory capacity of the cluster.
 The end-to-end latency of the \textsc{Synopsis} queries is significantly less despite the larger size of the query results (section of the sketch for \textsc{Synopsis} vs the number of matching records for Spark SQL) transferred from the cluster to the query funnel.
 Spark queries provides higher accuracy because queries are answered after scanning the entire dataset, but it requires more resources --- mainly memory and storage -- and incurs higher query latencies.
-Resource requirements and query latencies with such ETL systems drastically increase with the number of features and geospatial and temporal scopes.}
+Resource requirements and query latencies with such ETL systems drastically increase with the number of features and geospatial and temporal scopes.

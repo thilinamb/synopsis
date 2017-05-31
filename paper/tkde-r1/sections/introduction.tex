@@ -10,7 +10,7 @@ The sketch is also an effective surrogate for the data that it snapshots and ser
 %
 \textbf{Challenges} in supporting real-time evaluation of queries and analysis over a constantly-evolving feature space:
 \begin{itemize}[leftmargin=*]
-    \item   \hl{\emph{Data volumes and arrival rates:} It is infeasible to store all observations, which may arrive continually and at high rates. This is especially true if the arrival rates outpace disk speeds.}
+    \item   \emph{Data volumes and arrival rates:} It is infeasible to store all observations, which may arrive continually and at high rates. This is especially true if the arrival rates outpace disk speeds.
     \item \emph{I/O Costs:} Memory accesses are 5-6 orders of magnitude faster than disk accesses. Given the data volumes, disk accesses during query evaluations or analysis are infeasible.
     \item   \emph{Accuracy:} Queries evaluations must be accurate, with appropriate error bounds included in the results.
     \item   \emph{Spatiotemporal characteristics:} Queries and analysis may target both spatial and chronological properties of the dataset.
@@ -34,7 +34,7 @@ Our sketch is also naturally amenable to distribution, with each machine in the 
 %
 \vspace{0.7em}\\
 %
-\textbf{\hl{Paper Contributions}}:
+\textbf{Paper Contributions}:
 To our knowledge, \textsc{Synopsis} is the first sketch tailored specifically for spatiotemporal observational data. The methodology of this study is centered around our novel in-memory data structure, \emph{SIFT} (\S\ref{sec:sift}), which employs a hierarchical forest-of-trees approach combined with online, running summary statistics to compactly represent observational data. In addition to the memory benefits of the SIFT, the data structure is amenable to distribution across a cluster of machines. This allows \textsc{Synopsis} to cope with high-rate data arrivals and scale dynamically with changes in problem size or resource availability. Both dynamic scaling and querying are facilitated by efficient tree-based lookup operations. For analytic tasks, the SIFT acts as an effective surrogate for full-resolution observations, enabling expressive queries over arbitrary spatiotemporal scopes, generation of synthetic datasets, and interoperation with popular analytical engines.
 %
 \vspace{0.7em}\\

@@ -10,7 +10,7 @@ During dynamic scaling, the geographic extents managed by a sketchlet vary.
 %
 \vspace{0.7em}\\
 %
-\textbf{\hl{System Components}}:
+\textbf{System Components}:
 \textsc{Synopsis} relies on a set of auxiliary services that are needed to construct, update, and maintain the sketch, as well as adapt to changing system conditions:
 \begin{description}[leftmargin=*]
 \item[Control plane] is responsible for orchestrating control messages exchanged between sketchlets as part of various distributed protocols such as dynamic scaling.
@@ -26,12 +26,12 @@ During dynamic scaling, the geographic extents managed by a sketchlet vary.
     This information is used for dynamic scaling recommendations as explained in Sections~\ref{subsec:scaling-out} and \ref{subsec:scaling-in}.
 \end{description}
 %
-\textbf{\hl{Data Model}}:
+\textbf{Data Model}:
 While designing \textsc{Synopsis}, we targeted a data model wherein observations are geotagged and have chronological timestamps indicating where and when the observations were made. Location information is encoded as $\langle latitude, longitude \rangle$ tuples. Observations contain multiple features (temperature, humidity, wind speed, etc.), and may be encoded as $\langle feature\_name, value \rangle$ tuples or may have predefined positions within the serialized data representation. 
 %
 \vspace{0.7em}\\
 %
-\textbf{\hl{Query Support}}:
+\textbf{Query Support}:
 \textsc{Synopsis} supports common query constructs such as selects or joins, while also providing rich analytical queries that report statistical information, make predictions, or produce synthetic datasets (detailed fully in \S\ref{subsec:query-eval}). A key innovation in our query support is that portions of the sketch itself can be retrieved and manipulated by clients. The following query demonstrates this functionality, where climate features are requested from a region when the wind speed is more than a standard deviation away from the mean:
 
 \begin{lstlisting}[language=SQL,style=custompy]
