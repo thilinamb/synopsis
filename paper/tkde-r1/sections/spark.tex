@@ -3,13 +3,13 @@ Synthetic data queries in \textsc{Synopsis} can be used to generate representati
 Such datasets can be used efficiently with analytic engines such as Apache Spark \cite{zaharia2010spark} and TensorFlow \cite{tensorflow}.  
 We used Spark to train regression models based on the Random Forest ensemble method to predict temperatures (in Kelvin) using surface visibility, humidity and precipitation in the southeast United States during the months of May--August, 2011--2014.
 These models were generated using the original full-resolution data as well as synthetic data sets that were sized at 10\% and 20\% of the original data.
+For another point of comparison, we also generated datasets using 10\% and 20\% samples of the original data.
 The accuracy of these models was measured using a test dataset extracted from actual observations (30\% of the overall dataset size).
 All five datasets were staged on HDFS and loaded into Spark to train the ensemble models.
 
-We evaluated the efficacy of our approach based on the on-disk and in-memory storage requirements, data loading time, training time and the accuracy of the model.
-Our observations are summarized in Table~\ref{tab:spark-rf}.
-The accuracy of the models generated based on synthetic data is comparable to those of models generated using actual data, while requiring less space, training and loading times.
-For instance, our 10\% synthetic dataset produces a model with similar accuracy incurring 54\% less training time while reducing space requirements by 90\%. Additionally, based on the number of RDD partitions used, the synthetic datasets require substantially less computing resources.
+We evaluated our approach based on the on-disk and in-memory storage requirements, data loading time, training time and the accuracy of the model.
+Our observations are summarized in Table~\ref{tab:spark-rf}; overall, the accuracy of the models generated based on synthetic data is comparable to that of the models generated using actual data, while requiring less space, training, and loading times.
+For instance, our 10\% synthetic dataset produces a model with similar accuracy while incurring 54\% less training time and reducing space requirements by 90\%. Additionally, based on the number of RDD partitions used, the synthetic datasets require substantially less computing resources.  It is worth noting that the models produced in this experiment do not appear to benefit from a larger set of training samples, and could potentially begin to exhibit over-fitting if trained on more data. In situations where having more data is advantageous to model performance, our synthetic datasets are likely to provide better prediction accuracy as they will cover a broader range of feature values.
 %
 \begin{table*}[ht!]
     \renewcommand{\arraystretch}{1.2}
@@ -36,5 +36,3 @@ For instance, our 10\% synthetic dataset produces a model with similar accuracy 
     \end{center}
     \vspace{-1em}
 \end{table*}
-%
-%TODO discussion on why RMSE is actually better for the smaller datasets
