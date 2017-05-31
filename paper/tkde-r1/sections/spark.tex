@@ -8,8 +8,8 @@ All three datasets were staged on HDFS and loaded into Spark to train the ensemb
 
 We evaluated the efficacy of our approach based on the on-disk and in-memory storage requirements, data loading time, training time and the accuracy of the model.
 Our observations are summarized in Table~\ref{tab:spark-rf}.
-The accuracy of the models generated based on synthetic data is comparable to those of models generated using actual data, while requiring less space and training time.
-For instance, our 10\% synthetic dataset produces a model with similar accuracy incurring 53\% less training time while reducing space requirements by 90\%. Additionally, based on the number of RDD partitions used, the synthetic datasets require substantially less computing resources.
+The accuracy of the models generated based on synthetic data is comparable to those of models generated using actual data, while requiring less space, training and loading times.
+For instance, our 10\% synthetic dataset produces a model with similar accuracy incurring 54\% less training time while reducing space requirements by 90\%. Additionally, based on the number of RDD partitions used, the synthetic datasets require substantially less computing resources.
 %
 \begin{table*}[ht!]
     \renewcommand{\arraystretch}{1.2}
@@ -22,15 +22,15 @@ For instance, our 10\% synthetic dataset produces a model with similar accuracy 
             \cline{4-9}
              & & & \cellcolor[gray]{0.9}Mean & \cellcolor[gray]{0.9}Std. Dev.  &  \cellcolor[gray]{0.9}Mean & \cellcolor[gray]{0.9}Std. Dev. &  \cellcolor[gray]{0.9}Mean & \cellcolor[gray]{0.9}Std. Dev. \\
             \hline
-            Original & 25.350 & 208 & 32.859 & 6.043 & 520.657 & 7.690 & 6.025 & 0.051 \\
+            Original & 25.350 & 208 & 28.035 & 2.249 & 506.493 & 9.500 & 5.981 & 0.027 \\
             \hline
-            Original - 10\% Sample & 2.535 & 21 & 4.223 & 1.768 & - & - & -  & - \\
+            Original - 10\% Sample & 2.535 & 21 & 5.136 & 0.909 & 205.627 & 5.798 & 5.960  & 0.049 \\
             \hline
-            Original - 20\% Sample & 5.069 & 41 & 6.746 & 2.269 & - & - & - & - \\
+            Original - 20\% Sample & 5.069 & 41 & 6.102 & 1.607 & 216.857 & 7.994 & 5.994 & 0.026 \\
             \hline
-            Synthetic - 10\% & 2.549 & 21 & 4.969 & 2.168 & 246.212 & 15.046 & 5.980 & 0.024 \\
+            Synthetic - 10\% & 2.549 & 21 & 5.097 & 0.912 & 231.221 & 13.459 & 5.951 & 0.027 \\
             \hline
-            Synthetic - 20\% & 5.098 & 41 & 8.726 & 3.200 & 278.682 & 17.475 & 6.018 & 0.064 \\
+            Synthetic - 20\% & 5.098 & 41 & 6.208 & 0.637 & 235.018 & 16.148 & 5.981 & 0.051 \\
             \hline
         \end{tabularx}
     \end{center}
