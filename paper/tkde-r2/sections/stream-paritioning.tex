@@ -1,0 +1,27 @@
+\subsection{Stream Partitioning}
+%
+\begin{figure}[h!]
+    \centerline{\includegraphics[width=3.5in]{figures/stream-partitioning.png}}
+    \caption{An example of our stream partitioning approach based on the geohash values of incoming packets.}
+    \label{fig:stream-partitioning}
+\end{figure}
+%
+Figure~\ref{fig:stream-partitioning} depicts a possible arrangement of the distributed sketch and the associated stream partitioning scheme corresponding to our example region.
+The distributed sketch is arranged in a tree-like structure.
+Stream ingesters act as root nodes of the tree and partition the stream among \textsc{Synopsis} nodes using a geohash-based partitioning function.
+Nodes closer to the root hold sketches corresponding to shorter geohash strings, and therefore larger geographical regions.
+For instance, nodes A and B in Figure~\ref{fig:stream-partitioning} are responsible for regions represented by geohashes \emph{DJ} and and \emph{DN} respectively.
+Node E, which is three edges deep from the stream ingester, is responsible for a smaller region, \emph{DJKJ}.
+
+\textsc{Synopsis} is designed to ensure that regions corresponding to larger portions of the input streams (hence, more frequent updates) are moved to dedicated or less crowded nodes.
+If a node decides to scale out a portion of the region it is currently responsible for, then the corresponding state (sketchlet and related metadata) is transferred over to the new computation and it starts to treat the stream packets corresponding to the scaled out region as pass-through traffic (Scaling out is explained in section~\ref{subsec:scaling-out}).
+More specifically, the node will not process the stream packet, but instead updates its statistics based on the headers of the packet and forwards it to the destination child node. 
+For instance, node A in Figure~\ref{fig:stream-partitioning} has scaled out two regions (\emph{DJK} and \emph{DJM}) to nodes C and D.
+After these two scaling out operations, node A is responsible for all sub-regions in \emph{DJ} except for \emph{DJK} and \emph{DJM}.
+Similarly, the sketch for the region \emph{DJKJ} is moved out of node C into node E as a result of subsequent scale-out operation.
+It should be noted that the depth and span of the distributed sketch are dynamic and are constantly evolving according to the workload and operating conditions.
+
+As the tree grows, having parent nodes pass traffic through to their children becomes inefficient because of higher bandwidth consumption as well as increased latency due to additional network hops the packets have to travel through.
+To circumvent this, we allow \emph{short circuiting}, which directs traffic from stream ingesters straight to child nodes.
+This is depicted in Figure~\ref{fig:stream-partitioning}, where the stream ingester directly sends data to node E instead of sending it through nodes A and C.
+We use our gossiping subsystem to update parent nodes on child state information, which is useful for scaling in as explained in Section~\ref{subsec:scaling-in}.

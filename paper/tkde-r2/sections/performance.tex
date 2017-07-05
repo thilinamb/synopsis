@@ -1,0 +1,131 @@
+\section{Performance Evaluation}
+Here we report system benchmarks profiling several aspects of \textsc{Synopsis}, including the memory consumption and data ingestion performance of the sketch, its ability to handle variable loads, organization of sketchlets, and query performance.
+\label{sec:performance}
+\subsection{Dataset and Experimental Setup}
+We have used two primary datasets for our evaluation.
+One of our subject datasets was sourced from the NOAA North American Mesoscale (NAM) Forecast System~\cite{noaa_nam}.  The NAM collects atmospheric data several times per day and includes features of interest such as surface temperature, visibility, relative humidity, snow, and precipitation. The size of this entire source dataset was 25 TB.
+The other dataset, collected by the US Environmental Protection Agency, contained daily summary data of four criteria gases ($O_3$, $SO_2$, $CO$ and $NO_2$) used for calculating the air quality in a given area~\cite{epa-criteriagases}. Each observation in both datasets also incorporates a relevant geographical location and time of creation. This information is used during the data ingest process to partition streams across available sketchlets and preserve temporal ordering of events. Data streams were ingested at faster rates to simulate high data arrival rates while ensuring temporal ordering was preserved.
+
+Performance evaluations reported here were carried out on a cluster of 40 HP DL160 servers (Xeon E5620, 12 GB RAM). The test cluster was configured to run Fedora 24, and \textsc{Synopsis} was executed under the OpenJDK Java runtime 1.8.0\_72.
+For evaluations involving Apache Spark, we used Apache Spark version 2.0.1 with HDFS 2.6.0 with a 100 node cluster by combining our baseline cluster of 40 machines with 30 HP DL320e servers (Xeon E3-1220 V2, 8 GB RAM) and 30 HP DL60 servers (Xeon E5-2620, 16 GB RAM). 
+
+
+\subsection{Distributed Sketch Memory Evaluation}
+We monitored the growth in memory consumption of the entire distributed sketch over time with continuous data ingestion as shown in Figure~\ref{fig:dist-sketch-mem-usage} for both datasets. As more data was streamed into the system, the growth rate of the distributed sketch decreased as the sketchlets expanded to include vertices for their particular feature space.  At the end of our monitoring period, the total amount of ingested data was around three orders of magnitude higher ($\sim 1285$ for NOAA data and $\sim 926$ for air quality data) than the in-memory sketch size, resulting in notable space savings.
+%
+%
+\begin{figure*}[t!]
+    \centerline{\includegraphics[width=\linewidth]{figures/ing-and-mem-usage-noaa-airquality.pdf}}
+    \caption{Memory usage of the distributed sketch over time against the amount of ingested data. The rate of growth decreases over time due to the compact nature of sketchlet data structure.}
+    \label{fig:dist-sketch-mem-usage}
+\end{figure*}
+%
+\subsection{Sketch Ingestion Rate}
+%
+\begin{table*}[bh!]
+    \renewcommand{\arraystretch}{1.2}
+    \caption{Profiling the update performance of sketchlet and sketch at high data ingest rates}
+    \label{tab:throughput}
+    \begin{center}
+        \begin{tabularx}{0.9\textwidth}{|X|c|c|c|c|c|c|c|}
+            \hline
+            \multirow{2}{*}{Ingester Count} & \multicolumn{2}{c|}{\cellcolor[gray]{0.7}Sketchlet Throughput (msgs/s)} &\multicolumn{2}{c|}{\cellcolor[gray]{0.7}Sketch Throughput (msgs/s)} & \multicolumn{3}{c|}{\cellcolor[gray]{0.7}Sketchlet Update Latency ($\mu$s)} \\
+            \cline{2-5}
+             & \cellcolor[gray]{0.9}Mean & \cellcolor[gray]{0.9}Std. Dev.  &  \cellcolor[gray]{0.9}Mean & \cellcolor[gray]{0.9}Std. Dev.
+             &  \cellcolor[gray]{0.9}Mean & \cellcolor[gray]{0.9}$95^{th}$ Perc. & \cellcolor[gray]{0.9}Std. Dev. \\
+            \hline
+            1 & 15124.562 & 575.728 & 44082.476 & 5984.503 & 64.752 & 67.175 & 5.503 \\
+            \hline
+            2 & 14067.452 & 491.783 & 44060.889 & 6206.208 & 64.971 & 71.170 & 4.012 \\
+            \hline
+            4 & 11319.321 & 1003.462 & 41645.317 & 13553.462 & 74.026 & 78.364 & 3.125 \\
+            \hline
+            8 & 5223.280 & 717.254 & 38369.745 & 14008.308 & 81.034 & 85.842 & 2.502 \\
+            \hline
+        \end{tabularx}
+    \end{center}
+\end{table*}
+%
+In this experiment, we assessed the ability of the sketch to keep pace with the high rates of incoming observational streams.
+We partitioned our dataset based on timestamps of observations such that each partition comprised observations for a contiguous time period.
+Within a partition, data collected in a single observation cycle for all geographical locations were stored as successive records.
+Records within a single observation cycle were stored in the same order based on their locations across all observational cycles in all partitions.
+Each partition was assigned a single ingester that sequentially parsed and streamed these records to the distributed sketch.
+This organization of observations ensured that multiple stream ingesters target a small subset of the sketchlets to profile the \textit{worst case} performance under high stress.
+This setup forces the corresponding SIFT trees to fan out on different planes (time and features) simultaneously, representing a strenuous workload for the sketch.
+A real world scenario is simulated with a single partition.
+
+Table~\ref{tab:throughput} summarizes the results of this benchmark.
+As we increase the number of ingesters with a single sketchlet, the throughput decreases due to the simultaneous fan-out operations taking place within the SIFT trees. This claim is further supported by the increase in the latency for updating the sketchlet as shown in the table.
+
+We started with a single sketchlet, allowed the system to dynamically scale out, and measured its throughput once a steady state was reached (i.e., frequent scaling does not occur).
+The system reached stability with 14-16 sketchlets depending on the setup (number of ingesters).
+We observed higher throughput compared a single sketchlet due to parallel processing of the observational stream, but the increase was not linear; when there is a single ingester, throughput is constrained by the bandwidth of the machine where the ingester was running. In this benchmark, \textsc{Synopsis} was using around 86\% of the available bandwidth.
+With multiple ingesters, due to the way the stream is (intentionally) constructed, the load is not evenly partitioned across the cluster, with only a subset of sketchlets processing the stream.
+%
+% scale out graph
+\begin{figure*}
+    \centerline{\includegraphics[width=\linewidth]{figures/scaleout_graph_analysis.pdf}}
+    \caption{Analysis of a snapshot of the distributed sketch during data ingestion demonstrating the size and distribution of the information corresponding to different prefixes against the observed record count. If the information is dispersed over multiple sketchlets, it is likely to be a prefix with higher number of records and/or a wide range of observed values.}
+    \label{fig:scaleout-graph-analysis}
+\end{figure*}
+%
+\subsection{Analyzing a Snapshot of the Distributed Sketch}
+Figure~\ref{fig:scaleout-graph-analysis} visualizes a snapshot of the distributed sketch which demonstrates the organization of sketchlets at runtime as described in \S\ref{sec:methodology}. 
+This represents the state of the system after consuming the complete 2014 NOAA dataset, resulting in 48 sketchlets. 
+The figure shows the distribution and size of the information maintained across sketchlets for each geohash prefix of 3 characters against the number of records processed for that particular prefix.
+The memory requirement for a particular geohash prefix depends on the number of records as well as the range of the observed values for different features.
+The space requirement is measured by the number of leaf nodes in the corresponding sketchlets.
+For the majority of the prefixes, the space requirement increases with the number of records processed.
+If the data for a particular prefix is distributed across multiple sketchlets, then it is more likely to be a prefix with a high number of records as shown in the first subplot.
+In such cases, some of these sketchlets are created in multiple scale-out iterations, which results in a higher distance from the root of the prefix tree. This is depicted in the second subfigure of Figure~\ref{fig:scaleout-graph-analysis}.
+A few prefixes with a high number of records can be observed with low memory consumption, and are distributed across multiple sketchlets; their observations span a smaller range, hence they require less memory but were chosen for scaling out operations due to their high message rates. 
+
+\subsection{Dynamic Scaling: Responding to Variable Load}
+%
+\begin{figure}[b!]
+    \centerline{\includegraphics[width=3.5in]{figures/dyn-scaling.pdf}}
+    \caption{Responding to variable load using dynamic scaling.}
+    \label{fig:dyn-scaling}
+\end{figure}
+%
+We evaluated how \textsc{Synopsis} dynamically scales when the data ingestion rate is varied.
+The data ingestion rate was varied over time such that the peak data ingestion rate is higher than the highest possible cumulative throughput to create a backlog at sketchlets.
+We augmented the sketch update code with additional operations to match the relatively low ingestion rates used for better control.
+We used the number of sketchlets within the system to quantify the scaling activities.
+If the system scales out, more sketchlets will be created as a result of targeted load migration.
+We started with a single sketchlet and allowed the system to dynamically scale.
+As can be observed in Figure~\ref{fig:dyn-scaling}, the number of sketchlets varies with the ingestion rate.
+Since we allow aggressive scale-out, rapid scaling out is observed during high data ingestion rates whereas scaling in takes place gradually with one subregion (one sketchlet) at a time.
+
+\subsection{Query Evaluation Performance}
+\begin{figure*}
+    \centerline{\includegraphics[width=\linewidth]{figures/query_benchmark_both.pdf}}
+    \caption{Distributed query evaluation performance --- cumulative throughput and latency in a 40-node \textsc{Synopsis} cluster.}
+    \label{fig:dist-query}
+\end{figure*}
+To evaluate distributed query performance, we executed representative workloads based on observed access patterns over our test dataset across a variety of sketchlet sizes. These queries were categorized as conventional lookups and tree retrievals.  Figure~\ref{fig:dist-query} depicts the end-to-end efficiency of the query evaluations over the distributed sketch.
+Cumulative query throughput and latencies were measured with varying numbers of \emph{concurrent query funnels}.
+A query funnel continuously generates and dispatches representative queries at the maximum possible rate to stress test the system and saturate its capacity. For example, a query could request summary statistics or feature relationships when the temperature is 20--30$^{\circ}$, humidity is above 80\%, and the wind speed is 16 km/h.
+These queries fluctuated in both the ranges of values and spatial scope, resulting in high variability in the number of sketchlets required to resolve the query as well as the depth and breadth of the tree traversals.
+
+Next we evaluated the query speedup gained by maintaining an in-memory sketch of the data compared to a traditional ETL pipeline.
+We extracted the timestamp, location information (as a geohash), temperature, surface visibility, humidity and precipitation in the southeast United States during the months of May--August, 2011--2014 and loaded them into Spark as a DataFrame which was then queried using Spark SQL.
+Given that the underlying RDD of the DataFrame cannot be shared between multiple Spark applications, we used a multi-threaded driver to issue concurrent queries.
+Similarly, \textsc{Synopsis} was evaluated using a multi-threaded query funnel.
+In order to minimize the data transfer between the Spark cluster and the driver, a \texttt{count} action was performed on the results of the SQL query and its result was retrieved at the client.
+For \textsc{Synopsis}, we performed equivalent tree retrieval queries where sections of the distributed sketch is serialized and sent back to the query funnel.
+End-to-end latencies of the queries were recorded for different concurrency levels.
+Spark was evaluated under two different settings: caching enabled and disabled for the Dataframe.
+The results of this evaluation is depicted in Figure~\ref{fig:spark-sql-query}.
+%
+\begin{figure}[b!]
+    \centerline{\includegraphics[width=\linewidth]{figures/spark-sql-query-complete.pdf}}
+    \caption{Contrasting \textsc{Synopsis} query performance with an ETL system built with Spark SQL.}
+    \label{fig:spark-sql-query}
+\end{figure}
+%
+When caching is enabled, the Dataframe will be pinned in memory once materialized for the first time reducing the subsequent access times. Caching the entire Dataframe in memory may not be feasible in most real world spatiotemporal analytical tasks where the size of the dataset exceeds the available memory capacity of the cluster.
+The end-to-end latency of the \textsc{Synopsis} queries is significantly less despite the larger size of the query results (section of the sketch for \textsc{Synopsis} vs the number of matching records for Spark SQL) transferred from the cluster to the query funnel.
+Spark queries provides higher accuracy because queries are answered after scanning the entire dataset, but it requires more resources --- mainly memory and storage -- and incurs higher query latencies.
+Resource requirements and query latencies with such ETL systems drastically increase with the number of features and geospatial and temporal scopes.

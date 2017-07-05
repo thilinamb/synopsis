@@ -1,0 +1,108 @@
+\documentclass[9pt,journal,compsoc]{IEEEtran}
+\usepackage{amsmath,amssymb,amsbsy}
+\usepackage{graphicx}
+\usepackage{balance}  % for  \balance command ON LAST PAGE  (only there!)
+\usepackage{url}
+\usepackage{enumitem}
+\usepackage{hyperref}
+\usepackage{multirow}
+\usepackage{gensymb}
+\usepackage{subcaption}
+\usepackage[export]{adjustbox}
+\usepackage{tabularx, colortbl}
+\usepackage{array}
+\usepackage{dblfloatfix}
+\usepackage{fancyvrb}
+\usepackage{gensymb}
+\usepackage{listings}
+%\usepackage{color,soul}
+\usepackage{courier}
+
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{co_string}{RGB}{95, 135, 0}
+\definecolor{co_comment}{RGB}{135, 135, 135}
+\definecolor{co_other}{RGB}{135, 95, 175}
+\definecolor{co_number}{RGB}{215, 95, 0}
+\definecolor{co_keyword}{RGB}{215, 0, 95}
+\definecolor{co_special}{RGB}{0, 135, 175}
+
+\lstdefinestyle{custompy}{
+    basicstyle=\footnotesize\ttfamily,
+    commentstyle=\color{co_comment},
+    keywordstyle=\bfseries\color{co_keyword},
+    keywordstyle=[2]{\bfseries\color{co_other}},
+    stringstyle=\bfseries\color{co_string},
+    emphstyle=\bfseries\color{co_special},
+    breakatwhitespace=false,
+    breaklines=true,
+    captionpos=b,
+    keepspaces=true,
+    showspaces=false,
+    showstringspaces=false,
+    showtabs=false,
+    tabsize=2,
+    literate=%
+        {0}{{{\color{co_number}0}}}1
+        {1}{{{\color{co_number}1}}}1
+        {2}{{{\color{co_number}2}}}1
+        {3}{{{\color{co_number}3}}}1
+        {4}{{{\color{co_number}4}}}1
+        {5}{{{\color{co_number}5}}}1
+        {6}{{{\color{co_number}6}}}1
+        {7}{{{\color{co_number}7}}}1
+        {8}{{{\color{co_number}8}}}1
+        {9}{{{\color{co_number}9}}}1,
+}
+
+\begin{document}
+\bstctlcite{IEEEexample:BSTcontrol}
+
+\title{Synopsis: A Distributed Sketch over Voluminous Spatiotemporal Observational Streams}
+
+\author{Thilina~Buddhika, Matthew Malensek, Sangmi Lee Pallickara and Shrideep Pallickara,~\IEEEmembership{Members,~IEEE}%
+%\IEEEcompsocitemizethanks{\IEEEcompsocthanksitem T. Buddhika, M. Malensek, S.L. Pallickara and S. Pallickara  are with the Department
+%of Computer Science, Colorado State University.
+%E-mail: \{thilinab, malensek, sangmi, shrideep\}@cs.colostate.edu\protect}
+}
+
+\IEEEtitleabstractindextext{%
+\input{sections/abstract}
+\begin{IEEEkeywords}
+data sketches, streaming systems, spatiotemporal data, query evaluations
+\end{IEEEkeywords}}
+\maketitle
+
+\IEEEdisplaynontitleabstractindextext
+\input{sections/introduction}
+\input{sections/system}
+\input{sections/methodology}
+\input{sections/performance}
+\input{sections/applications}
+\input{sections/related}
+\input{sections/conclusions}
+\vspace{1em}\\
+\input{sections/acknowledgments}
+
+% ensure same length columns on last page (might need two sub-sequent latex runs)
+% \balance
+
+\bibliographystyle{IEEEtran}
+\bibliography{references}
+\vspace*{-3.7\baselineskip}
+\begin{IEEEbiography}[{\includegraphics[width=1in,height=1.2in, clip,keepaspectratio]{./bio/thilina.jpg}}]{Thilina Buddhika} is a Ph.D. candidate in the Computer Science department at Colorado State University.  His research interests are in the area of real time, high throughput stream processing specifically targeted to environments such as Internet of Things (IoT) and health care applications. Email: thilinab@cs.colostate.edu
+\end{IEEEbiography}
+\vspace{-1.60cm}
+\begin{IEEEbiography}[{\includegraphics[width=1in,height=1.2in,clip,keepaspectratio]{./bio/matthew.jpg}}]{Matthew Malensek} is a Ph.D. student in the Department of Computer Science at Colorado State University. His research involves the design and implementation of large-scale distributed systems, data-intensive computing, and cloud computing. Email: malensek@cs.colostate.edu
+\end{IEEEbiography}
+%
+\vspace{-1.60cm}
+\begin{IEEEbiography}[{\includegraphics[width=1in,height=1.2in,clip,keepaspectratio]{./bio/sangmi.jpg}}]{Sangmi Lee Pallickara} is an Assistant Professor in the Department of Computer Science at Colorado State University. She received her Masters and Ph.D. degrees in Computer Science from Syracuse University and Florida State University, respectively. Her research interests are in the area of large-scale scientific data management. She is a recipient of the NSF CAREER award. Email: sangmi@cs.colostate.edu
+\end{IEEEbiography}
+%
+\vspace{-1.56cm}
+\begin{IEEEbiography}[{\includegraphics[width=1in,height=1.2in,clip,keepaspectratio]{./bio/shrideep.jpg}}]{Shrideep Pallickara} is an Associate Professor in the Department of Computer Science and a Monfort Professor at Colorado State University. His research interests are in the area of large-scale distributed systems. He received his Masters and Ph.D. degrees from Syracuse University. He is a recipient of an NSF CAREER award. Email: shrideep@cs.colostate.edu
+\enlargethispage{0.7cm}
+\end{IEEEbiography}
+\end{document}
