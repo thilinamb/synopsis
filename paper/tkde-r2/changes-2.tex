@@ -1,0 +1,78 @@
+\documentclass{article}
+\usepackage[utf8]{inputenc}
+\usepackage{graphicx}
+\usepackage{geometry}
+\geometry{
+    letterpaper,
+    top=1in, bottom=1in,
+    left=1in, right=1in,
+}
+\usepackage{times}
+
+\usepackage{color}
+\usepackage[most]{tcolorbox}
+
+\definecolor{lightblue}{HTML}{e9f3f9}
+\definecolor{darkblue}{HTML}{5bacde}
+\definecolor{shadowcolor}{HTML}{cecece}
+\tcbset{
+    skin=enhanced,
+    drop shadow=shadowcolor,
+    left=0.5em,
+    right=0.5em,
+    top=0.5em,
+    bottom=0.5em,
+    before skip=1.5em,
+    after skip=1.5em,
+    colback=lightblue,
+    colframe=darkblue,
+    boxrule=0.75pt,
+    parbox=false
+}
+
+\begin{document}
+
+\section*{Summary of Changes}\label{summary-of-changes}
+\subsection*{Editor Comments}\label{editor-comments}
+
+Most of the review comments have been satisfactorily addressed. There are still some concerns on the query accuracy and experimental result. Please address them in a further revision.
+
+\begin{tcolorbox}
+    Our thanks to the editors and reviewers for their helpful feedback. This second revision includes:
+
+\begin{itemize}
+\item Thing 1
+
+\item Thing 2
+\end{itemize}
+%
+Our responses and actions taken are highlighted below.
+\end{tcolorbox}
+
+\subsection*{Reviewer: 1}\label{reviewer-1}
+
+In this revision, all my previous comments have been addressed satisfactorily.
+
+\begin{tcolorbox}
+    Thank you very much, and we appreciate all your previous suggestions!
+\end{tcolorbox}
+
+\subsection*{Reviewer: 2}\label{reviewer-2}
+
+I still have some concern about Table 4. To clarify the results of Synthetic better, Table 4 should have a row of Synthetic-100\%, not just Synthetic-10\% and Synthetic-20\%.
+
+\begin{tcolorbox}
+    This is an excellent point, and we have added the Synthetic-100\% result to the table.
+\end{tcolorbox}
+
+\subsection*{Reviewer: 3}\label{reviewer-3}
+
+The authors have mostly addressed my comments. However, I am still confused about how the query accuracy is guaranteed.
+
+If I understand correctly, SIFT stores statistical information for each sketchlet (corresponds to a geohash bounding box, right?). This is different from R-tree, which stores accurate information for each tree node. My question is that, a query may overlap with several sketchlets, and some points are in these overlapped sketchlets, but not in the query range. The statistical information in SIFT is computed in the sketchlets level. The points not in the query range are used to compute the statistics of these sketchlets, which are used in query processing, and this causes the error. I am still not clear how this problem can be fixed in your proposed method. I think this problem also happens for the other dimensions.
+
+\begin{tcolorbox}
+
+\end{tcolorbox}
+
+\end{document}
