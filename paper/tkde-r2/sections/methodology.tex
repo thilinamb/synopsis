@@ -18,6 +18,7 @@ In this section, we discuss the construction of the distributed sketch, sketchle
     \includegraphics[scale=0.4, valign=t]{figures/scale-out.pdf}
     \caption{Scale-out protocol}
     \label{fig:scale-out-protocol}    
+    \vspace{-1em}
 \end{figure}
 There are two primary approaches to scaling a sketchlet that is experiencing high load: \emph{replication} and \emph{load migration}. In replication-based scaling, new sketchlets are spawned during high data arrival rates that are responsible for identical spatial scopes as their originating sketchlet. Assimilation of the newly-created sketchlet involves partitioning inbound streams directed to the original sketchlet. The upstream node (e.g., stream ingester) is responsible for partitioning, which may be performed in a skewed fashion with the new sketchlet receiving a larger portion of the inbound stream. Alternatively, inbound streams to the original sketchlet may also be partitioned in a round-robin fashion between the original and the newly-created sketchlet.
 Using a replication-based scaling with a round-robin style stream partitioning is memory inefficient because of the possibility of multiple SIFT trees with significantly overlapping sets of vertices and edges. Alternatively, \emph{targeted} load migration selects geospatial scopes that are experiencing heavy load; both data arrival and SIFT update rates are considered when deciding which trees to migrate.
@@ -102,7 +103,7 @@ This benchmark also shows infrequent, rapid scale-out and continuous, gradual sc
 
 Figure~\ref{fig:stability-mem} demonstrates how memory consumption threshold rules trigger scaling maneuvers to maintain the stability of an individual sketchlet.
 We have used 0.45 of the total memory available to a JVM process as the upper threshold for triggering scale-out operations.
-In certain occasions, it is required to perform multiple consecutive scaling out operations (interleaved with the cooling down periods) to bring memory usage to the desired level due to the increased utilization caused by background data ingestion.
+In certain occasions, it is required to perform multiple consecutive scaling out operations (interleaved with the cooling down periods) to bring memory usage to the desired level due to the increased utilization caused by background data ingestion. \vspace{-1em}
 
 %Completing the scale-out protocol quickly is important because it can release mutual exclusive locks in both origin and target \textsc{Synopsis} nodes quickly and participate in other scaling activities soon after the stabilization period.
 %

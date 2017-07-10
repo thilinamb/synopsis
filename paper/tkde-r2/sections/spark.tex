@@ -10,7 +10,7 @@ All five datasets were staged on HDFS and loaded into Spark to train the models.
 We evaluated our approach based on the on-disk and in-memory storage requirements, data loading time, training time and the accuracy of the model.
 Our observations are summarized in Table~\ref{tab:spark-rf}; overall, the accuracy of the synthetic data models is comparable to that of the actual data, while requiring less space, training, and loading times;
 for instance, our 10\% synthetic dataset produces a model with similar accuracy while incurring 54\% less training time and reducing space requirements by 90\%. Additionally, based on the number of RDD partitions used, the smaller synthetic datasets require substantially less computing resources.  It is worth noting that these particular models do not appear to benefit from a larger set of training samples, and could potentially begin to exhibit over-fitting if trained on more data.
-We believe signs of this are demonstrated by the 100\% synthetic dataset, where fidelity limits of the sketch result in training data that slightly reduces the expressiveness of the model.
+We believe signs of this are demonstrated by the 100\% synthetic dataset, where fidelity limits of the sketch result in training data points that slightly decrease the expressiveness of the model. \vspace{-1em}
 %
 \begin{table*}[ht!]
     \renewcommand{\arraystretch}{1.2}

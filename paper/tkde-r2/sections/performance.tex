@@ -2,8 +2,8 @@
 Here we report system benchmarks profiling several aspects of \textsc{Synopsis}, including the memory consumption and data ingestion performance of the sketch, its ability to handle variable loads, organization of sketchlets, and query performance.
 \label{sec:performance}
 \subsection{Dataset and Experimental Setup}
-We have used two primary datasets for our evaluation.
-One of our subject datasets was sourced from the NOAA North American Mesoscale (NAM) Forecast System~\cite{noaa_nam}.  The NAM collects atmospheric data several times per day and includes features of interest such as surface temperature, visibility, relative humidity, snow, and precipitation. The size of this entire source dataset was 25 TB.
+We used two datasets for our evaluation.
+The first was sourced from the NOAA North American Mesoscale (NAM) Forecast System~\cite{noaa_nam}.  The NAM collects atmospheric data several times per day and includes features of interest such as surface temperature, visibility, relative humidity, snow, and precipitation. The size of this entire source dataset was 25 TB.
 The other dataset, collected by the US Environmental Protection Agency, contained daily summary data of four criteria gases ($O_3$, $SO_2$, $CO$ and $NO_2$) used for calculating the air quality in a given area~\cite{epa-criteriagases}. Each observation in both datasets also incorporates a relevant geographical location and time of creation. This information is used during the data ingest process to partition streams across available sketchlets and preserve temporal ordering of events. Data streams were ingested at faster rates to simulate high data arrival rates while ensuring temporal ordering was preserved.
 
 Performance evaluations reported here were carried out on a cluster of 40 HP DL160 servers (Xeon E5620, 12 GB RAM). The test cluster was configured to run Fedora 24, and \textsc{Synopsis} was executed under the OpenJDK Java runtime 1.8.0\_72.
@@ -11,7 +11,7 @@ For evaluations involving Apache Spark, we used Apache Spark version 2.0.1 with 
 
 
 \subsection{Distributed Sketch Memory Evaluation}
-We monitored the growth in memory consumption of the entire distributed sketch over time with continuous data ingestion as shown in Figure~\ref{fig:dist-sketch-mem-usage} for both datasets. As more data was streamed into the system, the growth rate of the distributed sketch decreased as the sketchlets expanded to include vertices for their particular feature space.  At the end of our monitoring period, the total amount of ingested data was around three orders of magnitude higher ($\sim 1285$ for NOAA data and $\sim 926$ for air quality data) than the in-memory sketch size, resulting in notable space savings.
+We monitored the growth in memory consumption of the entire distributed sketch over time with continuous data ingestion as shown in Figure~\ref{fig:dist-sketch-mem-usage} for both datasets. As more data was streamed into the system, the growth rate decreased as the sketchlets expanded to include vertices for their particular feature space.  At the end of our monitoring period, the total amount of ingested data was around three orders of magnitude higher ($\sim 1285$ for NOAA data and $\sim 926$ for air quality data) than the in-memory sketch size, resulting in notable space savings.
 %
 %
 \begin{figure*}[t!]
@@ -56,12 +56,10 @@ This setup forces the corresponding SIFT trees to fan out on different planes (t
 A real world scenario is simulated with a single partition.
 
 Table~\ref{tab:throughput} summarizes the results of this benchmark.
-As we increase the number of ingesters with a single sketchlet, the throughput decreases due to the simultaneous fan-out operations taking place within the SIFT trees. This claim is further supported by the increase in the latency for updating the sketchlet as shown in the table.
-
-We started with a single sketchlet, allowed the system to dynamically scale out, and measured its throughput once a steady state was reached (i.e., frequent scaling does not occur).
-The system reached stability with 14-16 sketchlets depending on the setup (number of ingesters).
-We observed higher throughput compared a single sketchlet due to parallel processing of the observational stream, but the increase was not linear; when there is a single ingester, throughput is constrained by the bandwidth of the machine where the ingester was running. In this benchmark, \textsc{Synopsis} was using around 86\% of the available bandwidth.
-With multiple ingesters, due to the way the stream is (intentionally) constructed, the load is not evenly partitioned across the cluster, with only a subset of sketchlets processing the stream.
+As we increase the number of ingesters with a single sketchlet, the throughput decreases due to the simultaneous fan-out operations taking place within the SIFT trees. This claim is further supported by the increase in the latency for updating the sketchlet as shown in the table.  We started with a single sketchlet, allowed the system to dynamically scale out, and measured its throughput once a steady state was reached (i.e., frequent scaling does not occur).
+The system reached stability with 14-16 sketchlets depending on the number of ingesters.
+We observed higher throughput compared a single sketchlet due to parallel processing of the observational stream, but the increase was not linear; when there is a single ingester, throughput is constrained by the bandwidth of the ingester. In this benchmark, \textsc{Synopsis} was using around 86\% of the available bandwidth.
+With multiple ingesters, due to the way the stream is (intentionally) constructed, the load is not evenly partitioned across the cluster.%, with only a subset of sketchlets processing the stream.
 %
 % scale out graph
 \begin{figure*}
