@@ -43,7 +43,7 @@ Most of the review comments have been satisfactorily addressed. There are still 
 \begin{itemize}
     \item An addition to our Random Forest benchmark that provides results from a synthetic dataset of equal size to the original dataset (\emph{Synthetic - 100\%}). This allows a direct comparison between the raw dataset and synthetic data constructed from feature distributions.
 
-    \item Clarifications in the text regarding query accuracy and the associated trade-off space. We now include a discussion on accuracy vs. memory consumption as well as false positives vs. false negatives, which should help clear up any confusion on the trade-offs being made.
+    \item Clarifications in the text regarding query accuracy and the associated trade-off space. We now include more discussion on false positives vs. false negatives, which should help clear up any confusion on the trade-offs being made.
 \end{itemize}
 %
 Our responses and actions taken are highlighted below.
@@ -82,7 +82,7 @@ If I understand correctly, SIFT stores statistical information for each sketchle
 
     A related issue is the accuracy of other features/dimensions; since our quantization scheme assigns data points to variable-sized bins, range queries can overlap with bins that they do not fully cover (shown in Figure 4). However, when query results are transmitted to the user, they contain the ranges and distributions of the data points. We leverage this information to provide measures of accuracy and ensure that synthetic datasets only contain data within the ranges specified. Additionally, if a user desires assurance that their results do not contain any values outside the query range, vertices that do not overlap entirely can be pruned.
 
-    This boils down to two trade-offs managed by \textsc{Synopsis} to deal with voluminous datasets: accuracy vs. memory, and false positives vs. false negatives. To clarify this, we have added a bit more discussion to section 3.5.
+    This boils down to two trade-offs managed by \textsc{Synopsis} to deal with voluminous datasets: accuracy vs. memory, and false positives vs. false negatives. To clarify this, we have added more detail to the discussion in Section 3.5.
 \end{tcolorbox}
 
 \end{document}
