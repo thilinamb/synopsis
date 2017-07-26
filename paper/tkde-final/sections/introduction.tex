@@ -1,0 +1,44 @@
+\section{Introduction}
+\label{sec:introduction}
+The proliferation of remote sensing equipment such as radars and satellites, networked sensors, commercial mapping, location-based services, and sales tracking applications have resulted in exponential growth of spatiotemporal data. Such datasets comprise observations where both the location and time of measurement are available in addition to \emph{features} of interest (such as humidity, air quality, disease prevalence, sales, etc.). This information can be leveraged in several domains, including atmospheric science, epidemiology, environmental science, geosciences, smart cities, and commercial applications. In these settings, queries over the data must be \emph{expressive} and execute in real time, regardless of data volumes.
+
+Spatiotemporal datasets are naturally multidimensional with multiple features of interest being reported/recorded continuously for a particular timestamp and geolocation. The values associated with these features are continually changing; in other words, the dataset \emph{feature space} is always evolving.  Queries specified over these datasets may have a wide range of characteristics encompassing the frequency at which they are evaluated and their spatiotemporal scope. The crux of this paper is to support query evaluations and data processing over continually-arriving observational data. We achieve this via construction of an in-memory distributed \emph{sketch} that maintains a compact representation of the data.
+The sketch is also an effective surrogate for the data that it snapshots and serves as input for computations.
+%
+%
+\vspace{1.7em}\\
+%
+\textbf{Challenges} in supporting real-time evaluation of queries and analysis over a constantly-evolving feature space:
+\begin{itemize}[leftmargin=*]
+    \item   \emph{Data volumes and arrival rates:} It is infeasible to store all observations, which may arrive continually and at high rates. This is especially true if the arrival rates outpace disk speeds.
+    \item \emph{I/O Costs:} Memory accesses are 5-6 orders of magnitude faster than disk accesses. Given the data volumes, disk accesses during query evaluations or analysis are infeasible.
+    \item   \emph{Accuracy:} Queries evaluations must be accurate, with appropriate error bounds included in the results.
+    \item   \emph{Spatiotemporal characteristics:} Queries and analysis may target both spatial and chronological properties of the dataset.
+\end{itemize}
+%
+\vspace{0.7em}
+%
+\textbf{Research Questions} we developed during this study:
+\begin{description}[leftmargin=*]
+    \item[\emph{RQ-1:}] How can we generate compact, memory-resident representations of the observational space while accounting for spatiotemporal attributes? The resulting \emph{sketch} must be amenable to fast, continuous updates to ensure its representativeness and fidelity to the original data.
+    \item[\emph{RQ-2:}] How can we scale effectively in situations where system load is high or observations arrive faster than the sketch can be updated? The density and arrival rates for observations may vary based on geospatial characteristics; for example, New York would have a far higher rate of observations than Denver.
+    \item[\emph{RQ-3:}] How can we enable expressive, low-latency queries over the distributed sketch while also maintaining accuracy?  Given that the sketch is a compact representation of the data, queries facilitate high-level analysis without requiring users to understand the underlying system implementation.
+\end{description}
+%
+\vspace{0.7em}
+%
+\textbf{Approach Summary}:
+Similar to other sketches, the design of \textsc{Synopsis} was guided by its desired functionality. \textsc{Synopsis} is a compact, effective surrogate for voluminous data; the system extracts metadata from observations and organizes this information to support relational queries targeting different portions of the feature space. We support selection, joins, aggregations, and sorting. The \textsc{Synopsis} sketch can interoperate and provide input data to general purpose computations expressed using popular analytic engines such as Spark \cite{zaharia2010spark,armbrust2015spark}, TensorFlow \cite{abadi2016tensorflow,tensorflow}, Hadoop \cite{hadoop,shvachko2010hadoop,borthakur2008hdfs}, and VW \cite{langford2007vowpal}.
+
+Our sketch is also naturally amenable to distribution, with each machine in the cluster holding information about a particular subset of the observational space.  This ensures that each cluster-node can evaluate multiple concurrent queries independently. The sketch is capable of scaling in or out depending on streaming ingress rates and memory footprints, with scale-out operations that support targeted alleviation of hotspots. \textsc{Synopsis} manages the complexity of identifying these hotspots, splitting portions of the sketch, and migrating relevant subsets. Distributing the sketch allows us to maintain a finer-grained representation of the feature space while also improving the accuracy of query evaluations; e.g., an arctic region and a tropical region would be maintained on separate nodes that specialize for particular climates.
+%
+\vspace{0.7em}\\
+%
+\textbf{Paper Contributions}:
+To our knowledge, \textsc{Synopsis} is the first sketch tailored specifically for spatiotemporal observational data. The methodology of this study is centered around our novel in-memory data structure, \emph{SIFT} (\S\ref{sec:sift}), which employs a hierarchical forest-of-trees approach combined with online, running summary statistics to compactly represent observational data. In addition to the memory benefits of the SIFT, the data structure is amenable to distribution across a cluster of machines. This allows \textsc{Synopsis} to cope with high-rate data arrivals and scale dynamically with changes in problem size or resource availability. Both dynamic scaling and querying are facilitated by efficient tree-based lookup operations. For analytic tasks, the SIFT acts as an effective surrogate for full-resolution observations, enabling expressive queries over arbitrary spatiotemporal scopes, generation of synthetic datasets, and interoperation with popular analytical engines.
+%
+\vspace{0.7em}\\
+%
+\textbf{Paper Organization}:
+\S\ref{sec:system} provides a system overview, followed by methodology in \S\ref{sec:methodology}. A performance evaluation is presented in \S\ref{sec:performance}, while \S\ref{sec:applications} demonstrates applications of \textsc{Synopsis}, \S\ref{sec:related} discusses related approaches, and \S\ref{sec:conclusions} concludes the paper.
+\vspace{-0.7em}
