@@ -92,7 +92,7 @@ The sketch is also an effective surrogate for the data that it snapshots and ser
 %
 \vspace{1.7em}\\
 %
-\textbf{Challenges} in supporting real-time evaluation of queries and analysis over a constantly-evolving feature space:
+\textbf{Challenges:} Support for real-time evaluation of queries and analysis over a feature space that is continually evolving in- troduces unique challenges. These include:
 \begin{itemize}[leftmargin=*]
     \item   \emph{Data volumes and arrival rates:} It is infeasible to store all observations, which may arrive continually and at high rates. This is especially true if the arrival rates outpace disk speeds.
     \item \emph{I/O Costs:} Memory accesses are 5-6 orders of magnitude faster than disk accesses. Given the data volumes, disk accesses during query evaluations or analysis are infeasible.
@@ -102,7 +102,7 @@ The sketch is also an effective surrogate for the data that it snapshots and ser
 %
 \vspace{0.7em}
 %
-\textbf{Research Questions} we developed during this study:
+\textbf{Research Questions:} The challenges associated with accom- plishing this functionality led us to formulate the following:
 \begin{description}[leftmargin=*]
     \item[\emph{RQ-1:}] How can we generate compact, memory-resident representations of the observational space while accounting for spatiotemporal attributes? The resulting \emph{sketch} must be amenable to fast, continuous updates to ensure its representativeness and fidelity to the original data.
     \item[\emph{RQ-2:}] How can we scale effectively in situations where system load is high or observations arrive faster than the sketch can be updated? The density and arrival rates for observations may vary based on geospatial characteristics; for example, New York would have a far higher rate of observations than Denver.
