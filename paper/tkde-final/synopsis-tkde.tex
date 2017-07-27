@@ -142,7 +142,7 @@ During dynamic scaling, the geographic extents managed by a sketchlet vary.
 \vspace{0.7em}\\
 %
 \textbf{System Components}:
-\textsc{Synopsis} relies on a set of auxiliary services that are needed to construct, update, and maintain the sketch, as well as adapt to changing system conditions:
+\textsc{Synopsis} is implemented on top of Neptune stream processing system~\cite{buddhika2016neptune, buddhika2017online} and relies on a set of auxiliary services that are needed to construct, update, and maintain the sketch, as well as adapt to changing system conditions:
 \begin{description}[leftmargin=*]
 \item[Control plane] is responsible for orchestrating control messages exchanged between sketchlets as part of various distributed protocols such as dynamic scaling.
     It is decoupled from the generic data plane to ensure higher priority and low latency processing without being affected by buffering delays and backpressure experienced during stream processing.
