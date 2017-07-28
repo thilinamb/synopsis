@@ -15,7 +15,7 @@
 \usepackage{fancyvrb}
 \usepackage{gensymb}
 \usepackage{listings}
-%\usepackage{color,soul}
+\usepackage{color,soul}
 \usepackage{courier}
 
 \definecolor{codegreen}{rgb}{0,0.6,0}
@@ -92,7 +92,7 @@ The sketch is also an effective surrogate for the data that it snapshots and ser
 %
 \vspace{1.7em}\\
 %
-\textbf{Challenges:} Support for real-time evaluation of queries and analysis over a feature space that is continually evolving in- troduces unique challenges. These include:
+\textbf{Challenges:} \hl{Support for real-time evaluation of queries and analysis over a feature space that is continually evolving introduces unique challenges. These include:}
 \begin{itemize}[leftmargin=*]
     \item   \emph{Data volumes and arrival rates:} It is infeasible to store all observations, which may arrive continually and at high rates. This is especially true if the arrival rates outpace disk speeds.
     \item \emph{I/O Costs:} Memory accesses are 5-6 orders of magnitude faster than disk accesses. Given the data volumes, disk accesses during query evaluations or analysis are infeasible.
@@ -102,7 +102,7 @@ The sketch is also an effective surrogate for the data that it snapshots and ser
 %
 \vspace{0.7em}
 %
-\textbf{Research Questions:} The challenges associated with accom- plishing this functionality led us to formulate the following:
+\textbf{Research Questions:} \hl{The challenges associated with accomplishing this functionality led us to formulate the following:}
 \begin{description}[leftmargin=*]
     \item[\emph{RQ-1:}] How can we generate compact, memory-resident representations of the observational space while accounting for spatiotemporal attributes? The resulting \emph{sketch} must be amenable to fast, continuous updates to ensure its representativeness and fidelity to the original data.
     \item[\emph{RQ-2:}] How can we scale effectively in situations where system load is high or observations arrive faster than the sketch can be updated? The density and arrival rates for observations may vary based on geospatial characteristics; for example, New York would have a far higher rate of observations than Denver.
@@ -142,7 +142,7 @@ During dynamic scaling, the geographic extents managed by a sketchlet vary.
 \vspace{0.7em}\\
 %
 \textbf{System Components}:
-\textsc{Synopsis} is implemented on top of Neptune stream processing system~\cite{buddhika2016neptune, buddhika2017online} and relies on a set of auxiliary services that are needed to construct, update, and maintain the sketch, as well as adapt to changing system conditions:
+\textsc{Synopsis} \hl{leverages the Neptune stream processing system}~\cite{buddhika2016neptune, buddhika2017online} and relies on a set of auxiliary services that are needed to construct, update, and maintain the sketch, as well as adapt to changing system conditions:
 \begin{description}[leftmargin=*]
 \item[Control plane] is responsible for orchestrating control messages exchanged between sketchlets as part of various distributed protocols such as dynamic scaling.
     It is decoupled from the generic data plane to ensure higher priority and low latency processing without being affected by buffering delays and backpressure experienced during stream processing.
@@ -798,7 +798,7 @@ Our future work will target support for \textsc{Synopsis} to be used as input fo
 % Acknowledgement
 %
 \textbf{Acknowledgements:}
-This research was supported by the US Dept of Homeland Security [D15PC00279]; the US National Science Foundation [ACI-1553685, CNS-1253908]; and a Monfort Professorship.
+This research has been \hl{supported by funding from the US Deptartment of Homeland Security [D15PC00279]}; the US National Science Foundation [ACI-1553685, CNS-1253908]; and a Monfort Professorship.
 % ensure same length columns on last page (might need two sub-sequent latex runs)
 % \balance
 
@@ -808,11 +808,11 @@ This research was supported by the US Dept of Homeland Security [D15PC00279]; th
 \begin{IEEEbiography}[{\includegraphics[width=1in,height=1.2in, clip,keepaspectratio]{./bio/thilina.jpg}}]{Thilina Buddhika} is a Ph.D. candidate in the Computer Science department at Colorado State University.  His research interests are in the area of real time, high throughput stream processing specifically targeted to environments such as Internet of Things (IoT) and health care applications. Email: thilinab@cs.colostate.edu
 \end{IEEEbiography}
 \vspace{-1.60cm}
-\begin{IEEEbiography}[{\includegraphics[width=1in,height=1.2in,clip,keepaspectratio]{./bio/matthew.jpg}}]{Matthew Malensek} received his Ph.D. from the Department of Computer Science at Colorado State University. His research involves the design and implementation of large-scale distributed systems, data-intensive computing, and cloud computing. Email: malensek@cs.colostate.edu
+\begin{IEEEbiography}[{\includegraphics[width=1in,height=1.2in,clip,keepaspectratio]{./bio/matthew.jpg}}]{Matthew Malensek} \hl{received his Ph.D. from the Department of Computer Science at Colorado State University.} His research involves the design and implementation of large-scale distributed systems, data-intensive computing, and cloud computing. Email: malensek@cs.colostate.edu
 \end{IEEEbiography}
 %
 \vspace{-1.60cm}
-\begin{IEEEbiography}[{\includegraphics[width=1in,height=1.2in,clip,keepaspectratio]{./bio/sangmi.jpg}}]{Sangmi Lee Pallickara} is an Assistant Professor in the Department of Computer Science at Colorado State University. She received her Masters and Ph.D. degrees in Computer Science from Syracuse University and Florida State University, respectively. Her research interests are in the area of large-scale scientific data management. She is a recipient of the NSF CAREER award. Email: sangmi@cs.colostate.edu
+\begin{IEEEbiography}[{\includegraphics[width=1in,height=1.2in,clip,keepaspectratio]{./bio/sangmi.jpg}}]{Sangmi Lee Pallickara} is an Associate Professor in the Department of Computer Science at Colorado State University. She received her Masters and Ph.D. degrees in Computer Science from Syracuse University and Florida State University, respectively. Her research interests are in the area of large-scale scientific data management. She is a recipient of the NSF CAREER award. Email: sangmi@cs.colostate.edu
 \end{IEEEbiography}
 %
 \vspace{-1.56cm}
