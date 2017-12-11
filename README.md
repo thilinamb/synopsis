@@ -17,12 +17,12 @@ Prerequisites: Apache ZooKeeper
 
 2. Ports used for communication: By default Synopsis uses 7077 for data traffic (`listener-port`) and 9099 (`control-plane-port`) for control traffic.
 
-2. Start Zookeeper and update the ZooKeeper URL property (`"zookeeper-hosts"`).  
+2. Configure the Zookeeper endpoints using the property `zookeeper-hosts`.  
 For instance, if ZooKeeper is running on localhost, port 9191, it should be set as;  
 `zookeeper-hosts=localhost:9191`  
-If you run a cluster of ZooKeeper servers, then specify the set of Zookeeper endpoints separated by commas.  
+If you run a cluster of ZooKeeper servers, then specify the set of Zookeeper endpoints separated by commas. Refer to [this guide](https://zookeeper.apache.org/doc/r3.3.2/zookeeperAdmin.html#sc_zkMulitServerSetup) to setup a Zookeeper cluster. In the past, we used a 3 node Zookeeper cluster.
 
-3. Change the deployer URL and port in the Granules configuration (`"deployer-endpoint"`). Deployer is launched in the machine from which you'll launch the job (step 10).  
+3. Change the deployer URL and port in the Granules configuration (`deployer-endpoint`). Deployer is launched in the machine from which you'll launch the job (step 10).  
 `deployer-endpoint=lattice-96:9099`
 
 4. Dynamic Scaling: Following configurations are related to setting up dynamic scaling.  
@@ -42,10 +42,19 @@ If you run a cluster of ZooKeeper servers, then specify the set of Zookeeper end
 8. Setting up the stat-server: There is a centralized statistics server used to gather system wide metric readings periodically. This is useful to get a cumulative view of the entire cluster over time. Otherwise joining statistics reported locally at individual machines is both error-prone and cumbersome. This is a very lightweight java server which will periodically dump the system metrics along with the timestamp to the file system of the machine where it is running. Update the stat server endpoint using the property `stat-server-endpoint`.
 
 ## Starting a Synopsis cluster
-5. Start the Granules resource.  
-`> cd neptune-geospatial-distribution-1.0-SNAPSHOT/bin`  
-`> sh resource -c ../config/ResourceConfig.txt`  
+1. Start Zookeeper.
 
+2. Start the stat-server.
+
+3. Start the Synopsis nodes (these are basically Granules resources).   
+To launch a single node use the following startup script.  
+`> cd neptune-geospatial-distribution-1.0-SNAPSHOT/bin`  
+`> sh resource -c ../config/ResourceConfig.txt`
+
+If you need to run a cluster with a number of machines, use `dssh` script to launch Granules resources in a set of machines simulatenously. More details on dssh is available [here] (https://github.com/malensek/dssh). Following command will launch Granules resource in the list of machines specificed in the file machine_list (ip/hostname of a machine in a single line).  
+`./dssh -cap -f <machine_list> 'cd cd neptune-geospatial-distribution-1.0-SNAPSHOT/bin; sh resource -c ../config/ResourceConfig.txt'`
+
+*Usually allow 1-2 minutes to complete the startup process of the cluster. Some lattice machines are slower than the others.*
 
 ## Ingesting data
 6. To launch a job,  
