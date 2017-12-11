@@ -41,7 +41,7 @@ def main():
 		for input_path in input_list:
 			t1 = time.time()
 			data = sc.textFile(hdfs_nn + input_path)
-			data.count()
+			data.first()
 			t2 = time.time()
 			load_time_i.append(t2 - t1)
 		load_times.append(load_time_i)
