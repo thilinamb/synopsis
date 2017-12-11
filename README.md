@@ -80,4 +80,15 @@ This command will gracefully complete if it has heard back from all the nodes. O
 
 Then there should be a file named '1512959167339.pstat' in the `/tmp` directory. 
 
-Save this file for restoring this checkpoint later. This file contains the location of the file created during the checkpoint process at each node. By keeping track of this file location, it is possible to create multiple independent checkpoints. 
+Save this file for restoring this checkpoint later. This file contains the location of the file created during the checkpoint process at each node. By keeping track of this file location, it is possible to create multiple independent checkpoints.
+
+### Restoring from a checkpoint
+For restoring from a checkpoint, we will deploy an empty stream processing graph and populate its state from the persisted checkpoint data.
+
+1. Start the ZK cluster
+
+2. Start the stat server
+
+3. Deploy the empty graph. Run the following command from the node designated as the deployer node.  
+`> ./granules-start -c ../config/ResourceConfig.txt -t synopsis.client.persistence.LoadStateFromDiskDeployer path_to_pstat_file`  
+For instance: `> ./granules-start -c ../config/ResourceConfig.txt -t synopsis.client.persistence.LoadStateFromDiskDeployer ~/1512959167339.pstat`
