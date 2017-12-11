@@ -1,6 +1,3 @@
-https://zookeeper.apache.org/doc/r3.3.2/zookeeperAdmin.html#sc_zkMulitServerSetuphttps://zookeeper.apache.org/doc/r3.3.2/zookeeperAdmin.html#sc_zkMulitServerSetuphttps://zookeeper.apache.org/doc/r3.3.2/zookeeperAdmin.html#sc_zkMulitServerSetuphttps://zookeeper.apache.org/doc/r3.3.2/zookeeperAdmin.html#sc_zkMulitServerSetup# neptune-geospatial
-This project aims at using Neptune to process geo-spatial data and answer approximate queries. 
-
 # How to Build
 Prequisites: Maven 3, JDK 1.7 or higher  
 1. `> cd code/`  
