@@ -3,12 +3,13 @@ package neptune.geospatial.core.protocol.processors.client;
 import ds.granules.communication.direct.control.ControlMessage;
 import ds.granules.communication.direct.control.SendUtility;
 import ds.granules.exception.CommunicationsException;
+import ds.granules.exception.GranulesConfigurationException;
+import ds.granules.util.NeptuneRuntime;
 import neptune.geospatial.core.computations.AbstractGeoSpatialStreamProcessor;
 import neptune.geospatial.core.computations.scalingctxt.ScalingContext;
 import neptune.geospatial.core.protocol.msg.client.PersistStateRequest;
 import neptune.geospatial.core.protocol.msg.client.PersistStateResponse;
 import neptune.geospatial.core.protocol.processors.ProtocolProcessor;
-import neptune.geospatial.util.RivuletUtil;
 import neptune.geospatial.util.trie.GeoHashPrefixTree;
 import org.apache.log4j.Logger;
 
@@ -23,10 +24,12 @@ import java.io.IOException;
 public class PersistStateReqProcessor implements ProtocolProcessor {
 
     private final Logger logger = Logger.getLogger(PersistStateReqProcessor.class);
+    public static final String CHECKPOINT_LOC = "checkpoint-dir";
 
     @Override
     public void process(ControlMessage ctrlMsg, ScalingContext scalingContext,
                         AbstractGeoSpatialStreamProcessor streamProcessor) {
+        logger.info("Received a state persistence request.");
         PersistStateRequest persistStateRequest = (PersistStateRequest) ctrlMsg;
         long checkpointId = persistStateRequest.getCheckpointId();
         String fileName = getSerializationLocation() + "/" + checkpointId + streamProcessor.getInstanceIdentifier().substring(0, 4);
@@ -81,6 +84,11 @@ public class PersistStateReqProcessor implements ProtocolProcessor {
     }
 
     private String getSerializationLocation() {
-        return "/s/" + RivuletUtil.getHostInetAddress().getHostName() + "/a/nobackup/granules/thilinab/dumps";
+        try {
+            return NeptuneRuntime.getInstance().getProperties().getProperty(CHECKPOINT_LOC);
+        } catch (GranulesConfigurationException e) {
+            logger.error("Error when retrieving checkpoint dir. Using /tmp/.", e);
+        }
+        return "/tmp/";
     }
 }

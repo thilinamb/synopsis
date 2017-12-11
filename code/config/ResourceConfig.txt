@@ -69,3 +69,6 @@ rivulet-hazelcast-serializer-neptune.geospatial.hazelcast.type.SketchLocation=ne
 
 # stat server
 stat-server-endpoint=lattice-59:12345
+
+# checkpointing location.
+checkpoint-dir=/tmp/
