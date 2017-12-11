@@ -51,7 +51,7 @@ To launch a single node use the following startup script.
 `> cd neptune-geospatial-distribution-1.0-SNAPSHOT/bin`  
 `> sh resource -c ../config/ResourceConfig.txt`
 
-If you need to run a cluster with a number of machines, use `dssh` script to launch Granules resources in a set of machines simulatenously. More details on dssh is available [here] (https://github.com/malensek/dssh). Following command will launch Granules resource in the list of machines specificed in the file machine_list (list of line separated ip/hostnames. Check the machines file in the conf for an example.).  
+If you need to run a cluster with a number of machines, use `dssh` script to launch Granules resources in a set of machines simulatenously. More details on dssh is available [here](https://github.com/malensek/dssh). Following command will launch Granules resource in the list of machines specificed in the file machine_list (list of line separated ip/hostnames. Check the machines file in the conf for an example.).  
 `./dssh -cap -f <path_to_machine_list> 'cd cd neptune-geospatial-distribution-1.0-SNAPSHOT/bin; sh resource -c ../config/ResourceConfig.txt'`
 
 *Usually allow 1-2 minutes to complete the startup process of the cluster. Some lattice machines are slower than the others.*
