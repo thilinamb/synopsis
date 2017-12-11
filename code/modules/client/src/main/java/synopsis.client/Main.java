@@ -26,7 +26,7 @@ public class Main {
     public static void main(String[] args) {
         try {
             if (args.length < 3) {
-                System.err.println("Usage: <path-to-config> <port>");
+                System.err.println("Usage: <path-to-config> <port> <mode>");
                 System.exit(-1);
             }
             String configFilePath = args[0];
