@@ -7,12 +7,13 @@ Prequisites: Maven 3, JDK 1.7 or higher
 2. `> mvn clean install` - This will create a distribution with the compiled code and the dependencies.  
 
 # How to run
-Prerequisites: Apache ZooKeeper  
+Prerequisites: Apache ZooKeeper
 
+## Updating the configurations
 1. After compiling the source, unzip the generated distribution. It should be inside `code/modules/distribution/target`.  
 `> cd code/modules/distribution/target`  
 `> unzip unzip neptune-geospatial-distribution-1.0-SNAPSHOT-bin.zip`  
-*Configuration files are located inside `conf` sub directory. The main configuration file is `ResourceConfig.txt`. Properties explained below is defined in this file unless specified specifically.*
+*Configuration files are located inside `conf` sub directory. The main configuration file is `ResourceConfig.txt`. Properties explained below is defined in this file unless specified specifically. Only the ports most relevant to getting a working Synopsis cluster is explained here.*
 
 2. Ports used for communication: By default Synopsis uses 7077 for data traffic (`listener-port`) and 9099 (`control-plane-port`) for control traffic.
 
@@ -38,12 +39,15 @@ If you run a cluster of ZooKeeper servers, then specify the set of Zookeeper end
 
 7. Deployment Configuration: Synopsis used Granules underneath as the streaming implementation. Entire Synopsis system can be thought of as a stream processing job deployed on top of Granules. There are two types of operators: stream ingesters and stream processors. Stream ingesters are used to inject data into the system. Sketches are maintained at the stream processors. Granules deployer doesn't allow the binding of a particular operator to a certain machine. This is required, especially when the ingesters need to be deployed on machines where the input data is hosted. Deployement configurations are used to provide this bindings that are used during the initial deployment. Please take a look at the sample deployment configuration available inside the configuration (`air_quality_config.json`). There are two operators denoted by their class names. For instance the ingester (`neptune.geospatial.benchmarks.airquality.AirQualityDataIngester`) will be deployed in lattice-95 where the input data files were hosted.
 
-8. Setting up the stat-server: There is a centralized statistics server used to gather system wide metric readings periodically. This is useful to get a cumulative view of the entire cluster over time. Otherwise joining statistics reported locally at individual machines is both error-prone and cumbersome. This is a very lightweight java server which will periodically dump the system metrics along with the timestamp to the file system of the machine where it is running.
+8. Setting up the stat-server: There is a centralized statistics server used to gather system wide metric readings periodically. This is useful to get a cumulative view of the entire cluster over time. Otherwise joining statistics reported locally at individual machines is both error-prone and cumbersome. This is a very lightweight java server which will periodically dump the system metrics along with the timestamp to the file system of the machine where it is running. Update the stat server endpoint using the property `stat-server-endpoint`.
 
+## Starting a Synopsis cluster
 5. Start the Granules resource.  
 `> cd neptune-geospatial-distribution-1.0-SNAPSHOT/bin`  
 `> sh resource -c ../config/ResourceConfig.txt`  
 
+
+## Ingesting data
 6. To launch a job,  
 `> cd neptune-geospatial-distribution-1.0-SNAPSHOT/bin`  
 `> sh granules-start -c ../config/DeployerConfig.txt -t <class_name_of_the_job>`
