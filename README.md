@@ -1,9 +1,12 @@
-# How to Build
+# Table of Contents
+* [How to build](#how_to_build)
+
+# How to build <a name="how_to_build"></a>
 Prequisites: Maven 3, JDK 1.7 or higher  
 1. `> cd code/`  
 2. `> mvn clean install` - This will create a distribution with the compiled code and the dependencies.  
 
-# How to run
+# How to run <a name="how_to_run"></a>
 Prerequisites: Apache ZooKeeper
 
 ## Updating the configurations
