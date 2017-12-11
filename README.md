@@ -104,3 +104,6 @@ For restoring from a checkpoint, we will deploy an empty stream processing graph
 3. Deploy the empty graph. Run the following command from the node designated as the deployer node.  
 `> ./granules-start -c ../config/ResourceConfig.txt -t synopsis.client.persistence.LoadStateFromDiskDeployer path_to_pstat_file`  
 For instance: `> ./granules-start -c ../config/ResourceConfig.txt -t synopsis.client.persistence.LoadStateFromDiskDeployer ~/1512959167339.pstat`
+
+## Configuring logging
+We mainly use Apache Log4j for logging. You can tune the logging by editing the `lib/log4j.properties` file. Matthew has used default Java logging in his code which can be configured using `lib/logging.properties` file. 
