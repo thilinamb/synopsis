@@ -1,4 +1,4 @@
-# neptune-geospatial
+https://zookeeper.apache.org/doc/r3.3.2/zookeeperAdmin.html#sc_zkMulitServerSetuphttps://zookeeper.apache.org/doc/r3.3.2/zookeeperAdmin.html#sc_zkMulitServerSetuphttps://zookeeper.apache.org/doc/r3.3.2/zookeeperAdmin.html#sc_zkMulitServerSetuphttps://zookeeper.apache.org/doc/r3.3.2/zookeeperAdmin.html#sc_zkMulitServerSetup# neptune-geospatial
 This project aims at using Neptune to process geo-spatial data and answer approximate queries. 
 
 # How to Build
@@ -59,4 +59,7 @@ If you need to run a cluster with a number of machines, use `dssh` script to lau
 ## Ingesting data
 6. To launch a job,  
 `> cd neptune-geospatial-distribution-1.0-SNAPSHOT/bin`  
-`> sh granules-start -c ../config/DeployerConfig.txt -t <class_name_of_the_job>`
+`> sh granules-start -c ../config/ResourceConfig.txt -t <class_name_of_the_job>`  
+For instance: `sh granules-start -c ../config/ResourceConfig.txt -t neptune.geospatial.benchmarks.sketch.DynamicScalingGraph`
+
+You should launch this task in the machine designated as the deployer node (step 3 in the "Updating the configuration" section).
