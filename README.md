@@ -1,12 +1,24 @@
-# How to Build
+# Table of Contents
+- [How to build](#how_to_build)
+- [How to run](#how_to_run)
+  + [Updating the configurations](#config_update)
+  + [Starting a Synopsis cluster](#start_cluster)
+    * [Terminating a cluster](#terminate_cluster)
+* [Ingesting data](#ingest)
+* [Checkpointing](#checkpointing)
+  + [Creating a checkpoint](#checkpointing_create)
+  + [Restoring from a checkpoint](#checkpointing_restore)
+
+
+# How to build <a name="how_to_build"></a>
 Prequisites: Maven 3, JDK 1.7 or higher  
 1. `> cd code/`  
 2. `> mvn clean install` - This will create a distribution with the compiled code and the dependencies.  
 
-# How to run
+# How to run <a name="how_to_run"></a>
 Prerequisites: Apache ZooKeeper
 
-## Updating the configurations
+## Updating the configurations <a name="config_update"></a>
 1. After compiling the source, unzip the generated distribution. It should be inside `code/modules/distribution/target`.  
 `> cd code/modules/distribution/target`  
 `> unzip unzip neptune-geospatial-distribution-1.0-SNAPSHOT-bin.zip`  
@@ -38,7 +50,7 @@ If you run a cluster of ZooKeeper servers, then specify the set of Zookeeper end
 
 8. Setting up the stat-server: There is a centralized statistics server used to gather system wide metric readings periodically. This is useful to get a cumulative view of the entire cluster over time. Otherwise joining statistics reported locally at individual machines is both error-prone and cumbersome. This is a very lightweight java server which will periodically dump the system metrics along with the timestamp to the file system of the machine where it is running. Update the stat server endpoint using the property `stat-server-endpoint`.
 
-## Starting a Synopsis cluster
+## Starting a Synopsis cluster <a name="start_cluster"></a>
 1. Start Zookeeper.
 
 2. Start the stat-server.
@@ -53,13 +65,13 @@ If you need to run a cluster with a number of machines, use `dssh` script to lau
 
 *Usually allow 1-2 minutes to complete the startup process of the cluster. Some lattice machines are slower than the others.*
 
-### Terminating a cluster  
+### Terminating a cluster <a name="terminate_cluster"></a>  
 You can use the `dssh` script for that combined with the `kill-resource.sh` script in the `bin` directory.  
 `> ./dssh -cap -f machines 'cd ~/research/rivulet/code/modules/distribution/target/neptune-geospatial-distribution-1.0-SNAPSHOT/b;sh kill-resource.sh'`  
 
 Make sure to restart the stat-server and deployer everytime you restart the cluster. Zookeeper will reset its state in about 20-30s after a node is terminated. So allow about 30s between cluster restarts. This is easier than restarting ZK. (Probably you can write a simple script to delete the znode where node information is stored to avoid this wait.)
 
-## Ingesting data
+# Ingesting data <a name="ingest"></a>
 To launch a job,  
 `> cd neptune-geospatial-distribution-1.0-SNAPSHOT/bin`  
 `> sh granules-start -c ../config/ResourceConfig.txt -t <class_name_of_the_job>`  
@@ -67,10 +79,10 @@ For instance: `> sh granules-start -c ../config/ResourceConfig.txt -t neptune.ge
 
 You should launch this task in the machine designated as the deployer node (step 3 in the "Updating the configuration" section).
 
-## Checkpointing
+# Checkpointing <a name="checkpointing"></a>
 Checkpointing will dump the in-memory state of the entire cluster to the disk. Restoring will load a previous checkpoint and recreate the in-memory state. This cuts down the data ingestion times for repeating benchmarks.
 
-### Creating a checkpoint
+## Creating a checkpoint <a name="checkpointing_create"></a>
 Once the data ingestion is complete, execute the following command from a single node. It will connect the ZooKeeper cluster and identify the active Synopsis nodes and send a serialization request.  
 `> ./run_class synopsis.client.Main ../config/ResourceConfig.txt client_port store`  
 For instance: `> ./run_class synopsis.client.Main ../config/ResourceConfig.txt 9000 store`
@@ -80,4 +92,15 @@ This command will gracefully complete if it has heard back from all the nodes. O
 
 Then there should be a file named '1512959167339.pstat' in the `/tmp` directory. 
 
-Save this file for restoring this checkpoint later. This file contains the location of the file created during the checkpoint process at each node. By keeping track of this file location, it is possible to create multiple independent checkpoints. 
+Save this file for restoring this checkpoint later. This file contains the location of the file created during the checkpoint process at each node. By keeping track of this file location, it is possible to create multiple independent checkpoints.
+
+## Restoring from a checkpoint <a name="checkpointing_restore"></a>
+For restoring from a checkpoint, we will deploy an empty stream processing graph and populate its state from the persisted checkpoint data.
+
+1. Start the ZK cluster
+
+2. Start the stat server
+
+3. Deploy the empty graph. Run the following command from the node designated as the deployer node.  
+`> ./granules-start -c ../config/ResourceConfig.txt -t synopsis.client.persistence.LoadStateFromDiskDeployer path_to_pstat_file`  
+For instance: `> ./granules-start -c ../config/ResourceConfig.txt -t synopsis.client.persistence.LoadStateFromDiskDeployer ~/1512959167339.pstat`
