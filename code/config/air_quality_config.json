@@ -1,0 +1,24 @@
+{
+  "placements": [
+    {
+      "operator": "neptune.geospatial.benchmarks.airquality.AirQualityDataIngester",
+      "nodes": [
+        "lattice-95:7077:9099"
+      ]
+    },
+    {
+        "operator":"neptune.geospatial.benchmarks.airquality.AirQualitySketchProcessor",
+        "nodes":[
+          "lattice-21:7077:9099",
+          "lattice-23:7077:9099",
+          "lattice-24:7077:9099",
+          "lattice-25:7077:9099",
+          "lattice-26:7077:9099",
+          "lattice-27:7077:9099",
+        ]
+    }
+  ]
+}
+
+
+

@@ -34,41 +34,40 @@ io-reactor-thread-count=4
 
 # ZooKeeper hosts. A string containing a comma separated list of host:port pairs, each corresponding to a ZooKeeper server.
 #(Only when a direct communication mode is used.)
-zookeeper-hosts=localhost:2181
+zookeeper-hosts=lattice-28:2181,lattice-18:2181,lattice-59:2181
 
 # enable application level buffering (only when a direct communication mode is used.)
 enable-app-level-buffering=true
 
 # Neptune endpoint deployer
-deployer-endpoint=localhost:8088
+deployer-endpoint=lattice-96:9099
 
 # Scheduler : used only with NIJobDeployer
 scheduler=ds.granules.neptune.interfere.core.schedule.NIRoundRobinScheduler
 
 # Rivulet specific properties
-rivulet-enable-dynamic-scaling=false
-rivulet-monitor-interval=5000
-rivulet-scale-out-threshold=100
-rivulet-scale-in-threshold=10
-rivulet-monitored-backlog-history-length=5
+rivulet-enable-dynamic-scaling=true
+rivulet-monitor-interval=1000
+rivulet-scale-out-threshold=20
+rivulet-scale-in-threshold=5
+rivulet-monitored-backlog-history-length=4
 
 # fault tolerance related properties
 rivulet-enable-fault-tolerance=false
-rivulet-state-replication-interval=2000
-rivulet-scaling-period-in-mins=10
-rivulet-checkpoint-timeout=10000
+rivulet-state-replication-interval=10000
+#rivulet-scaling-period-in-mins=15
 
 # Hazelcast serializer registration
 rivulet-hazelcast-serializer-neptune.geospatial.hazelcast.type.SketchLocation=neptune.geospatial.hazelcast.serializer.SketchLocationSerializer
 
 # Hazelcast allowed interfaces
-#rivulet-hazelcast-interface=129.82.46.*
+rivulet-hazelcast-interface=129.82.46.*
 
 # Rivulet deployment
-#deployer-config=/Users/thilina/csu/research/dsg/source/vldb/neptune-geospatial/code/config/deployer_config.json
+deployer-config=/s/chopin/a/grad/thilinab/research/rivulet/code/modules/distribution/target/neptune-geospatial-distribution-1.0-SNAPSHOT/config/deployer_config.json
 
 # stat server
-stat-server-endpoint=lattice-59:12345
+stat-server-endpoint=lattice-97:12345
 
-# checkpointing location.
+# checkpointing location
 checkpoint-dir=/tmp/
