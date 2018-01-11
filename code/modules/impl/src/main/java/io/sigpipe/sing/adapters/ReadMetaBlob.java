@@ -177,7 +177,7 @@ public class ReadMetaBlob {
 
             String location = Geohash.encode(lat, lon, 4);
             p.add(new Feature("location", location));
-            s.addPath(p);
+            s.addPath(p, m);
 
             if (i % 5000 == 0) {
                 System.out.print('.');

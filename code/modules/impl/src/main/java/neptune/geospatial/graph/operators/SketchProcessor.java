@@ -93,8 +93,8 @@ public class SketchProcessor extends AbstractGeoSpatialStreamProcessor {
 
             String shortLocation = event.getGeoHash().substring(0, NOAADataIngester.PRECISION);
             path.add(new Feature("location", shortLocation));
-            this.sketch.addPath(path);
-            this.diff.addPath(path);
+            this.sketch.addPath(path, eventMetadata);
+            this.diff.addPath(path, eventMetadata);
         } catch (Exception e) {
             System.out.println("Failed to insert graph path");
             e.printStackTrace();

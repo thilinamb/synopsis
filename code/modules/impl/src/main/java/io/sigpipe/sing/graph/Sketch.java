@@ -13,6 +13,7 @@ import java.util.Map;
 import java.util.Queue;
 import java.util.Set;
 
+import io.sigpipe.sing.dataset.Metadata;
 import io.sigpipe.sing.dataset.Pair;
 import io.sigpipe.sing.dataset.feature.Feature;
 import io.sigpipe.sing.dataset.feature.FeatureType;
@@ -97,7 +98,7 @@ public class Sketch {
     /**
      * Adds a new {@link Path} to the Hierarchical Graph.
      */
-    public void addPath(Path path)
+    public void addPath(Path path, Metadata metadata)
     throws FeatureTypeMismatchException, GraphException {
         if (path.size() == 0) {
             throw new GraphException("Attempted to add empty path!");
@@ -110,7 +111,10 @@ public class Sketch {
 
         double[] values = new double[path.size() - 1];
         for (int i = 0; i < path.size() - 1; ++i) {
-            values[i] = path.get(i).getLabel().getDouble();
+            // 2018-01-10 rammerd - added metadata argument and setting value
+            //values[i] = path.get(i).getLabel().getDouble();
+            String attributeName = path.get(i).getLabel().getName();
+            values[i] = metadata.getAttribute(attributeName).getDouble();
         }
         RunningStatisticsND rsnd = new RunningStatisticsND(values);
         DataContainer container = new DataContainer(rsnd);
