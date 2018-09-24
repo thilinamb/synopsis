@@ -34,5 +34,7 @@ This program is written to ingest a single file, but it can be extended to inges
 
 ### How to run the sample
 1. Go into the ``bin`` directory of the unzipped distribution
-2. Execute ``sh run_class synopsis.samples.sketch.Sketchlet <path_to_input>
+2. Execute ``sh run_class synopsis.samples.sketch.Sketchlet <path_to_input>``
+
+It is required to provide a path to an input file downloaded from a location provided in the previous step. The source code of the sample is available in ``./code/modules/samples/src/main/java/synopsis/samples/sketch/Sketchlet.java``. 
 
