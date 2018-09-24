@@ -27,6 +27,11 @@
             <artifactId>statistics</artifactId>
             <version>${project.version}</version>
         </dependency>
+        <dependency>
+            <groupId>edu.colostate.cs.dsg</groupId>
+            <artifactId>samples</artifactId>
+            <version>${project.version}</version>
+        </dependency>
     </dependencies>
 
     <build>

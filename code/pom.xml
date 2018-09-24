@@ -87,6 +87,7 @@
         <module>modules/stats</module>
         <module>modules/client</module>
         <module>modules/external</module>
+        <module>modules/samples</module>
     </modules>
 
 </project>
