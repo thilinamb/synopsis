@@ -1,21 +1,45 @@
 package synopsis.samples.sketch;
 
+import io.sigpipe.sing.dataset.Quantizer;
+import io.sigpipe.sing.dataset.SimplePair;
+import io.sigpipe.sing.dataset.feature.Feature;
+import io.sigpipe.sing.graph.DataContainer;
+import io.sigpipe.sing.query.*;
 import io.sigpipe.sing.serialization.SerializationInputStream;
+import io.sigpipe.sing.serialization.SerializationOutputStream;
+import io.sigpipe.sing.util.ReducedTestConfiguration;
+import neptune.geospatial.ft.FaultTolerantStreamBase;
 import neptune.geospatial.graph.messages.GeoHashIndexedRecord;
 import neptune.geospatial.graph.operators.SketchProcessor;
 import neptune.geospatial.util.geohash.GeoHash;
 import org.apache.log4j.Logger;
 
 import java.io.*;
+import java.util.HashMap;
+import java.util.Map;
 
 public class Sketchlet extends SketchProcessor {
     private static final int GEO_HASH_PRECISION = 5;
-    private final Logger logger = Logger.getLogger(Sketchlet.class);
+
+    private static Map<String, SimplePair<Double>> ranges = new HashMap<>();
+    static {
+        /* Set up ranges for all the features */
+        for (String feature : ReducedTestConfiguration.FEATURE_NAMES) {
+            Quantizer quant = ReducedTestConfiguration.quantizers.get(feature);
+            double first = quant.first().getDouble();
+            double last = quant.last().getDouble();
+            SimplePair<Double> range = new SimplePair<>();
+            range.a = first;
+            range.b = last;
+            ranges.put(feature, range);
+        }
+    }
+    private static final Logger LOGGER = Logger.getLogger(Sketchlet.class);
     private long messageIdentifier = 0;
 
     public void ingest(String inputFilePath) {
         if (!inputFilePath.endsWith(".mblob")) {
-            logger.error("Incorrect file type.");   // we work with binary input files with .mblob extension.
+            LOGGER.error("Incorrect file type.");   // we work with binary input files with .mblob extension.
             return;
         }
         try {
@@ -23,7 +47,7 @@ public class Sketchlet extends SketchProcessor {
             BufferedInputStream bIn = new BufferedInputStream(fIn);
             SerializationInputStream inStream = new SerializationInputStream(bIn);
             int recordCount = inStream.readInt();   // read the number of records in the current file.
-            logger.info("Total number of records: " + recordCount);
+            LOGGER.info("Total number of records: " + recordCount);
             for (int i = 0; i < recordCount; i++) {     // for each record
                 float lat = inStream.readFloat();   // latitude
                 float lon = inStream.readFloat(); // longitude
@@ -38,9 +62,9 @@ public class Sketchlet extends SketchProcessor {
                 // update the sketch - take a look at the neptune.geospatial.graph.operators.SketchProcessor class
                 super.process(record);
             }
-            logger.info("Completed ingesting all records.");
+            LOGGER.info("Completed ingesting all records.");
         } catch (IOException e) {
-            logger.error("Deserialization Error!.", e);
+            LOGGER.error("Deserialization Error!.", e);
         }
     }
 
@@ -51,5 +75,64 @@ public class Sketchlet extends SketchProcessor {
         }
         Sketchlet sketchlet = new Sketchlet();
         sketchlet.ingest(args[0]);
+        LOGGER.info("Ingestion is complete!");
+        tryMetadataQuery(sketchlet);
+        tryRelationalQuery(sketchlet);
+    }
+
+    private static void tryMetadataQuery(Sketchlet sketchlet) {
+        MetaQuery mq = new MetaQuery();
+        mq.addExpression(new Expression(
+                Operator.STR_PREFIX, new Feature("location", "9x")));
+        // define a predicate for a feature - let's pick temperature
+        // check the ranges hashmap defined above for the list of the featuers and their ranges
+        mq.addExpression(
+                new Expression(
+                        Operator.RANGE_INC_EXC, // this is a range predicate
+                        new Feature("temperature_surface", 230.0f), // temp. >= 280K
+                        new Feature("temperature_surface", 300.0f))); // temp < 290K
+        try {
+            mq.execute(sketchlet.sketch.getRoot());
+            // results of the meta query is contained in a data container.
+            //  please take a look at the returned object by attaching a debug pointer
+            DataContainer dataContainer = mq.result();
+            System.out.println("MetaQuery is executed.");
+        } catch (IOException | QueryException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private static void tryRelationalQuery(Sketchlet sketchlet) {
+        // executing relational query
+        RelationalQuery rq = new RelationalQuery();
+        // define the spatial scope of the query
+        rq.addExpression(new Expression(
+                Operator.STR_PREFIX, new Feature("location", "9x")));
+        // define a predicate for a feature - let's pick temperature
+        rq.addExpression(
+                new Expression(
+                        Operator.RANGE_INC_EXC, // this is a range predicate
+                        new Feature("temperature_surface", 230.0f), // temp. >= 280K
+                        new Feature("temperature_surface", 300.0f))); // temp < 290K
+
+        try {
+            rq.execute(sketchlet.sketch.getRoot()); // execute the query on the sketchlet
+            if (rq.hasResults()) {
+                // serialize the results into a byte array - the output of the relational query is again a sketch
+                ByteArrayOutputStream byteOut = new ByteArrayOutputStream();
+                SerializationOutputStream sOut = new SerializationOutputStream(
+                        new BufferedOutputStream(byteOut));
+                rq.serializeResults(sketchlet.sketch.getRoot(), sOut);
+                sOut.close();
+                byteOut.close();
+                byte[] results = byteOut.toByteArray();
+                LOGGER.info("Results available for the query: " + rq.toString());
+            } else {
+                LOGGER.info("Query did not match any data. Query: " + rq.toString());
+            }
+
+        } catch (IOException | QueryException e) {
+            e.printStackTrace();
+        }
     }
 }
