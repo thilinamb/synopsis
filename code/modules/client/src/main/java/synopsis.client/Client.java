@@ -42,7 +42,7 @@ public class Client {
     private List<SynopsisEndpoint> endpoints;
     private final int clientPort;
     private final String hostname;
-    private final QueryManager queryManager;
+    protected final QueryManager queryManager;
     private FailureMonitor failureMonitor;
     private final Random random = new Random();
 
@@ -109,11 +109,11 @@ public class Client {
         logger.info("Discovered " + this.endpoints.size() + " resources.");
     }
 
-    long submitQuery(byte[] query, List<String> geoHashes, QueryCallback callback) throws ClientException {
+    protected long submitQuery(byte[] query, List<String> geoHashes, QueryCallback callback) throws ClientException {
         return queryManager.submitQuery(query, geoHashes, callback, getRandomSynopsisNode());
     }
 
-    long submitQuery(long queryId, byte[] query, List<String> geoHashes, QueryCallback callback) throws ClientException {
+    protected long submitQuery(long queryId, byte[] query, List<String> geoHashes, QueryCallback callback) throws ClientException {
         return queryManager.submitQuery(queryId, query, geoHashes, callback, getRandomSynopsisNode());
     }
 
@@ -208,9 +208,9 @@ public class Client {
         failureMonitor.triggerFailures();
     }
 
-    private String getRandomSynopsisNode() {
+    public String getRandomSynopsisNode() {
         SynopsisEndpoint endpoint = endpoints.get(random.nextInt(endpoints.size()));
-        return endpoint.toString();
+        return endpoint.getHostname() + ":" + endpoint.getControlPort();
     }
 
     private String getAddr() {

@@ -81,7 +81,7 @@ public class Main {
         client.submitQuery(qw.payload, qw.geohashes, new QueryCallback() {
             @Override
             public void processQueryResponse(QueryResponse response) {
-                System.out.println("RECEIVED A QUERY RESPONSE! ELAPSED TIME: " + response.getElapsedTimeInMS());
+                System.out.println("RECEIVED A QUERY RESPONSE! ELAPSED TIME: " + response.getElapsedTimeInNanoS());
             }
         });
     }

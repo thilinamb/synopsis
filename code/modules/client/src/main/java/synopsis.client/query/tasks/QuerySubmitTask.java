@@ -36,6 +36,9 @@ public class QuerySubmitTask implements Runnable {
             QueryResponse queryResponse = new QueryResponse(queryId, queryRequest.getQuery());
             OutstandingQueryRegistry.getInstance().addOutstandingQuery(queryId, queryResponse, this.callback);
             SendUtility.sendControlMessage(this.targetNode, this.queryRequest);
+            if(logger.isDebugEnabled()){
+                logger.debug("Sent a ClientQueryRequest to " + this.targetNode);
+            }
         } catch (CommunicationsException | IOException e) {
             logger.error("Error sending query request to " + this.targetNode, e);
             OutstandingQueryRegistry.getInstance().removeOutstandingQuery(queryId);

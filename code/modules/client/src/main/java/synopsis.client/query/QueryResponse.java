@@ -74,7 +74,7 @@ public class QueryResponse {
         return elapsedTimesInSketchlets;
     }
 
-    public long getElapsedTimeInMS() {
+    public long getElapsedTimeInNanoS() {
         return elapsedTime;
     }
 

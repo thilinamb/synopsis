@@ -12,6 +12,7 @@ import neptune.geospatial.graph.operators.QueryCreator;
 import neptune.geospatial.graph.operators.QueryWrapper;
 import org.apache.log4j.Logger;
 import synopsis.client.ClientException;
+import synopsis.client.QueryResponseListener;
 import synopsis.client.SynopsisEndpoint;
 
 import java.io.BufferedWriter;
@@ -28,7 +29,7 @@ import java.util.concurrent.LinkedBlockingDeque;
  *
  * @author Thilina Buddhika
  */
-public class QClient implements Runnable {
+public class QClient implements Runnable, QueryResponseListener {
 
     private Logger logger = Logger.getLogger(QClient.class);
     public static final int WARMUP_THRESHOLD = 100;
@@ -142,10 +143,10 @@ public class QClient implements Runnable {
                     logger.debug("[" + id + "] Query " + queryId + " is complete!. Completed: " +
                             completedQueryCount + "[" + queryCount + "]");
                 }
-                /*statRecorder.record(queryType, currentQueryResponse.getElapsedTimeInMS(),
+                /*statRecorder.record(queryType, currentQueryResponse.getElapsedTimeInNanoS(),
                         currentQueryResponse.getQueryResponseSizeInKB());*/
                 if (completedQueryCount > WARMUP_THRESHOLD && currentQueryResponse.getQueryRespSize() > 0) {
-                    statRecorder.recordIndividualRecord("metadata", currentQueryResponse.getElapsedTimeInMS(),
+                    statRecorder.recordIndividualRecord("metadata", currentQueryResponse.getElapsedTimeInNanoS(),
                             currentQueryResponse.getQueryResponseSizeInKB(), statisticsOutputFile);
                     // Get the SQL equivalent form of the query.
                     if (sqlQueryWriter != null) {
@@ -194,11 +195,12 @@ public class QClient implements Runnable {
         return ep.getHostname() + ":" + ep.getControlPort();
     }
 
-    void handleQueryResponse(ControlMessage ctrlMsg) {
-        queue.add(ctrlMsg);
-    }
-
     public synchronized QClientStatRecorder getStatRecorder() {
         return statRecorder;
+    }
+
+    @Override
+    public void handle(ControlMessage ctrlMsg) {
+        queue.add(ctrlMsg);
     }
 }

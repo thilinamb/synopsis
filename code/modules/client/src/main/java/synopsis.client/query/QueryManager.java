@@ -6,6 +6,7 @@ import neptune.geospatial.core.protocol.msg.client.ClientQueryResponse;
 import neptune.geospatial.core.protocol.msg.client.TargetQueryResponse;
 import org.apache.log4j.Logger;
 import synopsis.client.ClientException;
+import synopsis.client.QueryResponseListener;
 import synopsis.client.query.tasks.ClientQueryRespHandlingTask;
 import synopsis.client.query.tasks.QuerySubmitTask;
 import synopsis.client.query.tasks.TargetQueryResponseHandlingTask;
@@ -17,6 +18,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * @author Thilina Buddhika
@@ -30,8 +32,8 @@ public class QueryManager {
     private final long maximumQueryId;
     private final String clientAddr;
     private ExecutorService executors = Executors.newFixedThreadPool(4);
-    private boolean dispatcherModeEnabled = false;
-    private Map<Long, QClient> dispatcherMap = new ConcurrentHashMap<>();
+    private AtomicBoolean dispatcherModeEnabled = new AtomicBoolean(true);
+    private Map<Long, QueryResponseListener> dispatcherMap = new ConcurrentHashMap<>();
 
     private QueryManager(String hostAddr, int port) {
         this.queryId = getQueryIdOffSet(port);
@@ -47,7 +49,7 @@ public class QueryManager {
     }
 
     public void setDispatcherModeEnabled(boolean dispatcherModeEnabled) {
-        this.dispatcherModeEnabled = dispatcherModeEnabled;
+        this.dispatcherModeEnabled = new AtomicBoolean(dispatcherModeEnabled);
     }
 
     public long submitQuery(byte[] query, List<String> geoHashes, QueryCallback callback, String randomNodeAddr)
@@ -89,7 +91,7 @@ public class QueryManager {
     }
 
     public void handleClientQueryResponse(ClientQueryResponse clientQueryResponse) {
-        if (this.dispatcherModeEnabled) {
+        if (this.dispatcherModeEnabled.get()) {
             dispatch(clientQueryResponse.getQueryId(), clientQueryResponse);
         } else {
             this.executors.submit(new ClientQueryRespHandlingTask(clientQueryResponse));
@@ -97,7 +99,7 @@ public class QueryManager {
     }
 
     public void handleTargetQueryResponse(TargetQueryResponse targetQueryResponse) {
-        if (this.dispatcherModeEnabled) {
+        if (this.dispatcherModeEnabled.get()) {
             dispatch(targetQueryResponse.getQueryId(), targetQueryResponse);
         } else {
             this.executors.submit(new TargetQueryResponseHandlingTask(targetQueryResponse));
@@ -119,12 +121,12 @@ public class QueryManager {
     }
 
     private void dispatch(Long queryId, ControlMessage ctrlMsg) {
-        QClient client;
+        QueryResponseListener listener;
         synchronized (this) {
-            client = dispatcherMap.get(queryId);
+            listener = dispatcherMap.get(queryId);
         }
-        if (client != null) {
-            client.handleQueryResponse(ctrlMsg);
+        if (listener != null) {
+            listener.handle(ctrlMsg);
         } else {
             logger.warn("No QClient available. Query id: " + queryId);
         }
