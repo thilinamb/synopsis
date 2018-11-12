@@ -23,7 +23,8 @@ public class QueryClient extends Client {
             System.exit(-1);
         }
         String configFilePath = args[0];
-        int port = 8891;
+        int port = 8891;    // if you execute the client over and over again with the same port without restarting the cluster, only the first request will work.
+        // Granules' network implementation does not retire older connections --- hence retaining expired sockets.
         System.out.println("Using the config file: " + configFilePath);
         Properties properties = new Properties();
         try {
