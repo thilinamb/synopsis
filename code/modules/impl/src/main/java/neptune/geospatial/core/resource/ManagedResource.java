@@ -66,8 +66,8 @@ public class ManagedResource {
         private double[] update() {
             long currentBacklog = computation.getBacklogLength();
             backLogHistory.get().add(currentBacklog);
-            if (logger.isDebugEnabled()) {
-                logger.debug(String.format("Monitoring computation: %s. Adding a backlog: %d",
+            if (logger.isTraceEnabled()) {
+                logger.trace(String.format("Monitoring computation: %s. Adding a backlog: %d",
                         computation.getInstanceIdentifier(), currentBacklog));
             }
             while (backLogHistory.get().size() > monitoredBackLogLength) {
@@ -165,8 +165,8 @@ public class ManagedResource {
                     return;
                 }
             }
-            if (logger.isDebugEnabled()) {
-                logger.debug("Monitoring thread is executing.");
+            if (logger.isTraceEnabled()) {
+                logger.trace("Monitoring thread is executing.");
             }
 
             if (counter == 0) {
@@ -190,8 +190,8 @@ public class ManagedResource {
                     for (String identifier : monitoredProcessors.keySet()) {
                         MonitoredComputationState monitoredComputationState = monitoredProcessors.get(identifier);
                         double[] metrics = monitoredComputationState.update();
-                        if (logger.isDebugEnabled()) {
-                            logger.debug(String.format("[%s] - backlog: %.3f, mem. consumption: %.3f", identifier, metrics[0], metrics[1]));
+                        if (logger.isTraceEnabled()) {
+                            logger.trace(String.format("[%s] - backlog: %.3f, mem. consumption: %.3f", identifier, metrics[0], metrics[1]));
                         }
                         backlogs.add(new SortableMetric(monitoredComputationState.computation, metrics[0]));
                         memoryUsage.add(new SortableMetric(monitoredComputationState.computation, metrics[1]));
@@ -217,8 +217,8 @@ public class ManagedResource {
                             longestBacklog = backlogs.poll();
                         }
                         if (longestBacklog.value != 0) {
-                            if (logger.isDebugEnabled()) {
-                                logger.debug(String.format("Chosen for scaling: Mode: BACKLOG, Computation: %s, Backlog: %.3f ",
+                            if (logger.isTraceEnabled()) {
+                                logger.trace(String.format("Chosen for scaling: Mode: BACKLOG, Computation: %s, Backlog: %.3f ",
                                         longestBacklog.computation.getInstanceIdentifier(), longestBacklog.value));
                             }
                             boolean success = longestBacklog.computation.recommendScaling(longestBacklog.value, false);

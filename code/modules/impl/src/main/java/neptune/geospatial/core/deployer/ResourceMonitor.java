@@ -57,7 +57,9 @@ class ResourceMonitor implements EntryAddedListener<String, Double>, EntryUpdate
         memUsageMap.addEntryListener(this, true);
         synchronized (this) {
             for (String endpoint : memUsageMap.keySet()) {
-                resources.get(endpoint).availableMem = memUsageMap.get(endpoint);
+                if (resources.containsKey(endpoint)) {
+                    resources.get(endpoint).availableMem = memUsageMap.get(endpoint);
+                }
             }
         }
     }

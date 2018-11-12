@@ -310,6 +310,9 @@ public class GeoSpatialDeployer extends JobDeployer implements MembershipChangeL
 
     protected ResourceEndpoint nextResource(Operation op) {
         if (deployerConfig != null) {
+            if(logger.isDebugEnabled()){
+                logger.debug("Looking for a custom placement config. for " + op.getClass().getName());
+            }
             String resourceEndpointUrl = deployerConfig.getPlacementNode(op.getClass().getName());
             if (resourceEndpointUrl != null) {
                 logger.info("Custom placement config is available for " + op.getClass().getName());

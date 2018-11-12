@@ -40,8 +40,8 @@ public class StatClient {
         if (statServerEndpoint != null) {
             try {
                 SendUtility.sendControlMessage(statServerEndpoint, statRecord);
-                if(logger.isDebugEnabled()) {
-                    logger.debug("Published a message of type: " + statRecord.getClass().getName() + "to " + statServerEndpoint);
+                if(logger.isTraceEnabled()) {
+                    logger.trace("Published a message of type: " + statRecord.getClass().getName() + "to " + statServerEndpoint);
                 }
             } catch (CommunicationsException | IOException e) {
                 logger.error("Error publising stats.", e);

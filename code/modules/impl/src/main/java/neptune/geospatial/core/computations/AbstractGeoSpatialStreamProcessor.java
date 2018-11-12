@@ -105,8 +105,9 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
                     long now = System.currentTimeMillis();
                     long currentCount = processedCount.get();
                     double throughput = -1;
+                    double processedSinceLastCycle = currentCount - previousThroughput;
                     if (previousThroughputTS != -1) {
-                        throughput = (currentCount - previousThroughput) * 1000.0 / (now - previousThroughputTS);
+                        throughput = processedSinceLastCycle * 1000.0 / (now - previousThroughputTS);
                     }
                     // atomic latency
                     double meanLatency;
@@ -135,11 +136,11 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
                     double locallyProcessedPrefCount = scalingContext.getLocallyProcessedPrefixCount(); // index 3
                     double prefixLength = scalingContext.getPrefixLength();
 
-                    System.out.println(messageSize.get() + "," + locallyProcessedPrefCount + "," + String.format("%.3f", memUsage / (1024 * 1024)) + "," + processedCount.get() + "\n");
+                    //System.out.println(messageSize.get() + "," + locallyProcessedPrefCount + "," + String.format("%.3f", memUsage / (1024 * 1024)) + "," + processedCount.get() + "\n");
 
                     PeriodicInstanceMetrics periodicInstanceMetrics = new PeriodicInstanceMetrics(instanceId,
                             StatConstants.ProcessorTypes.PROCESSOR,
-                            new double[]{backlog, memUsage, meanLatency, throughput, prefixLength, queryThroughput});
+                            new double[]{backlog, memUsage, processedSinceLastCycle, throughput, prefixLength, queryThroughput});
                     statClient.publish(periodicInstanceMetrics);
                 }
             } catch (Throwable e) {
