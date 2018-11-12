@@ -35,7 +35,8 @@ public class QueryClient extends Client {
             client.submitQuery(01l, qw.payload, qw.geohashes, new QueryCallback() {
                 @Override
                 public void processQueryResponse(QueryResponse response) {
-                    System.out.println("RECEIVED A QUERY RESPONSE! ELAPSED TIME (ns): " + response.getElapsedTimeInNanoS());
+                    System.out.println("RECEIVED A QUERY RESPONSE!. ELAPSED TIME (ns): " + response.getElapsedTimeInNanoS());
+                    // take a look at the list of byte[] inside the QueryResponse (variable name "queryResponse") for responses from individual sketchlets that contained data.
                 }
             });
         } catch (IOException | ClientException e) {
