@@ -1,7 +1,5 @@
 package neptune.geospatial.graph.operators;
 
-import ds.granules.exception.GranulesConfigurationException;
-import ds.granules.util.NeptuneRuntime;
 import io.sigpipe.sing.dataset.Metadata;
 import io.sigpipe.sing.dataset.Quantizer;
 import io.sigpipe.sing.dataset.feature.Feature;
@@ -58,7 +56,7 @@ public class SketchProcessor extends AbstractGeoSpatialStreamProcessor {
             for (String featureName : ReducedTestConfiguration.FEATURE_NAMES) {
                 activeFeatures.add(featureName);
             }
-            this.temporalQuantizer = new TemporalQuantizer(ReducedTestConfiguration.temporalInterval);
+            this.temporalQuantizer = new TemporalQuantizer(ReducedTestConfiguration.minTemporalGranularity);
         } catch (GraphException e) {
             System.out.println("Could not initialize sketch graph hierarchy");
             e.printStackTrace();

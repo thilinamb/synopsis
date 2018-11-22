@@ -41,7 +41,7 @@ public class ReducedTestConfiguration {
      *  "surface_wind_gust_surface",
      */
 
-    public static final Duration temporalInterval = Duration.ofHours(6);
+    public static final Duration minTemporalGranularity = Duration.ofHours(6);
 
     public static final Map<String, Quantizer> quantizers = new HashMap<>();
 
