@@ -2,6 +2,9 @@ package neptune.geospatial.graph;
 
 import java.time.*;
 
+import static neptune.geospatial.util.RivuletUtil.epochToLocalDateTime;
+import static neptune.geospatial.util.RivuletUtil.localDateTimeToEpoch;
+
 /**
  * Discretizes the time axis into intervals.
  */
@@ -15,6 +18,7 @@ public class TemporalQuantizer {
 
     /**
      * Return the first boundary after the given timestamp such that boundary > timestamp
+     *
      * @param ts Epoch millisecond timestamp
      * @return Boundary as a epoch millisecond timestamp
      */
@@ -37,16 +41,7 @@ public class TemporalQuantizer {
         return localDateTimeToEpoch(boundary);
     }
 
-    private long localDateTimeToEpoch(LocalDateTime localDateTime) {
-        ZonedDateTime zdt = localDateTime.atZone(ZoneId.of("UTC"));
-        return zdt.toInstant().toEpochMilli();
-    }
-
-    private LocalDateTime epochToLocalDateTime(long startTS) {
-        return LocalDateTime.ofInstant(Instant.ofEpochMilli(startTS), ZoneId.of("UTC"));
-    }
-
-    /*public static void main(String[] args) {
+       /*public static void main(String[] args) {
         TemporalQuantizer temporalQuantizer = new TemporalQuantizer(Duration.ofHours(6));
         long now = System.currentTimeMillis();
         System.out.println("Now: " + epochToLocalDateTime(now));

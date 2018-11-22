@@ -18,6 +18,10 @@ import org.apache.zookeeper.ZooKeeper;
 import java.io.*;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.Properties;
 
@@ -94,9 +98,12 @@ public class RivuletUtil {
                 subscribers.get(0).lastIndexOf("/") + 1, subscribers.get(0).length());
     }
 
-    public static void initializeHazelcast(Properties startupProps){
+    public static void initializeHazelcast(Properties startupProps) {
         Config config = new Config();
+        // todo: read the group credentials from the configuration file
+        config.getGroupConfig().setName("synopsis").setPassword("password");
         ClientConfig clientConfig = new ClientConfig();
+        clientConfig.getGroupConfig().setName("synopsis").setPassword("password");
         for (String propName : startupProps.stringPropertyNames()) {
             if (propName.startsWith(HAZELCAST_SERIALIZER_PREFIX)) {
                 String typeClazzName = propName.substring(HAZELCAST_SERIALIZER_PREFIX.length(), propName.length());
@@ -130,11 +137,11 @@ public class RivuletUtil {
         HazelcastClientInstanceHolder.init(clientConfig);
     }
 
-    public static double inGigabytes(double bytes){
-        return bytes/(1024 * 1024 * 1024);
+    public static double inGigabytes(double bytes) {
+        return bytes / (1024 * 1024 * 1024);
     }
 
-    public static void writeByteArrayToDisk(byte[] bytes, String fileName){
+    public static void writeByteArrayToDisk(byte[] bytes, String fileName) {
         try {
             DataOutputStream dos = new DataOutputStream(new FileOutputStream(fileName));
             dos.writeInt(bytes.length);
@@ -146,7 +153,7 @@ public class RivuletUtil {
         }
     }
 
-    public static byte[] readByteArrayFromDisk(String fileName){
+    public static byte[] readByteArrayFromDisk(String fileName) {
         try {
             DataInputStream dis = new DataInputStream(new FileInputStream(fileName));
             int len = dis.readInt();
@@ -158,5 +165,14 @@ public class RivuletUtil {
             e.printStackTrace();
         }
         return null;
+    }
+
+    public static long localDateTimeToEpoch(LocalDateTime localDateTime) {
+        ZonedDateTime zdt = localDateTime.atZone(ZoneId.of("UTC"));
+        return zdt.toInstant().toEpochMilli();
+    }
+
+    public static LocalDateTime epochToLocalDateTime(long startTS) {
+        return LocalDateTime.ofInstant(Instant.ofEpochMilli(startTS), ZoneId.of("UTC"));
     }
 }
