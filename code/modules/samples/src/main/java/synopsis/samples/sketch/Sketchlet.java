@@ -48,6 +48,7 @@ public class Sketchlet extends SketchProcessor {
             SerializationInputStream inStream = new SerializationInputStream(bIn);
             int recordCount = inStream.readInt();   // read the number of records in the current file.
             LOGGER.info("Total number of records: " + recordCount);
+            System.out.println("Record count: " + recordCount);
             for (int i = 0; i < recordCount; i++) {     // for each record
                 float lat = inStream.readFloat();   // latitude
                 float lon = inStream.readFloat(); // longitude
@@ -77,7 +78,8 @@ public class Sketchlet extends SketchProcessor {
         sketchlet.ingest(args[0]);
         LOGGER.info("Ingestion is complete!");
         tryMetadataQuery(sketchlet);
-        tryRelationalQuery(sketchlet);
+        tryTemporalMetadataQuery(sketchlet);
+        //tryRelationalQuery(sketchlet);
     }
 
     private static void tryMetadataQuery(Sketchlet sketchlet) {
@@ -86,17 +88,37 @@ public class Sketchlet extends SketchProcessor {
                 Operator.STR_PREFIX, new Feature("location", "9x")));
         // define a predicate for a feature - let's pick temperature
         // check the ranges hashmap defined above for the list of the featuers and their ranges
-        mq.addExpression(
+        /*mq.addExpression(
                 new Expression(
                         Operator.RANGE_INC_EXC, // this is a range predicate
                         new Feature("temperature_surface", 230.0f), // temp. >= 280K
                         new Feature("temperature_surface", 300.0f))); // temp < 290K
+        */
         try {
             mq.execute(sketchlet.sketch.getRoot());
             // results of the meta query is contained in a data container.
             //  please take a look at the returned object by attaching a debug pointer
             DataContainer dataContainer = mq.result();
-            System.out.println("MetaQuery is executed.");
+            System.out.println("MetaQuery is executed.  Count: " + dataContainer.statistics.count());
+        } catch (IOException | QueryException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private static void tryTemporalMetadataQuery(Sketchlet sketchlet) {
+        MetaQuery mq = new MetaQuery();
+        mq.addExpression(new Expression(
+                Operator.STR_PREFIX, new Feature("location", "9x")));
+        mq.addExpression(   // temporal predicate
+                new Expression(
+                        Operator.GREATER,
+                        new Feature("time", 1392206400000L))); // all observations occurred after 2014-02-12T12:00 UTC
+        try {
+            mq.execute(sketchlet.sketch.getRoot());
+            // results of the meta query is contained in a data container.
+            //  please take a look at the returned object by attaching a debug pointer
+            DataContainer dataContainer = mq.result();
+            System.out.println("Temporal MetaQuery is executed.  Observation Count: " + dataContainer.statistics.count());
         } catch (IOException | QueryException e) {
             e.printStackTrace();
         }
