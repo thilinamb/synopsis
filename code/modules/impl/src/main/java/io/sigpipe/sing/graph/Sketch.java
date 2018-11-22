@@ -110,7 +110,7 @@ public class Sketch {
         optimizePath(path);
 
         double[] values = new double[path.size() - 1];
-        for (int i = 0; i < path.size() - 1; ++i) {
+        for (int i = 1; i < path.size() - 1; ++i) { // skip time and location features
             // 2018-01-10 rammerd - added metadata argument and setting value
             //values[i] = path.get(i).getLabel().getDouble();
             String attributeName = path.get(i).getLabel().getName();

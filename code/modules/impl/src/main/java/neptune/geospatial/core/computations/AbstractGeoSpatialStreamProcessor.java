@@ -209,7 +209,7 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
     private Map<Integer, ProtocolProcessor> protocolProcessors = new HashMap<>();
 
     // fault tolerance related attributes
-    private boolean faultToleranceEnabled;
+    protected boolean faultToleranceEnabled;
     private long checkpointTimeoutPeriod;
     private Map<String, List<BackupTopicInfo>> topicLocations = new HashMap<>();
     private List<TopicInfo> replicationStreamTopics;

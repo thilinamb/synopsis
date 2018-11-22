@@ -3,6 +3,7 @@ package io.sigpipe.sing.util;
 import io.sigpipe.sing.dataset.Quantizer;
 import io.sigpipe.sing.dataset.feature.Feature;
 
+import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -39,6 +40,8 @@ public class ReducedTestConfiguration {
      *  "planetary_boundary_layer_height_surface",
      *  "surface_wind_gust_surface",
      */
+
+    public static final Duration temporalInterval = Duration.ofHours(6);
 
     public static final Map<String, Quantizer> quantizers = new HashMap<>();
 

@@ -1,5 +1,7 @@
 package neptune.geospatial.graph.operators;
 
+import ds.granules.exception.GranulesConfigurationException;
+import ds.granules.util.NeptuneRuntime;
 import io.sigpipe.sing.dataset.Metadata;
 import io.sigpipe.sing.dataset.Quantizer;
 import io.sigpipe.sing.dataset.feature.Feature;
@@ -16,6 +18,7 @@ import io.sigpipe.sing.serialization.SerializationOutputStream;
 import io.sigpipe.sing.serialization.Serializer;
 import io.sigpipe.sing.util.ReducedTestConfiguration;
 import neptune.geospatial.core.computations.AbstractGeoSpatialStreamProcessor;
+import neptune.geospatial.graph.TemporalQuantizer;
 import neptune.geospatial.graph.messages.GeoHashIndexedRecord;
 
 import java.io.*;
@@ -34,16 +37,17 @@ public class SketchProcessor extends AbstractGeoSpatialStreamProcessor {
     protected Sketch diff;
     protected FeatureHierarchy hierarchy;
     protected Set<String> activeFeatures = new HashSet<>();
+    protected TemporalQuantizer temporalQuantizer;
 
     public SketchProcessor() {
         initSketch();
-
     }
 
     protected void initSketch() {
-    /* Populate the feature hierarchy */
+        /* Populate the feature hierarchy */
         try {
             hierarchy = new FeatureHierarchy();
+            hierarchy.addFeature("time", FeatureType.LONG);
             for (String featureName : ReducedTestConfiguration.FEATURE_NAMES) {
                 hierarchy.addFeature(featureName, FeatureType.FLOAT);
             }
@@ -54,6 +58,7 @@ public class SketchProcessor extends AbstractGeoSpatialStreamProcessor {
             for (String featureName : ReducedTestConfiguration.FEATURE_NAMES) {
                 activeFeatures.add(featureName);
             }
+            this.temporalQuantizer = new TemporalQuantizer(ReducedTestConfiguration.temporalInterval);
         } catch (GraphException e) {
             System.out.println("Could not initialize sketch graph hierarchy");
             e.printStackTrace();
@@ -75,7 +80,10 @@ public class SketchProcessor extends AbstractGeoSpatialStreamProcessor {
         }
 
         try {
-            Path path = new Path(this.activeFeatures.size() + 1);
+            Path path = new Path(this.activeFeatures.size() + 2); // extra 2 features for temporal and spatial scope
+            // we place the temporal scope at the top of the tree
+            long ts = eventMetadata.getTemporalProperties().getEnd();
+            path.add(new Feature("time", temporalQuantizer.getBoundary(ts)));
             for (Feature f : eventMetadata.getAttributes()) {
                 String featureName = f.getName();
                 if (activeFeatures.contains(featureName) == false) {
@@ -94,7 +102,9 @@ public class SketchProcessor extends AbstractGeoSpatialStreamProcessor {
             String shortLocation = event.getGeoHash().substring(0, NOAADataIngester.PRECISION);
             path.add(new Feature("location", shortLocation));
             this.sketch.addPath(path, eventMetadata);
-            this.diff.addPath(path, eventMetadata);
+            if (faultToleranceEnabled) {
+                this.diff.addPath(path, eventMetadata);
+            }
         } catch (Exception e) {
             System.out.println("Failed to insert graph path");
             e.printStackTrace();
@@ -106,14 +116,14 @@ public class SketchProcessor extends AbstractGeoSpatialStreamProcessor {
 
         try {
             GZIPOutputStream gzOut
-                = new GZIPOutputStream(byteOut);
+                    = new GZIPOutputStream(byteOut);
             SerializationOutputStream out
-                = new SerializationOutputStream(gzOut);
+                    = new SerializationOutputStream(gzOut);
 
             PartitionQuery pq = new PartitionQuery(this.sketch.getMetrics());
             pq.addExpression(
                     new Expression(
-                        Operator.STR_PREFIX, new Feature("location", prefix)));
+                            Operator.STR_PREFIX, new Feature("location", prefix)));
             pq.execute(sketch.getRoot());
             if (pq.hasResults() == false) {
                 System.out.println("WARNING: PartitionQuery on prefix "
@@ -137,8 +147,8 @@ public class SketchProcessor extends AbstractGeoSpatialStreamProcessor {
         try {
             SerializationInputStream in = new SerializationInputStream(
                     new BufferedInputStream(
-                        new GZIPInputStream(
-                            new ByteArrayInputStream(serializedSketch))));
+                            new GZIPInputStream(
+                                    new ByteArrayInputStream(serializedSketch))));
 
             in.mark(0);
             if (in.read() == -1) {
@@ -202,7 +212,7 @@ public class SketchProcessor extends AbstractGeoSpatialStreamProcessor {
     public synchronized void serialize(DataOutputStream dataOutputStream) {
         try {
             SerializationOutputStream out
-                = new SerializationOutputStream(dataOutputStream);
+                    = new SerializationOutputStream(dataOutputStream);
 
             PartitionQuery pq = new PartitionQuery(this.sketch.getMetrics());
             pq.execute(sketch.getRoot());
@@ -217,7 +227,7 @@ public class SketchProcessor extends AbstractGeoSpatialStreamProcessor {
     public synchronized void deserialize(DataInputStream dataInputStream) {
         try {
             SerializationInputStream in
-                = new SerializationInputStream(dataInputStream);
+                    = new SerializationInputStream(dataInputStream);
             this.sketch.merge(in);
         } catch (Exception e) {
             System.out.println("Failed to deserialize sketch");
@@ -235,14 +245,14 @@ public class SketchProcessor extends AbstractGeoSpatialStreamProcessor {
     public double getMemoryConsumptionForPrefixSlow(String prefix) {
         CountQuery cq = new CountQuery(this.sketch.getMetrics());
         try {
-        cq.addExpression(
-                new Expression(
-                    Operator.STR_PREFIX, new Feature("location", prefix)));
-        cq.execute(sketch.getRoot());
-        if (cq.hasResults() == false) {
-            System.out.println("WARNING: CountQuery on prefix "
-                    + "[" + prefix + "] returned no matches!");
-        }
+            cq.addExpression(
+                    new Expression(
+                            Operator.STR_PREFIX, new Feature("location", prefix)));
+            cq.execute(sketch.getRoot());
+            if (cq.hasResults() == false) {
+                System.out.println("WARNING: CountQuery on prefix "
+                        + "[" + prefix + "] returned no matches!");
+            }
         } catch (Exception e) {
             System.out.println("Failed to gather graph statistics!");
             e.printStackTrace();
@@ -269,7 +279,7 @@ public class SketchProcessor extends AbstractGeoSpatialStreamProcessor {
 
         int numFeatures = sketch.getFeatureHierarchy().size();
         int bytesPerLeaf = 8 + (8 * numFeatures * 4)
-            + (8 * ((numFeatures * (numFeatures - 1)) / 2));
+                + (8 * ((numFeatures * (numFeatures - 1)) / 2));
 
         return (bytesPerVertex * vertices) + (bytesPerLeaf * leaves);
     }
@@ -278,7 +288,7 @@ public class SketchProcessor extends AbstractGeoSpatialStreamProcessor {
         ByteArrayOutputStream byteOut = new ByteArrayOutputStream();
         try {
             SerializationOutputStream out
-                = new SerializationOutputStream(new GZIPOutputStream(byteOut));
+                    = new SerializationOutputStream(new GZIPOutputStream(byteOut));
             diff.getRoot().serialize(out);
             diff = new Sketch(hierarchy);
         } catch (Exception e) {
@@ -293,15 +303,15 @@ public class SketchProcessor extends AbstractGeoSpatialStreamProcessor {
         this.sketch = new Sketch(this.hierarchy);
         try {
             List<File> files = Files.walk(Paths.get(baseDirPath))
-                .filter(Files::isRegularFile)
-                .map(java.nio.file.Path::toFile)
-                .collect(Collectors.toList());
+                    .filter(Files::isRegularFile)
+                    .map(java.nio.file.Path::toFile)
+                    .collect(Collectors.toList());
 
             for (File file : files) {
                 SerializationInputStream in = new SerializationInputStream(
                         new BufferedInputStream(
-                            new GZIPInputStream(
-                                new FileInputStream(file))));
+                                new GZIPInputStream(
+                                        new FileInputStream(file))));
                 this.sketch.merge(in);
                 in.close();
             }
@@ -311,7 +321,7 @@ public class SketchProcessor extends AbstractGeoSpatialStreamProcessor {
         }
     }
 
-    private void dumpTransferredStateToDisk(byte[] state, String prefix){
+    private void dumpTransferredStateToDisk(byte[] state, String prefix) {
         FileOutputStream fos = null;
         DataOutputStream dos = null;
         try {
@@ -328,10 +338,10 @@ public class SketchProcessor extends AbstractGeoSpatialStreamProcessor {
             e.printStackTrace();
         } finally {
             try {
-                if(fos != null){
+                if (fos != null) {
                     fos.close();
                 }
-                if(dos != null){
+                if (dos != null) {
                     dos.close();
                 }
             } catch (IOException e) {
