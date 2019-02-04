@@ -112,7 +112,7 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
                     // atomic latency
                     double meanLatency;
                     synchronized (sumLatency) {
-                        if(currentCount > previousThroughput) {
+                        if (currentCount > previousThroughput) {
                             meanLatency = sumLatency.get() / (currentCount - previousThroughput);
                         }
                         meanLatency = -1;
@@ -1103,5 +1103,9 @@ public abstract class AbstractGeoSpatialStreamProcessor extends StreamProcessor 
 
     protected boolean publishData() {
         return hasStartedReceivingData.get();
+    }
+
+    public long getProcessedMessageCount() {
+        return processedCount.get();
     }
 }
