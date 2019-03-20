@@ -28,7 +28,7 @@ public class OutstandingQueryRegistry {
         outstandingQueries.put(queryId, queryResponse);
         callbacks.put(queryId, queryCallback);
         if(logger.isDebugEnabled()) {
-            logger.debug("Outstanding query was added.  Query Id: " + queryId + ", Size: " + outstandingQueries.size());
+            logger.debug("Outstanding query was added.  Query Id: " + queryId + ", Queue Length: " + outstandingQueries.size());
         }
     }
 
@@ -36,7 +36,7 @@ public class OutstandingQueryRegistry {
         outstandingQueries.remove(queryId);
         callbacks.remove(queryId);
         if(logger.isDebugEnabled()) {
-            logger.debug("Outstanding query was removed. Query Id: " + queryId + ", Size: " + outstandingQueries.size());
+            logger.debug("Outstanding query was removed. Query Id: " + queryId + ", Queue Length: " + outstandingQueries.size());
         }
     }
 

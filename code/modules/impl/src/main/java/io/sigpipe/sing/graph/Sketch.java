@@ -109,12 +109,12 @@ public class Sketch {
         reorientPath(path);
         optimizePath(path);
 
-        double[] values = new double[path.size() - 1];
+        double[] values = new double[path.size() - 2];
         for (int i = 1; i < path.size() - 1; ++i) { // skip time and location features
             // 2018-01-10 rammerd - added metadata argument and setting value
             //values[i] = path.get(i).getLabel().getDouble();
             String attributeName = path.get(i).getLabel().getName();
-            values[i] = metadata.getAttribute(attributeName).getDouble();
+            values[i-1] = metadata.getAttribute(attributeName).getDouble();
         }
         RunningStatisticsND rsnd = new RunningStatisticsND(values);
         DataContainer container = new DataContainer(rsnd);

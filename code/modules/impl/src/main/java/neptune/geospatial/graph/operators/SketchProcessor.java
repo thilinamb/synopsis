@@ -18,6 +18,7 @@ import io.sigpipe.sing.util.ReducedTestConfiguration;
 import neptune.geospatial.core.computations.AbstractGeoSpatialStreamProcessor;
 import neptune.geospatial.graph.TemporalQuantizer;
 import neptune.geospatial.graph.messages.GeoHashIndexedRecord;
+import org.apache.log4j.Logger;
 
 import java.io.*;
 import java.nio.file.Files;
@@ -36,6 +37,8 @@ public class SketchProcessor extends AbstractGeoSpatialStreamProcessor {
     protected FeatureHierarchy hierarchy;
     protected Set<String> activeFeatures = new HashSet<>();
     protected TemporalQuantizer temporalQuantizer;
+
+    private final Logger logger = Logger.getLogger(SketchProcessor.class);
 
     public SketchProcessor() {
         initSketch();
@@ -170,9 +173,9 @@ public class SketchProcessor extends AbstractGeoSpatialStreamProcessor {
     @Override
     public byte[] query(byte[] query) {
         String queryStr = "";
+        SerializationInputStream sIn = new SerializationInputStream(
+                new ByteArrayInputStream(query));
         try {
-            SerializationInputStream sIn = new SerializationInputStream(
-                    new ByteArrayInputStream(query));
             byte type = sIn.readByte();
             if (type == 0) {
                 /* Relational Query */
@@ -186,23 +189,35 @@ public class SketchProcessor extends AbstractGeoSpatialStreamProcessor {
                 q.serializeResults(this.sketch.getRoot(), sOut);
                 sOut.close();
                 byteOut.close();
-                return byteOut.toByteArray();
+                byte[] resp = byteOut.toByteArray();
+                if(logger.isDebugEnabled()){
+                    logger.debug("Evaluated Relational Query. Response size: " + resp.length + ", Has results: " + q.hasResults());
+                }
+                return resp;
             } else if (type == 1) {
                 /* Meta Query */
                 MetaQuery q = new MetaQuery(sIn);
                 q.execute(this.sketch.getRoot());
                 DataContainer result = q.result();
                 byte[] serializedResult = Serializer.serialize(result);
+                if(logger.isDebugEnabled()){
+                    logger.debug("Evaluated Metadata Query. Response size: " + serializedResult.length + ", Count: " + result.statistics.count() + ", Query: " + q.toString());
+                }
                 return serializedResult;
             }
-
-            sIn.close();
         } catch (Exception e) {
             System.out.println("Failed to process query: " + queryStr);
             e.printStackTrace();
+        } finally {
+            try {
+                sIn.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
         }
 
         /* Something went wrong: */
+        logger.warn("Query evaluation failed. Returning an empty response.");
         return new byte[0];
     }
 

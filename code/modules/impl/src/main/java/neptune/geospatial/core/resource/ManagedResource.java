@@ -622,6 +622,9 @@ public class ManagedResource {
         for (String prefix : prefixes) {
             Map<String, String> locations = GeoHashPrefixTree.getInstance().query(prefix);
             for (String compId : locations.keySet()) {
+                if(logger.isDebugEnabled()){
+                    logger.debug("Found endpoint with matching data. Endpoint: " + locations.get(compId) + ", Comp. Id: " + compId);
+                }
                 String endpoint = locations.get(compId);
                 if (targets.containsKey(endpoint)) {
                     targets.get(endpoint).add(compId);

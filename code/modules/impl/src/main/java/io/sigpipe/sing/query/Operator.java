@@ -46,7 +46,7 @@ public enum Operator {
     RANGE_INC_EXC(9),
     RANGE_EXC_INC(10),
     STR_PREFIX(11),
-    STR_SUFFIX(11),
+    STR_SUFFIX(12),
     ;
 
     /**

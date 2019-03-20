@@ -44,7 +44,7 @@ public class QueryProcessingTask implements Runnable {
         }
         long endTime = System.nanoTime();
         if (logger.isDebugEnabled()) {
-            logger.debug(String.format("[%s] Query evaluated. Query id: %d, Eval. time: %d",
+            logger.debug(String.format("[%s] Query evaluated. Query id: %d, Eval. time (ns): %d",
                     streamProcessor.getInstanceIdentifier(), queryReq.getQueryId(), (endTime - startTime)));
         }
         TargetQueryResponse queryResponse = new TargetQueryResponse(queryReq.getQueryId(),

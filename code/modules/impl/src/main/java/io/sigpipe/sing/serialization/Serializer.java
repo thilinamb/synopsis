@@ -64,6 +64,7 @@ public class Serializer {
 
         serialOut.writeSerializable(obj);
         serialOut.close();
+        byteOut.close();
         return byteOut.toByteArray();
     }
 
